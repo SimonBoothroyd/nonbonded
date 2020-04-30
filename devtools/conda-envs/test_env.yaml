@@ -1,16 +1,23 @@
 name: test
 channels:
+  - conda-forge
+  - omnia
+  - openeye
 dependencies:
     # Base depends
   - python
   - pip
 
-    # Testing
+    # Testing and development
   - pytest
   - pytest-cov
   - codecov
 
-    # Pip-only installs
-  #- pip:
-  #  - codecov
-
+    # Standard dependencies
+  - dash
+  - forcebalance
+  - mongodb
+  - numpy
+  - openeye-toolkits
+  - pandas
+  - rdkit

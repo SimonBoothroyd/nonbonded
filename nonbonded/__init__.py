@@ -3,9 +3,6 @@ nonbonded
 Automated optimization and assesment of nonbonded force field parameters
 """
 
-# Add imports here
-from .nonbonded import *
-
 # Handle versioneer
 from ._version import get_versions
 versions = get_versions()
