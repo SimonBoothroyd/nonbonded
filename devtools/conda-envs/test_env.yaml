@@ -15,6 +15,7 @@ dependencies:
 
     # Standard dependencies
   - dash
+  - dash-bootstrap-components
   - forcebalance
   - mongodb
   - numpy
