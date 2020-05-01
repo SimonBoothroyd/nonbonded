@@ -16,9 +16,12 @@ dependencies:
     # Standard dependencies
   - dash
   - dash-bootstrap-components
+  - fastapi
   - forcebalance
-  - mongodb
   - numpy
   - openeye-toolkits
   - pandas
+  - pydantic
+  - requests
   - rdkit
+  - uvicorn

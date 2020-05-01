@@ -46,6 +46,9 @@ setup(
 
     # Set up the main GUI entry point
     entry_points={
-        'console_scripts': ['nonbonded=nonbonded.frontend.index:main'],
+        'console_scripts': [
+            'nonbonded-gui=nonbonded.command_line:main_gui',
+            'nonbonded-rest=nonbonded.command_line:main_rest',
+        ],
     }
 )
