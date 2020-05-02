@@ -1,6 +1,6 @@
 import urllib.parse
 from enum import Enum
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 import numpy
 from pydantic import BaseModel, Field, validator

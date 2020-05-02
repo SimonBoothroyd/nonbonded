@@ -5,10 +5,9 @@ from dash.dependencies import Input, Output
 
 from nonbonded.frontend.app import app
 from nonbonded.frontend.pages import summary, test, training
-
-# The style arguments for the sidebar.
 from nonbonded.library.models.project import Project
 
+# The style arguments for the sidebar.
 SIDEBAR_STYLE = {
     "height": "100%",
     "padding": "2rem 1rem",

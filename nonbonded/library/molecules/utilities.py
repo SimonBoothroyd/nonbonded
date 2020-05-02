@@ -1,6 +1,4 @@
 import functools
-from io import StringIO
-from tempfile import NamedTemporaryFile
 
 from cmiles.utils import load_molecule
 from rdkit.Chem import rdDepictor
@@ -21,9 +19,6 @@ def smiles_to_image(smiles_tuple):
 
     n_molecules = len(smiles_tuple)
 
-    # img = Draw.MolsToGridImage(ms[:8], molsPerRow=4, subImgSize=(200, 200),
-    #                                 legends=[x.GetProp("_Name") for x in ms[:8]])
-
     drawer = rdMolDraw2D.MolDraw2DSVG(n_molecules * 200, 200, 150, 200)
     drawer.drawOptions().padding = 0.05
 
@@ -35,5 +30,4 @@ def smiles_to_image(smiles_tuple):
     drawer.FinishDrawing()
 
     svg = drawer.GetDrawingText()
-
     return svg

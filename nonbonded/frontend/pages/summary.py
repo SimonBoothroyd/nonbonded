@@ -38,7 +38,7 @@ def get_layout(project_model: Project, study_model: Study):
     if n_optimizations > 0:
 
         layout.extend(
-            [html.Br(), html.H4("Optimizations", className="text-center"), html.Br(),]
+            [html.Br(), html.H4("Optimizations", className="text-center"), html.Br()]
         )
 
         optimization_list = []

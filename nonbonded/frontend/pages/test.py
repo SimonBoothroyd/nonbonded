@@ -44,7 +44,7 @@ def get_layout(project_model: Project, study_model: Study):
                     src=full_src_url,
                     width="175px",
                     height="175px",
-                    style={"border": "1px solid grey"}
+                    style={"border": "1px solid grey"},
                 )
             )
 
