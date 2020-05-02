@@ -1,26 +1,33 @@
+import lorem
+import pandas
 import requests
 
+from nonbonded.library.data.pandas import data_frame_to_summary
 from nonbonded.library.models.data import (
-    ChemicalEnvironment,
-    DataSetDefinition,
-    PropertyDefinition,
+    TargetDataSet,
+    TargetProperty,
     StatePoint,
-    SubstanceType,
+    SubstanceType, PropertyType,
 )
+from nonbonded.library.models.environments import ChemicalEnvironment
 from nonbonded.library.models.project import Author, Optimization, Project, Study
 
 
-def main():
-    # Define the common types of properties
-    pure_rho = PropertyDefinition(
-        property_type="Density",
-        composition=SubstanceType.Pure,
+def define_target_data_set():
+
+    # Define the target properties
+    pure_rho = TargetProperty(
+        property_type=PropertyType(
+            property_class="Density", substance_type=SubstanceType.Pure
+        ),
         target_states=[
             StatePoint(temperature=298.15, pressure=101.325, mole_fractions=(1.0,))
         ],
     )
-    pure_h_vap = PropertyDefinition(
-        property_type="EnthalpyOfVaporization",
+    pure_h_vap = TargetProperty(
+        property_type=PropertyType(
+            property_class="EnthalpyOfVaporization", substance_type=SubstanceType.Pure
+        ),
         composition=SubstanceType.Pure,
         target_states=[
             StatePoint(temperature=298.15, pressure=101.325, mole_fractions=(1.0,))
@@ -28,33 +35,40 @@ def main():
     )
 
     # Define the alcohol-ester-acid study.
-    alcohol_ester_data_set = DataSetDefinition(
-        property_definitions=[pure_rho, pure_h_vap],
+    target_data_set = TargetDataSet(
+        target_properties=[pure_rho, pure_h_vap],
         chemical_environments=[
-            ChemicalEnvironment.Caboxylic_acid,
+            ChemicalEnvironment.CarboxylicAcid,
             ChemicalEnvironment.Hydroxy,
-            ChemicalEnvironment.Ester,
+            ChemicalEnvironment.CarboxylicAcidEster,
         ],
     )
 
-    alcohol_ester_study = Study(
+    return target_data_set
+
+
+def main():
+    target_data_set = define_target_data_set()
+
+    study = Study(
+        identifier="alcohol_ester",
         title="Alcohol + Ester",
-        description="Lorem ipsum.",
+        description="\n".join([lorem.paragraph()] * 3),
         optimizations=[
             Optimization(
                 title="rho_x_h_vap",
-                description="Lorem ipsum.",
-                training_set=alcohol_ester_data_set,
+                description="\n".join([lorem.paragraph()] * 1),
+                training_set=target_data_set,
             )
         ],
-        test_set=alcohol_ester_data_set,
+        test_set=target_data_set,
     )
 
     # Define the main project.
     project = Project(
         identifier="binary_mixture",
-        title="Binary Mixture Feasability Study",
-        abstract="Lorem ipsum.",
+        title="Binary Mixture Feasibility Study",
+        abstract="\n".join([lorem.paragraph()] * 4),
         authors=[
             Author(
                 name="Simon Boothroyd",
@@ -67,10 +81,19 @@ def main():
                 institute="University of Colorado Boulder",
             ),
         ],
-        studies=[alcohol_ester_study],
+        studies=[study],
     )
 
     requests.post(url="http://127.0.0.1:5000/projects/", data=project.json())
+
+    test_set_summary = data_frame_to_summary(pandas.read_csv("test_set.csv"))
+    requests.post(
+        url=(
+            f"http://127.0.0.1:5000/projects/"
+            f"{project.identifier}/{study.identifier}/test/summary"
+        ),
+        data=test_set_summary.json()
+    )
 
 
 if __name__ == "__main__":

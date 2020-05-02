@@ -2,7 +2,7 @@ from typing import List
 
 from pydantic import BaseModel, Field
 
-from nonbonded.library.models.data import DataSetDefinition
+from nonbonded.library.models.data import TargetDataSet
 
 
 class Author(BaseModel):
@@ -19,12 +19,18 @@ class Optimization(BaseModel):
         ..., description="A description of this optimization.",
     )
 
-    training_set: DataSetDefinition = Field(
+    training_set: TargetDataSet = Field(
         ..., description="A description of the data set to optimise against.",
     )
 
 
 class Study(BaseModel):
+
+    identifier: str = Field(
+        ...,
+        description="The unique id assigned to the study. "
+        "This must be a valid file name.",
+    )
 
     title: str = Field(..., description="The title of the study.")
     description: str = Field(
@@ -34,7 +40,7 @@ class Study(BaseModel):
     optimizations: List[Optimization] = Field(
         ..., description="The optimizations to perform as part of this study."
     )
-    test_set: DataSetDefinition = Field(
+    test_set: TargetDataSet = Field(
         ...,
         description="A description of the composition of the data set benchmark "
         "against.",

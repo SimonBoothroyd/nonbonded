@@ -1,34 +1,81 @@
+import urllib.parse
 from enum import Enum
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy
 from pydantic import BaseModel, Field, validator
 
-
-class ChemicalEnvironment(Enum):
-
-    Hydroxy = "027"
-    Alcohol = "028"
-    Caboxylic_acid = "076"
-    Ester = "078"
-    Ether = "037"
-    Aldehyde = "004"
-    Ketone = "005"
-    Thiocarbonyl = "006"
-    Phenol = "034"
-    Amine = "047"
-    Halogenated = "061"
-    Amide = "080"
-    Nitro = "150"
-    Alkene = "199"
-    Aromatic = "201"
-    Heterocycle = "202"
+from nonbonded.library.models.environments import ChemicalEnvironment
 
 
 class SubstanceType(Enum):
 
     Pure = "Pure"
     Binary = "Binary"
+
+    @classmethod
+    def from_n_components(cls, n_components):
+
+        if n_components == 1:
+            return cls.Pure
+        elif n_components == 2:
+            return cls.Binary
+
+        raise NotImplementedError()
+
+
+class PropertyType(BaseModel):
+
+    property_class: str = Field(
+        ..., description="The class of property represented by this type."
+    )
+    substance_type: SubstanceType = Field(
+        ..., description="The type of substances chosen for this class of property."
+    )
+
+    def __eq__(self, other):
+        return (
+            type(other) == PropertyType
+            and self.property_class == other.property_class
+            and self.substance_type == other.substance_type
+        )
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        return hash((self.property_class, self.substance_type.value))
+
+
+class Substance(BaseModel):
+
+    smiles: Tuple[str, ...] = Field(
+        ..., description="The SMILES representations of the molecules in a substance."
+    )
+
+    @validator("smiles")
+    def smiles_validator(cls, value):
+        return tuple(sorted(value))
+
+    def to_url_string(self):
+        return urllib.parse.quote(".".join(self.smiles))
+
+    @classmethod
+    def from_url_string(cls, url_string):
+
+        smiles = urllib.parse.unquote(url_string)
+        smiles_tuple = tuple(sorted(smiles.split(".")))
+
+        return Substance(smiles=smiles_tuple)
+
+    def __eq__(self, other):
+        return type(other) == Substance and self.smiles == other.smiles
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        return hash(self.smiles)
 
 
 class StatePoint(BaseModel):
@@ -61,12 +108,9 @@ class StatePoint(BaseModel):
         return value
 
 
-class PropertyDefinition(BaseModel):
+class TargetProperty(BaseModel):
 
-    property_type: str
-    composition: SubstanceType = Field(
-        ..., description="The type of substances chosen for this class of property."
-    )
+    property_type: PropertyType = Field("The type of property being targeted.")
 
     target_states: List[StatePoint] = Field(
         ...,
@@ -75,11 +119,34 @@ class PropertyDefinition(BaseModel):
     )
 
 
-class DataSetDefinition(BaseModel):
+class TargetDataSet(BaseModel):
 
-    property_definitions: List[PropertyDefinition] = Field(
+    target_properties: List[TargetProperty] = Field(
         ..., description="The types of properties incorporated into this data set."
     )
     chemical_environments: List[ChemicalEnvironment] = Field(
         ..., description="The chemical environments incorporated into this data set."
+    )
+
+
+class DataSetSubstance(BaseModel):
+
+    components: Substance = Field(..., description="The components in this substance.")
+
+    chemical_environments: List[ChemicalEnvironment] = Field(
+        ..., description="The chemical environments present in this substance."
+    )
+    property_types: List[PropertyType] = Field(
+        ..., description="The property types for which included for this substance"
+    )
+
+
+class DataSetSummary(BaseModel):
+
+    n_data_points: int = Field(
+        ..., description="The total number of data points in the set."
+    )
+
+    substances: List[DataSetSubstance] = Field(
+        ..., description="The substances present in the data set."
     )
