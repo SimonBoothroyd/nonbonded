@@ -257,5 +257,6 @@ def optimize(input_path, server_config, log_level):
                 check_call(["ForceBalance.py", input_path], stdout=file)
 
 
+run.add_command(evaluator)
 run.add_command(benchmark)
 run.add_command(optimize)
