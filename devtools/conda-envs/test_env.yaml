@@ -14,14 +14,15 @@ dependencies:
   - codecov
 
     # Standard dependencies
-  - dash
-  - dash-bootstrap-components
+  - click
   - fastapi
   - forcebalance
+  - jinja2
   - numpy
   - openeye-toolkits
   - pandas
   - pydantic
   - requests
   - rdkit
+  - typing-extensions
   - uvicorn
