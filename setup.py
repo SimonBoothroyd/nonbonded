@@ -44,11 +44,10 @@ setup(
     # Allows `setup.py test` to work correctly with pytest
     setup_requires=[] + pytest_runner,
 
-    # Set up the main GUI entry point
+    # Set up the main CLI entry points
     entry_points={
         'console_scripts': [
-            'nonbonded-gui=nonbonded.command_line:main_gui',
-            'nonbonded-rest=nonbonded.command_line:main_rest',
+            'nonbonded=nonbonded.cli:cli',
         ],
     }
 )
