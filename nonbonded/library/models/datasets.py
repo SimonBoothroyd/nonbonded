@@ -2,12 +2,13 @@ import urllib.parse
 from typing import List, Optional, Tuple
 
 import numpy
-from pydantic import BaseModel, Field, PositiveInt, validator
+from pydantic import Field, PositiveInt, validator
 
+from nonbonded.library.models import BaseORM
 from nonbonded.library.models.environments import ChemicalEnvironment
 
 
-class Substance(BaseModel):
+class Substance(BaseORM):
 
     smiles: Tuple[str, ...] = Field(
         ..., description="The SMILES representations of the molecules in a substance."
@@ -36,7 +37,7 @@ class Substance(BaseModel):
         return hash(tuple(sorted(self.smiles)))
 
 
-class StatePoint(BaseModel):
+class StatePoint(BaseORM):
 
     temperature: float = Field(..., description="The temperature of the state (K).")
     pressure: float = Field(..., description="The pressure of the state (kPa).")
@@ -69,7 +70,7 @@ class StatePoint(BaseModel):
         return value
 
 
-class TargetProperty(BaseModel):
+class TargetProperty(BaseORM):
 
     property_type: str = Field(..., description="The type of property being targeted.")
 
@@ -86,7 +87,7 @@ class TargetProperty(BaseModel):
     )
 
 
-class TargetDataSet(BaseModel):
+class TargetDataSet(BaseORM):
 
     target_properties: List[TargetProperty] = Field(
         ..., description="The types of properties incorporated into this data set."
@@ -96,7 +97,7 @@ class TargetDataSet(BaseModel):
     )
 
 
-class DataSetValue(BaseModel):
+class DataSetValue(BaseORM):
 
     property_type: str = Field(
         ..., description="The type of property that this value corresponds to."
@@ -115,7 +116,7 @@ class DataSetValue(BaseModel):
     )
 
 
-class DataSetEntry(BaseModel):
+class DataSetEntry(BaseORM):
 
     substance: Substance = Field(
         ..., description="The substance associated with this entry."
@@ -128,7 +129,7 @@ class DataSetEntry(BaseModel):
     )
 
 
-class SelectedDataSet(BaseModel):
+class SelectedDataSet(BaseORM):
 
     data_entries: List[DataSetEntry] = Field(
         ..., description="The entries in the selected data set."

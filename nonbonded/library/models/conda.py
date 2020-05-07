@@ -1,8 +1,9 @@
 from pydantic import Field
-from pydantic.main import BaseModel
+
+from nonbonded.library.models import BaseORM
 
 
-class CondaEnvironment(BaseModel):
+class CondaEnvironment(BaseORM):
 
     yaml: str = Field(
         ..., description="The yaml representation of a conda environment."

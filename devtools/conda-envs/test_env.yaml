@@ -13,10 +13,9 @@ dependencies:
   - pytest-cov
   - codecov
 
-    # Standard dependencies
+    # Core dependencies
   - click
   - cmiles
-  - fastapi
   - forcebalance
   - jinja2
   - numpy
@@ -25,6 +24,12 @@ dependencies:
   - pydantic
   - requests
   - rdkit
+
+    # REST dependencies
+  - alembic
+  - fastapi
+  - sqlalchemy
+  - sqlite
   - starlette
   - typing-extensions
   - uvicorn

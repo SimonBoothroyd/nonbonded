@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from nonbonded.library.models import BaseORM
 
 
-class ForceBalanceOptions(BaseModel):
+class ForceBalanceOptions(BaseORM):
 
     max_iterations: int = Field(
         12, description="The maximum number of optimization iterations to perform."

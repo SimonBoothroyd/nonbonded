@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from nonbonded.library.models import BaseORM
 
 
-class SmirnoffParameter(BaseModel):
+class SmirnoffParameter(BaseORM):
 
     handler_type: str = Field(
         ...,

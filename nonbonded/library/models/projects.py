@@ -3,21 +3,22 @@ options of a particular project.
 """
 from typing import Dict, List
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
+from nonbonded.library.models import BaseORM
 from nonbonded.library.models.datasets import TargetDataSet
 from nonbonded.library.models.forcebalance import ForceBalanceOptions
 from nonbonded.library.models.forcefield import SmirnoffParameter
 
 
-class Author(BaseModel):
+class Author(BaseORM):
 
     name: str = Field(..., description="The full name of the author.")
     email: str = Field(..., description="The author's email address.")
     institute: str = Field(..., description="The author's host institute.")
 
 
-class Optimization(BaseModel):
+class Optimization(BaseORM):
 
     identifier: str = Field(
         ...,
@@ -49,7 +50,7 @@ class Optimization(BaseModel):
     )
 
 
-class Study(BaseModel):
+class Study(BaseORM):
 
     identifier: str = Field(
         ...,
@@ -83,7 +84,7 @@ class Study(BaseModel):
     )
 
 
-class Project(BaseModel):
+class Project(BaseORM):
 
     identifier: str = Field(
         ...,

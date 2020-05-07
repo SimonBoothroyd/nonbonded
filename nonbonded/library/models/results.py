@@ -1,9 +1,11 @@
 from typing import Dict, List, Tuple
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from nonbonded.library.models import BaseORM
 
 
-class ScatterSeries(BaseModel):
+class ScatterSeries(BaseORM):
 
     name: str = Field(..., description="The name of this series.")
 
@@ -16,7 +18,7 @@ class ScatterSeries(BaseModel):
     )
 
 
-class ScatterData(BaseModel):
+class ScatterData(BaseORM):
 
     title: str = Field(..., description="The title of this data set.")
 
@@ -25,7 +27,7 @@ class ScatterData(BaseModel):
     )
 
 
-class StatisticSeries(BaseModel):
+class StatisticSeries(BaseORM):
 
     name: str = Field(..., description="The name of this series.")
 
@@ -37,14 +39,14 @@ class StatisticSeries(BaseModel):
     )
 
 
-class StatisticData(BaseModel):
+class StatisticData(BaseORM):
 
     title: str = Field(..., description="The title of this data set.")
 
     series: StatisticSeries = Field(..., description="The series of this set.")
 
 
-class PropertyResults(BaseModel):
+class PropertyResults(BaseORM):
 
     scatter_data: Dict[str, ScatterData] = Field(
         ...,
@@ -57,7 +59,7 @@ class PropertyResults(BaseModel):
     )
 
 
-class EstimationResult(BaseModel):
+class EstimationResult(BaseORM):
 
     property_results: Dict[str, PropertyResults] = Field(
         ...,
@@ -69,7 +71,7 @@ class EstimationResult(BaseModel):
     )
 
 
-class OptimizationResult(BaseModel):
+class OptimizationResult(BaseORM):
 
     objective_function: ScatterSeries = Field(
         ..., description="The value of the objective function"
