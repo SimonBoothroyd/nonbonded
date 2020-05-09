@@ -1,11 +1,7 @@
 from sqlalchemy import Column, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import relationship
 
-from nonbonded.backend.database.models import (
-    Base,
-    ForceBalanceOptions,
-    SmirnoffParameter,
-)
+from nonbonded.backend.database.models import Base
 from nonbonded.library.models import projects
 
 author_projects_table = Table(
@@ -13,6 +9,12 @@ author_projects_table = Table(
     Base.metadata,
     Column("project_id", Integer, ForeignKey("projects.id")),
     Column("author_id", Integer, ForeignKey("authors.id")),
+)
+optimization_parameters_table = Table(
+    "optimization_parameters",
+    Base.metadata,
+    Column("optimization_id", Integer, ForeignKey("optimizations.id")),
+    Column("parameter_id", Integer, ForeignKey("parameters.id")),
 )
 
 
@@ -26,12 +28,6 @@ class Author(Base):
     email = Column(String, unique=True)
     institute = Column(String)
 
-    @classmethod
-    def from_schema(cls, schema: projects.Author):
-
-        # noinspection PyArgumentList
-        return cls(**schema.dict())
-
 
 class Optimization(Base):
 
@@ -40,29 +36,20 @@ class Optimization(Base):
     id = Column(Integer, primary_key=True, index=True)
     parent_id = Column(Integer, ForeignKey("studies.id"))
 
-    title = Column(String, unique=True)
-    identifier = Column(String)
+    title = Column(String)
+    identifier = Column(String, index=True)
 
     description = Column(String)
 
-    # target_training_set: TargetDataSet
-    parameters_to_train = relationship("SmirnoffParameter")
+    target_training_set = relationship("TargetDataSet")
+    target_training_set_id = Column(Integer, ForeignKey("target_data_sets.id"))
+
+    parameters_to_train = relationship(
+        "SmirnoffParameter", secondary=optimization_parameters_table
+    )
 
     # denominators: Dict[str, str]
     # priors: Dict[str, float]
-
-    @classmethod
-    def from_schema(cls, schema: projects.Optimization):
-
-        # noinspection PyArgumentList
-        return cls(
-            title=schema.title,
-            identifier=schema.identifier,
-            description=schema.description,
-            parameters_to_train=[
-                SmirnoffParameter.from_schema(x) for x in schema.parameters_to_train
-            ],
-        )
 
 
 class Study(Base):
@@ -72,31 +59,18 @@ class Study(Base):
     id = Column(Integer, primary_key=True, index=True)
     parent_id = Column(Integer, ForeignKey("projects.id"))
 
-    title = Column(String, unique=True)
-    identifier = Column(String)
+    title = Column(String)
+    identifier = Column(String, index=True)
 
     description = Column(String)
 
     optimizations = relationship("Optimization")
     optimization_inputs = relationship("ForceBalanceOptions", uselist=False)
 
-    # target_test_set: TargetDataSet
+    target_test_set = relationship("TargetDataSet", uselist=False)
+    target_test_set_id = Column(Integer, ForeignKey("target_data_sets.id"))
 
     initial_force_field = Column(String)
-
-    @classmethod
-    def from_schema(cls, schema: projects.Study):
-
-        # noinspection PyArgumentList
-        return cls(
-            title=schema.title,
-            identifier=schema.identifier,
-            description=schema.description,
-            optimizations=[Optimization.from_schema(x) for x in schema.optimizations],
-            optimization_inputs=ForceBalanceOptions.from_schema(
-                schema.optimization_inputs
-            ),
-        )
 
 
 class Project(Base):

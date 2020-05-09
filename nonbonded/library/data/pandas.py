@@ -2,23 +2,30 @@
 using the Evaluator framework.
 """
 from collections import defaultdict
+from typing import Optional
 
 import pandas
 
 from nonbonded.library.models.datasets import (
+    DataSet,
     DataSetEntry,
-    SelectedDataSet,
+    DataSetValue,
     StatePoint,
     Substance,
 )
 from nonbonded.library.utilities.checkmol import analyse_functional_groups
 
 
-def data_frame_to_summary(data_frame: pandas.DataFrame) -> SelectedDataSet:
+def data_frame_to_summary(
+    data_frame: pandas.DataFrame,
+    project_id: str,
+    study_id: str,
+    optimization_id: Optional[str],
+) -> DataSet:
 
     property_headers = [x for x in data_frame if " Value " in x]
 
-    properties_per_substance = defaultdict(lambda: defaultdict(list))
+    properties_per_substance = defaultdict(list)
 
     for property_header in property_headers:
 
@@ -41,6 +48,9 @@ def data_frame_to_summary(data_frame: pandas.DataFrame) -> SelectedDataSet:
             components = tuple(sorted(row[x] for x in column_names))
             substance = Substance(smiles=components)
 
+            value = row[property_header]
+            uncertainty = row[property_header.replace("Value", "Uncertainty")]
+
             temperature = row["Temperature (K)"]
             pressure = row["Pressure (kPa)"]
 
@@ -50,7 +60,14 @@ def data_frame_to_summary(data_frame: pandas.DataFrame) -> SelectedDataSet:
                 mole_fractions=tuple(mole_fractions),
             )
 
-            properties_per_substance[substance][property_name].append(state_point)
+            data_set_value = DataSetValue(
+                property_type=property_name,
+                state_point=state_point,
+                value=value,
+                std_error=uncertainty,
+            )
+
+            properties_per_substance[substance].append(data_set_value)
 
     data_entries = []
 
@@ -68,18 +85,21 @@ def data_frame_to_summary(data_frame: pandas.DataFrame) -> SelectedDataSet:
             chemical_environments.update(smiles_environments)
 
         chemical_environments = [*chemical_environments]
-        property_entries = properties_per_substance[substance]
+        data_set_values = properties_per_substance[substance]
 
         data_entry = DataSetEntry(
             substance=substance,
             chemical_environments=chemical_environments,
-            property_entries=property_entries,
+            values=data_set_values,
         )
 
         data_entries.append(data_entry)
 
-    data_set_summary = SelectedDataSet(
-        n_data_points=len(data_frame), data_entries=data_entries
+    data_set_summary = DataSet(
+        data_entries=data_entries,
+        project_identifier=project_id,
+        study_identifier=study_id,
+        optimization_identifier=optimization_id,
     )
 
     return data_set_summary

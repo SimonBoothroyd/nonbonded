@@ -1,7 +1,6 @@
-from sqlalchemy import Column, Float, ForeignKey, Integer
+from sqlalchemy import Column, Float, ForeignKey, Integer, String
 
 from nonbonded.backend.database.models import Base
-from nonbonded.library.models import forcebalance
 
 
 class ForceBalanceOptions(Base):
@@ -19,12 +18,4 @@ class ForceBalanceOptions(Base):
 
     n_criteria = Column(Integer)
 
-    target_name = Column(Float)
-
-    @classmethod
-    def from_schema(
-        cls, schema: forcebalance.ForceBalanceOptions
-    ) -> "ForceBalanceOptions":
-
-        # noinspection PyArgumentList
-        return cls(**schema.dict())
+    target_name = Column(String)

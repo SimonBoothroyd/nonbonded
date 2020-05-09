@@ -1,7 +1,7 @@
 """A collection of models which outline the scope and
 options of a particular project.
 """
-from typing import Dict, List
+from typing import List
 
 from pydantic import Field
 
@@ -40,14 +40,14 @@ class Optimization(BaseORM):
         ..., description="The force field parameters to be optimized."
     )
 
-    denominators: Dict[str, str] = Field(
-        ...,
-        description="The denominators to scale each class of properties "
-        "contribution to the objective function by.",
-    )
-    priors: Dict[str, float] = Field(
-        ..., description="The priors to place on each class of parameter."
-    )
+    # denominators: Dict[str, str] = Field(
+    #     ...,
+    #     description="The denominators to scale each class of properties "
+    #     "contribution to the objective function by.",
+    # )
+    # priors: Dict[str, float] = Field(
+    #     ..., description="The priors to place on each class of parameter."
+    # )
 
 
 class Study(BaseORM):
@@ -98,4 +98,11 @@ class Project(BaseORM):
 
     studies: List[Study] = Field(
         ..., description="The studies conducted as part of the project."
+    )
+
+
+class ProjectCollection(BaseORM):
+
+    projects: List[Project] = Field(
+        default_factory=list, description="A collection of projects.",
     )

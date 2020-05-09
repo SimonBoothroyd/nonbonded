@@ -127,7 +127,7 @@ def checkmol_code_to_environment(checkmol_code) -> ChemicalEnvironment:
         "113": ChemicalEnvironment.CarboxylicAcidImide,
         "114": ChemicalEnvironment.CarboxylicAcidUnsubstImide,
         "115": ChemicalEnvironment.CarboxylicAcidSubstImide,
-        "116": ChemicalEnvironment.CO2Deriv,
+        "116": ChemicalEnvironment.Co2Deriv,
         "117": ChemicalEnvironment.CarbonicAcidDeriv,
         "118": ChemicalEnvironment.CarbonicAcidMonoester,
         "119": ChemicalEnvironment.CarbonicAcidDiester,

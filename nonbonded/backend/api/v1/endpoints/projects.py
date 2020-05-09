@@ -1,48 +1,41 @@
 import os
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from requests import Session
 
 from nonbonded.backend.api import depends
-from nonbonded.backend.database.crud.projects import (
-    create_project,
-    read_project_by_identifier,
-    read_projects,
-)
-from nonbonded.library.models.datasets import SelectedDataSet
-from nonbonded.library.models.projects import Project
-from nonbonded.library.models.results import EstimationResult
+from nonbonded.backend.database.crud.projects import ProjectCRUD
+from nonbonded.library.models.projects import Project, ProjectCollection
 
 router = APIRouter()
 
 PROJECT_DIRECTORY = os.path.join("rest", "projects")
 
 
-@router.get("/", response_model=List[Project])
+@router.get("/", response_model=ProjectCollection)
 async def get_projects(
     skip: int = 0, limit: int = 100, db: Session = Depends(depends.get_db)
 ):
 
-    db_projects = read_projects(db, skip=skip, limit=limit)
-    return db_projects
+    db_projects = ProjectCRUD.read_all(db, skip=skip, limit=limit)
+    return {"projects": db_projects}
 
 
 @router.post("/")
 async def post_project(project: Project, db: Session = Depends(depends.get_db)):
 
-    db_project = read_project_by_identifier(db, identifier=project.identifier)
+    db_project = ProjectCRUD.read_by_identifier(db, identifier=project.identifier)
 
     if db_project:
         raise HTTPException(status_code=400, detail="Project already registered")
 
-    return create_project(db=db, project=project)
+    return ProjectCRUD.create(db=db, project=project)
 
 
 @router.get("/{project_id}")
 async def get_project(project_id, db: Session = Depends(depends.get_db)):
 
-    db_project = read_project_by_identifier(db, identifier=project_id)
+    db_project = ProjectCRUD.read_by_identifier(db, identifier=project_id)
 
     if not db_project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -81,12 +74,12 @@ async def get_project(project_id, db: Session = Depends(depends.get_db)):
 #     if not os.path.isfile(study_path):
 #         raise HTTPException(status_code=404, detail="Study not found")
 #
-#     data_set_summary = SelectedDataSet.parse_file(study_path)
+#     data_set_summary = DataSet.parse_file(study_path)
 #     return data_set_summary
 #
 #
 # @router.post("/{project_id}/studies/{study_id}/test/dataset")
-# async def post_test_set(project_id, study_id, data_set_summary: SelectedDataSet):
+# async def post_test_set(project_id, study_id, data_set_summary: DataSet):
 #
 #     study_directory = os.path.join(PROJECT_DIRECTORY, project_id, study_id)
 #     os.makedirs(study_directory, exist_ok=True)
@@ -160,14 +153,14 @@ async def get_project(project_id, db: Session = Depends(depends.get_db)):
 #     if not os.path.isfile(optimization_path):
 #         raise HTTPException(status_code=404, detail="Optimization data set not found.")
 #
-#     data_set_summary = SelectedDataSet.parse_file(optimization_path)
+#     data_set_summary = DataSet.parse_file(optimization_path)
 #
 #     return data_set_summary
 #
 #
 # @router.post("/{project_id}/studies/{study_id}/train/{optimization_id}/dataset")
 # async def post_train_set(
-#     project_id, study_id, optimization_id, data_set_summary: SelectedDataSet
+#     project_id, study_id, optimization_id, data_set_summary: DataSet
 # ):
 #
 #     optimization_directory = os.path.join(

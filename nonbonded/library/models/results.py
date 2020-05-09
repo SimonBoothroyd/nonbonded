@@ -20,18 +20,14 @@ class ScatterSeries(BaseORM):
 
 class ScatterData(BaseORM):
 
-    title: str = Field(..., description="The title of this data set.")
-
     series: List[ScatterSeries] = Field(
         ..., description="The different series of this set."
     )
 
 
-class StatisticSeries(BaseORM):
+class StatisticData(BaseORM):
 
-    name: str = Field(..., description="The name of this series.")
-
-    value: Dict[str, float] = Field(
+    values: Dict[str, float] = Field(
         ..., description="The value of this series statistic."
     )
     confidence_intervals: Dict[str, Tuple[float, float]] = Field(
@@ -39,45 +35,82 @@ class StatisticSeries(BaseORM):
     )
 
 
-class StatisticData(BaseORM):
+class ForceFieldResults(BaseORM):
 
-    title: str = Field(..., description="The title of this data set.")
+    force_field_name: str = Field(
+        ..., description="The name of the force field used to generate the results."
+    )
 
-    series: StatisticSeries = Field(..., description="The series of this set.")
+    scatter_data: ScatterData = Field(
+        ...,
+        description="The reference values vs the estimated of the property obtained "
+        "using this force field.",
+    )
+    statistic_data: StatisticData = Field(
+        ..., description="Bootstrapped-statistics about the scatter data."
+    )
 
 
 class PropertyResults(BaseORM):
 
-    scatter_data: Dict[str, ScatterData] = Field(
+    property_type: str = Field(
+        ..., description="The type of property that these results were collected for."
+    )
+    n_components: int = Field(
         ...,
-        description="The estimated vs reference obtained for each force field "
-        "that was benchmarked against.",
+        description="The number of components in the system for which the property "
+        "was measured / estimated.",
     )
 
-    statistic_data: Dict[str, StatisticData] = Field(
-        ..., description="Bootstrapped-statistics about the data."
+    force_field_results: List[ForceFieldResults] = Field(
+        ...,
+        description="The results obtained for each force field that was benchmarked "
+        "against.",
     )
 
 
-class EstimationResult(BaseORM):
+class BenchmarkResults(BaseORM):
 
-    property_results: Dict[str, PropertyResults] = Field(
-        ...,
-        description="The estimated vs reference results for each class of property.",
+    project_identifier: str = Field(
+        ..., description="The project that this data set belongs to."
     )
-    conda_environment_id: str = Field(
+    study_identifier: str = Field(
+        ..., description="The study that this data set belongs to."
+    )
+
+    property_results: List[PropertyResults] = Field(
         ...,
-        description="The unique id of the conda environment used during the estimation.",
+        description="The results of each class of property which was benchmarked "
+        "against.",
+    )
+
+
+class BenchmarkResultsCollection(BaseORM):
+
+    results: List[BenchmarkResults] = Field(
+        default_factory=list, description="A collection of benchmark results.",
     )
 
 
 class OptimizationResult(BaseORM):
 
-    objective_function: ScatterSeries = Field(
-        ..., description="The value of the objective function"
+    project_identifier: str = Field(
+        ..., description="The project that this data set belongs to."
     )
-    conda_environment_id: str = Field(
-        ...,
-        description="The unique id of the conda environment used during the "
-        "optimization.",
+    study_identifier: str = Field(
+        ..., description="The study that this data set belongs to."
+    )
+    optimization_identifier: str = Field(
+        ..., description="The optimization that this data set belongs to."
+    )
+
+    objective_function: Dict[int, float] = Field(
+        ..., description="The value of the objective function at each iteration"
+    )
+
+
+class OptimizationResultCollection(BaseORM):
+
+    results: List[OptimizationResult] = Field(
+        default_factory=list, description="A collection of optimization results.",
     )

@@ -121,16 +121,30 @@ class DataSetEntry(BaseORM):
     substance: Substance = Field(
         ..., description="The substance associated with this entry."
     )
-    chemical_environments: List[ChemicalEnvironment] = Field(
-        ..., description="The chemical environments present in this entry."
-    )
-    property_entries: List[DataSetValue] = Field(
+    values: List[DataSetValue] = Field(
         ..., description="The values associated with this entry."
     )
 
 
-class SelectedDataSet(BaseORM):
+class DataSet(BaseORM):
+
+    project_identifier: str = Field(
+        ..., description="The project that this data set belongs to."
+    )
+    study_identifier: str = Field(
+        ..., description="The study that this data set belongs to."
+    )
+    optimization_identifier: Optional[str] = Field(
+        ..., description="The optimization that this data set belongs to."
+    )
 
     data_entries: List[DataSetEntry] = Field(
         ..., description="The entries in the selected data set."
+    )
+
+
+class DataSetCollection(BaseORM):
+
+    data_sets: List[DataSet] = Field(
+        default_factory=list, description="A collection of data sets.",
     )
