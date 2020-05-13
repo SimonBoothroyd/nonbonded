@@ -8,7 +8,7 @@ class ForceBalanceOptions(Base):
     __tablename__ = "forcebalance"
 
     id = Column(Integer, primary_key=True, index=True)
-    parent_id = Column(Integer, ForeignKey("studies.id"))
+    parent_id = Column(Integer, ForeignKey("optimizations.id"))
 
     max_iterations = Column(Integer)
 

@@ -1,17 +1,12 @@
 from .models import Base  # isort:skip
 
 from .authors import Author  # isort:skip
-from .environments import ChemicalEnvironment  # isort:skip
 from .forcebalance import ForceBalanceOptions  # isort:skip
 from .forcefield import SmirnoffParameter  # isort:skip
 from .datasets import (  # isort:skip
-    ComponentAmount,
+    Component,
     DataSet,
     DataSetEntry,
-    TargetAmount,
-    TargetDataSet,
-    TargetEnvironment,
-    TargetProperty,
 )
 from .results import (  # isort:skip
     BenchmarkResults,
@@ -21,12 +16,12 @@ from .results import (  # isort:skip
     StatisticData,
 )
 
-from .projects import Optimization, Project, Study  # isort:skip
+from .projects import Benchmark, Optimization, Project, Study  # isort:skip
 
 __all__ = [
     Base,
-    ChemicalEnvironment,
-    ComponentAmount,
+    Benchmark,
+    Component,
     DataSetEntry,
     ForceBalanceOptions,
     SmirnoffParameter,
@@ -35,10 +30,6 @@ __all__ = [
     Project,
     DataSet,
     Study,
-    TargetAmount,
-    TargetEnvironment,
-    TargetProperty,
-    TargetDataSet,
     ComparisonData,
     StatisticData,
     BenchmarkResults,

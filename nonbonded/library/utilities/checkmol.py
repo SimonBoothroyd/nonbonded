@@ -5,7 +5,7 @@ import tempfile
 
 from openforcefield.topology import Molecule
 
-from nonbonded.library.models.environments import ChemicalEnvironment
+from nonbonded.library.utilities.environments import ChemicalEnvironment
 
 
 def checkmol_code_to_environment(checkmol_code) -> ChemicalEnvironment:
