@@ -1,9 +1,9 @@
 from collections import defaultdict
-from typing import Optional
 
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.database import models
+from nonbonded.backend.database.crud.authors import AuthorCRUD
 from nonbonded.backend.database.crud.environments import ChemicalEnvironmentCRUD
 from nonbonded.library.models import datasets, environments
 
@@ -101,23 +101,25 @@ class TargetDataSetCRUD:
         return data_set
 
 
-class DataSetValueCRUD:
+class DataSetEntryCRUD:
+
     @staticmethod
     def create(
-        value: datasets.DataSetValue, substance: datasets.Substance,
-    ) -> models.DataSetValue:
+        value: datasets.DataSetEntry,
+    ) -> models.DataSetEntry:
 
         # noinspection PyTypeChecker
-        db_value = models.DataSetValue(
+        db_value = models.DataSetEntry(
             property_type=value.property_type,
             temperature=value.state_point.temperature,
             pressure=value.state_point.pressure,
             value=value.value,
             std_error=value.std_error,
+            doi=value.doi,
             components=[
                 models.ComponentAmount(smiles=smiles, mole_fraction=mole_fraction)
                 for smiles, mole_fraction in zip(
-                    substance.smiles, value.state_point.mole_fractions
+                    value.substance.smiles, value.state_point.mole_fractions
                 )
             ],
         )
@@ -126,6 +128,7 @@ class DataSetValueCRUD:
 
 
 class DataSetCRUD:
+
     @staticmethod
     def read_all(db: Session, skip: int = 0, limit: int = 100):
 
@@ -133,56 +136,27 @@ class DataSetCRUD:
         return data_sets
 
     @staticmethod
-    def read_by_identifiers(
-        db: Session,
-        project_identifier: Optional[str],
-        study_identifier: Optional[str],
-        optimization_identifier: Optional[str],
-    ):
+    def read_by_identifier(db: Session, identifier: str):
 
-        data_set = db.query(models.DataSet)
+        db_data_set = db.query(models.DataSet)
+        db_data_set = db_data_set.filter(models.DataSet.id == identifier)
 
-        print(project_identifier, study_identifier, optimization_identifier)
+        data_set = db_data_set.first()
 
-        if project_identifier is not None:
+        if data_set is None:
+            return
 
-            data_set = data_set.filter(
-                models.DataSet.project_identifier == project_identifier
-            )
-
-        if study_identifier is not None:
-
-            data_set = data_set.filter(
-                models.DataSet.study_identifier == study_identifier
-            )
-
-        if optimization_identifier is not None:
-
-            data_set = data_set.filter(
-                models.DataSet.optimization_identifier == optimization_identifier
-            )
-
-        return [DataSetCRUD.db_to_model(x) for x in data_set.all()]
+        return DataSetCRUD.db_to_model(data_set)
 
     @staticmethod
-    def create(db: Session, data_set: datasets.DataSet,) -> models.DataSet:
-
-        db_data_values = []
-
-        for data_entry in data_set.data_entries:
-
-            for data_set_value in data_entry.values:
-
-                db_data_values.append(
-                    DataSetValueCRUD.create(data_set_value, data_entry.substance,)
-                )
+    def create(db: Session, data_set: datasets.DataSet) -> models.DataSet:
 
         # noinspection PyTypeChecker
         db_data_set = models.DataSet(
-            project_identifier=data_set.project_identifier,
-            study_identifier=data_set.study_identifier,
-            optimization_identifier=data_set.optimization_identifier,
-            data_values=db_data_values,
+            id=data_set.identifier,
+            description=data_set.description,
+            authors=[AuthorCRUD.create(db, author) for author in data_set.authors],
+            entries=[DataSetEntryCRUD.create(entry) for entry in data_set.entries]
         )
 
         db.add(db_data_set)
@@ -194,44 +168,39 @@ class DataSetCRUD:
     @staticmethod
     def db_to_model(db_data_set: models.DataSet) -> datasets.DataSet:
 
-        data_entries_dict = defaultdict(list)
+        data_entries = []
 
         # noinspection PyTypeChecker
-        for db_data_value in db_data_set.data_values:
+        for db_entry in db_data_set.entries:
 
             substance = datasets.Substance(
-                smiles=[component.smiles for component in db_data_value.components]
+                smiles=[component.smiles for component in db_entry.components]
             )
 
             state_point = datasets.StatePoint(
-                temperature=db_data_value.temperature,
-                pressure=db_data_value.pressure,
+                temperature=db_entry.temperature,
+                pressure=db_entry.pressure,
                 mole_fractions=[
-                    component.mole_fraction for component in db_data_value.components
+                    component.mole_fraction for component in db_entry.components
                 ],
             )
 
-            data_value = datasets.DataSetValue(
-                property_type=db_data_value.property_type,
+            data_value = datasets.DataSetEntry(
+                substance=substance,
+                property_type=db_entry.property_type,
                 state_point=state_point,
-                value=db_data_value.value,
-                std_error=db_data_value.std_error,
+                value=db_entry.value,
+                std_error=db_entry.std_error,
+                doi=db_entry.doi
             )
 
-            data_entries_dict[substance].append(data_value)
-
-        data_entries = []
-
-        for substance, values in data_entries_dict.items():
-
-            data_entry = datasets.DataSetEntry(substance=substance, values=values)
-            data_entries.append(data_entry)
+            data_entries.append(data_value)
 
         data_set = datasets.DataSet(
-            project_identifier=db_data_set.project_identifier,
-            study_identifier=db_data_set.study_identifier,
-            optimization_identifier=db_data_set.optimization_identifier,
-            data_entries=data_entries,
+            identifier=db_data_set.id,
+            description=db_data_set.description,
+            entries=data_entries,
+            authors=db_data_set.authors
         )
 
         return data_set

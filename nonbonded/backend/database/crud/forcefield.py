@@ -22,6 +22,7 @@ class SmirnoffParameterCRUD:
             return existing_instance
 
         db_parameter = models.SmirnoffParameter(**parameter.dict())
+
         db.add(db_parameter)
         db.commit()
         db.refresh(db_parameter)

@@ -9,6 +9,12 @@ target_data_environment_table = Table(
     Column("target_data_set_id", Integer, ForeignKey("target_data_sets.id")),
     Column("environment_id", Integer, ForeignKey("chemical_environments.id")),
 )
+author_data_sets_table = Table(
+    "author_data_sets",
+    Base.metadata,
+    Column("dataset_id", String, ForeignKey("data_sets.id")),
+    Column("author_id", Integer, ForeignKey("authors.id")),
+)
 
 
 class TargetAmount(Base):
@@ -65,15 +71,15 @@ class ComponentAmount(Base):
     __tablename__ = "component_amounts"
 
     id = Column(Integer, primary_key=True, index=True)
-    parent_id = Column(Integer, ForeignKey("data_set_values.id"))
+    parent_id = Column(Integer, ForeignKey("data_set_entries.id"))
 
     smiles = Column(String)
     mole_fraction = Column(Float)
 
 
-class DataSetValue(Base):
+class DataSetEntry(Base):
 
-    __tablename__ = "data_set_values"
+    __tablename__ = "data_set_entries"
 
     id = Column(Integer, primary_key=True, index=True)
     parent_id = Column(Integer, ForeignKey("data_sets.id"))
@@ -86,6 +92,8 @@ class DataSetValue(Base):
     value = Column(Float)
     std_error = Column(Float)
 
+    doi = Column(String)
+
     components = relationship("ComponentAmount")
 
 
@@ -93,10 +101,9 @@ class DataSet(Base):
 
     __tablename__ = "data_sets"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String, primary_key=True, index=True)
 
-    project_identifier = Column(String, index=True)
-    study_identifier = Column(String, index=True)
-    optimization_identifier = Column(String, index=True)
+    description = Column(String)
+    authors = relationship("Author", secondary=author_data_sets_table)
 
-    data_values = relationship("DataSetValue")
+    entries = relationship("DataSetEntry")

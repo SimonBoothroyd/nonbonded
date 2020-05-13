@@ -20,6 +20,7 @@ class ChemicalEnvironmentCRUD:
             return existing_instance
 
         db_environment = models.ChemicalEnvironment(value=environment.value)
+
         db.add(db_environment)
         db.commit()
         db.refresh(db_environment)

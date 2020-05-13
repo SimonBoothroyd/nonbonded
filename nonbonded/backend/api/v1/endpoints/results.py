@@ -2,7 +2,7 @@ import os
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from requests import Session
+from sqlalchemy.orm import Session
 
 from nonbonded.backend.api import depends
 from nonbonded.backend.database.crud.results import (
@@ -45,7 +45,20 @@ async def post_benchmark_results(
 
         raise HTTPException(status_code=400, detail="Benchmark results already posted")
 
-    return BenchmarkResultsCRUD.create(db=db, benchmark_results=benchmark_results)
+    try:
+
+        db_results = BenchmarkResultsCRUD.create(
+            db=db, benchmark_results=benchmark_results
+        )
+
+        db.add(db_results)
+        db.commit()
+
+    except Exception as e:
+        db.rollback()
+        raise e
+
+    return db_results
 
 
 @router.get("/optimization", response_model=OptimizationResultCollection)
@@ -81,4 +94,14 @@ async def post_optimization_results(
             status_code=400, detail="Optimization results already posted."
         )
 
-    return OptimizationResultCRUD.create(db=db, result=optimization_result)
+    try:
+        db_results = OptimizationResultCRUD.create(db=db, result=optimization_result)
+
+        db.add(db_results)
+        db.commit()
+
+    except Exception as e:
+        db.rollback()
+        raise e
+
+    return db_results

@@ -1,12 +1,13 @@
 from .models import Base  # isort:skip
 
+from .authors import Author  # isort:skip
 from .environments import ChemicalEnvironment  # isort:skip
 from .forcebalance import ForceBalanceOptions  # isort:skip
 from .forcefield import SmirnoffParameter  # isort:skip
 from .datasets import (  # isort:skip
     ComponentAmount,
     DataSet,
-    DataSetValue,
+    DataSetEntry,
     TargetAmount,
     TargetDataSet,
     TargetEnvironment,
@@ -20,13 +21,13 @@ from .results import (  # isort:skip
     StatisticData,
 )
 
-from .projects import Author, Optimization, Project, Study  # isort:skip
+from .projects import Optimization, Project, Study  # isort:skip
 
 __all__ = [
     Base,
     ChemicalEnvironment,
     ComponentAmount,
-    DataSetValue,
+    DataSetEntry,
     ForceBalanceOptions,
     SmirnoffParameter,
     Author,

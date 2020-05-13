@@ -5,6 +5,7 @@ import numpy
 from pydantic import Field, PositiveInt, validator
 
 from nonbonded.library.models import BaseORM
+from nonbonded.library.models.authors import Author
 from nonbonded.library.models.environments import ChemicalEnvironment
 
 
@@ -97,7 +98,7 @@ class TargetDataSet(BaseORM):
     )
 
 
-class DataSetValue(BaseORM):
+class DataSetEntry(BaseORM):
 
     property_type: str = Field(
         ..., description="The type of property that this value corresponds to."
@@ -115,32 +116,29 @@ class DataSetValue(BaseORM):
         "property type. ",
     )
 
-
-class DataSetEntry(BaseORM):
+    doi: str = Field(
+        ..., description="The DOI which encodes the source of the measurement."
+    )
 
     substance: Substance = Field(
         ..., description="The substance associated with this entry."
-    )
-    values: List[DataSetValue] = Field(
-        ..., description="The values associated with this entry."
     )
 
 
 class DataSet(BaseORM):
 
-    project_identifier: str = Field(
-        ..., description="The project that this data set belongs to."
-    )
-    study_identifier: str = Field(
-        ..., description="The study that this data set belongs to."
-    )
-    optimization_identifier: Optional[str] = Field(
-        ..., description="The optimization that this data set belongs to."
+    identifier: Optional[str] = Field(
+        ..., description="The unique identifier associated with the data set."
     )
 
-    data_entries: List[DataSetEntry] = Field(
-        ..., description="The entries in the selected data set."
+    description: str = Field(
+        ..., description="A description of why and how this data set was chosen."
     )
+    authors: List[Author] = Field(
+        ..., description="The authors who prepared the data set."
+    )
+
+    entries: List[DataSetEntry] = Field(..., description="The entries in the data set.")
 
 
 class DataSetCollection(BaseORM):

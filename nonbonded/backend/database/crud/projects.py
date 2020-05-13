@@ -1,36 +1,10 @@
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.database import models
+from nonbonded.backend.database.crud.authors import AuthorCRUD
 from nonbonded.backend.database.crud.datasets import TargetDataSetCRUD
 from nonbonded.backend.database.crud.forcefield import SmirnoffParameterCRUD
 from nonbonded.library.models import projects
-
-
-class AuthorCRUD:
-    @staticmethod
-    def read_all(db: Session, skip: int = 0, limit: int = 100):
-        return db.query(models.Author).offset(skip).limit(limit).all()
-
-    @staticmethod
-    def create(db: Session, author: projects.Author) -> models.Author:
-
-        existing_instance = (
-            db.query(models.Author)
-            .filter(models.Author.name == author.name)
-            .filter(models.Author.email == author.email)
-            .filter(models.Author.institute == author.institute)
-            .first()
-        )
-
-        if existing_instance:
-            return existing_instance
-
-        db_author = models.Author(**author.dict())
-        db.add(db_author)
-        db.commit()
-        db.refresh(db_author)
-
-        return db_author
 
 
 class OptimizationCRUD:
@@ -41,13 +15,14 @@ class OptimizationCRUD:
             title=optimization.title,
             identifier=optimization.identifier,
             description=optimization.description,
+            target_training_set=TargetDataSetCRUD.create(
+                db, optimization.target_training_set
+            ),
+            training_set_id=optimization.training_set_id,
             parameters_to_train=[
                 SmirnoffParameterCRUD.create(db, x)
                 for x in optimization.parameters_to_train
             ],
-            target_training_set=TargetDataSetCRUD.create(
-                db, optimization.target_training_set
-            ),
         )
 
         db.add(db_optimization)
@@ -63,10 +38,11 @@ class OptimizationCRUD:
             title=db_optimization.title,
             identifier=db_optimization.identifier,
             description=db_optimization.description,
-            parameters_to_train=db_optimization.parameters_to_train,
             target_training_set=TargetDataSetCRUD.db_to_model(
                 db_optimization.target_training_set
             ),
+            training_set_id=db_optimization.training_set_id,
+            parameters_to_train=db_optimization.parameters_to_train,
         )
 
         return optimization
@@ -88,6 +64,7 @@ class StudyCRUD:
                 **study.optimization_inputs.dict()
             ),
             target_test_set=TargetDataSetCRUD.create(db, study.target_test_set),
+            test_set_id=study.test_set_id,
             initial_force_field=study.initial_force_field,
         )
 
@@ -100,6 +77,7 @@ class StudyCRUD:
     @staticmethod
     def db_to_model(db_study: models.Study) -> projects.Study:
 
+        # noinspection PyTypeChecker
         study = projects.Study(
             title=db_study.title,
             identifier=db_study.identifier,
@@ -109,6 +87,7 @@ class StudyCRUD:
             ],
             optimization_inputs=db_study.optimization_inputs,
             target_test_set=TargetDataSetCRUD.db_to_model(db_study.target_test_set),
+            test_set_id=db_study.test_set_id,
             initial_force_field=db_study.initial_force_field,
         )
 
@@ -119,8 +98,8 @@ class ProjectCRUD:
     @staticmethod
     def read_all(db: Session, skip: int = 0, limit: int = 100):
 
-        projects = db.query(models.Project).offset(skip).limit(limit).all()
-        return [ProjectCRUD.db_to_model(x) for x in projects]
+        db_projects = db.query(models.Project).offset(skip).limit(limit).all()
+        return [ProjectCRUD.db_to_model(x) for x in db_projects]
 
     @staticmethod
     def read_by_identifier(db: Session, identifier: str):
@@ -151,6 +130,7 @@ class ProjectCRUD:
     @staticmethod
     def db_to_model(db_project: models.Project) -> projects.Project:
 
+        # noinspection PyTypeChecker
         project = projects.Project(
             title=db_project.title,
             identifier=db_project.identifier,
