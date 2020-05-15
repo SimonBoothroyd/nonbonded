@@ -1,8 +1,9 @@
 from fastapi import APIRouter
-from starlette.responses import Response
+
+# from starlette.responses import Response
 
 # from nonbonded.library.models.datasets import Substance
-from nonbonded.library.utilities.molecules import smiles_to_image
+# from nonbonded.library.utilities.molecules import smiles_to_image
 
 router = APIRouter()
 

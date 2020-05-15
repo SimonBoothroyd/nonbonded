@@ -1,13 +1,14 @@
-from .models import Base  # isort:skip
+from .models import Base, UniqueMixin  # isort:skip
 
 from .authors import Author  # isort:skip
-from .forcebalance import ForceBalanceOptions  # isort:skip
-from .forcefield import SmirnoffParameter  # isort:skip
 from .datasets import (  # isort:skip
     Component,
     DataSet,
     DataSetEntry,
 )
+from .forcebalance import ForceBalanceOptions  # isort:skip
+from .forcefield import RefitForceField, Parameter  # isort:skip
+from .projects import Benchmark, Denominator, Optimization, Prior, Project, Study  # isort:skip
 from .results import (  # isort:skip
     BenchmarkResults,
     ComparisonData,
@@ -16,23 +17,25 @@ from .results import (  # isort:skip
     StatisticData,
 )
 
-from .projects import Benchmark, Optimization, Project, Study  # isort:skip
-
 __all__ = [
+    Author,
     Base,
     Benchmark,
-    Component,
-    DataSetEntry,
-    ForceBalanceOptions,
-    SmirnoffParameter,
-    Author,
-    Optimization,
-    Project,
-    DataSet,
-    Study,
-    ComparisonData,
-    StatisticData,
     BenchmarkResults,
+    ComparisonData,
+    Component,
+    DataSet,
+    DataSetEntry,
+    Denominator,
+    ForceBalanceOptions,
     ObjectiveFunctionData,
+    Optimization,
     OptimizationResult,
+    Project,
+    Parameter,
+    Prior,
+    RefitForceField,
+    StatisticData,
+    Study,
+    UniqueMixin,
 ]

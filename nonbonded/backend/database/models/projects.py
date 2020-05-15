@@ -17,13 +17,35 @@ optimization_parameters_table = Table(
 )
 
 
+class Denominator(Base):
+
+    __tablename__ = "denominators"
+
+    id = Column(Integer, primary_key=True, index=True)
+    parent_id = Column(Integer, ForeignKey("optimizations.id"))
+
+    property_type = Column(String)
+    value = Column(String)
+
+
+class Prior(Base):
+
+    __tablename__ = "priors"
+
+    id = Column(Integer, primary_key=True, index=True)
+    parent_id = Column(Integer, ForeignKey("optimizations.id"))
+
+    parameter_type = Column(String)
+    value = Column(String)
+
+
 class Optimization(Base):
 
     __tablename__ = "optimizations"
 
     id = Column(Integer, primary_key=True, index=True)
 
-    parent_id = Column(Integer, ForeignKey('studies.id'))
+    parent_id = Column(Integer, ForeignKey("studies.id"))
     parent = relationship("Study", back_populates="optimizations")
 
     identifier = Column(String, index=True)
@@ -35,14 +57,17 @@ class Optimization(Base):
     training_set_id = Column(String, ForeignKey("data_sets.id"))
 
     initial_force_field = Column(String)
+    refit_force_field = relationship(
+        "RefitForceField", back_populates="optimization", uselist=False
+    )
 
     parameters_to_train = relationship(
-        "SmirnoffParameter", secondary=optimization_parameters_table
+        "Parameter", secondary=optimization_parameters_table
     )
     force_balance_input = relationship("ForceBalanceOptions", uselist=False)
 
-    # denominators: Dict[str, str]
-    # priors: Dict[str, float]
+    denominators = relationship("Denominator")
+    priors = relationship("Prior")
 
 
 class Benchmark(Base):
@@ -51,7 +76,7 @@ class Benchmark(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    parent_id = Column(Integer, ForeignKey('studies.id'))
+    parent_id = Column(Integer, ForeignKey("studies.id"))
     parent = relationship("Study", back_populates="benchmarks")
 
     identifier = Column(String, index=True)
@@ -73,7 +98,7 @@ class Study(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    parent_id = Column(Integer, ForeignKey('projects.id'))
+    parent_id = Column(Integer, ForeignKey("projects.id"))
     parent = relationship("Project", back_populates="studies")
 
     identifier = Column(String, index=True)

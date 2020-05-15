@@ -61,10 +61,6 @@ class BenchmarkResultsCRUD:
             statistic_data=db_statistic_data,
         )
 
-        db.add(db_benchmark_results)
-        db.commit()
-        db.refresh(db_benchmark_results)
-
         return db_benchmark_results
 
     @staticmethod
@@ -211,10 +207,6 @@ class OptimizationResultCRUD:
                 for x, y in result.objective_function.items()
             ],
         )
-
-        db.add(db_result)
-        db.commit()
-        db.refresh(db_result)
 
         return db_result
 

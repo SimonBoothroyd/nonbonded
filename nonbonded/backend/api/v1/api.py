@@ -7,3 +7,4 @@ api_router.include_router(molecules.router, prefix="/molecules", tags=["molecule
 api_router.include_router(projects.router, prefix="/projects", tags=["projects"])
 api_router.include_router(datasets.router, prefix="/datasets", tags=["datasets"])
 api_router.include_router(results.router, prefix="/results", tags=["results"])
+api_router.include_router(results.router, prefix="/forcefields", tags=["forcefields"])

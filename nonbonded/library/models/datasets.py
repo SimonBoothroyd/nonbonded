@@ -9,19 +9,15 @@ from nonbonded.library.models.authors import Author
 
 class Component(BaseORM):
 
-    smiles: str = Field(
-        ..., description="The smiles representation of the component."
-    )
+    smiles: str = Field(..., description="The smiles representation of the component.")
     mole_fraction: float = Field(
         ..., description="The mole fraction of this component."
     )
-    exact_amount: int = Field(
-        0, description="The exact amount of this component."
-    )
+    exact_amount: int = Field(0, description="The exact amount of this component.")
     role: str = Field(
         "Solvent",
         description="The role of this component in the system (e.g solvent, solute, "
-        "ligand, etc.)"
+        "ligand, etc.)",
     )
 
 
@@ -30,7 +26,7 @@ class DataSetEntry(BaseORM):
     property_type: str = Field(
         ...,
         description="The type of property that this value corresponds to. This should "
-        "correspond to an `evaluator.properties` property class name."
+        "correspond to an `evaluator.properties` property class name.",
     )
 
     temperature: float = Field(
@@ -47,12 +43,9 @@ class DataSetEntry(BaseORM):
         ..., description="The unit that the `value` and `std_error` is reported in."
     )
 
-    value: float = Field(
-        ..., description="The value in units of `unit`."
-    )
+    value: float = Field(..., description="The value in units of `unit`.")
     std_error: Optional[float] = Field(
-        ...,
-        description="The std error in units of `unit`",
+        ..., description="The std error in units of `unit`",
     )
 
     doi: str = Field(
@@ -61,7 +54,7 @@ class DataSetEntry(BaseORM):
 
     components: List[Component] = Field(
         ...,
-        description="The components in the systems for which the measurement was made."
+        description="The components in the systems for which the measurement was made.",
     )
 
     @classmethod
@@ -70,9 +63,7 @@ class DataSetEntry(BaseORM):
         data_row = data_row.dropna()
 
         property_header = next(
-            iter(
-                key for key, value in data_row.items() if " Value " in key
-            )
+            iter(key for key, value in data_row.items() if " Value " in key)
         )
 
         n_components = data_row["N Components"]
@@ -82,14 +73,15 @@ class DataSetEntry(BaseORM):
             temperature=data_row["Temperature (K)"],
             pressure=data_row["Pressure (kPa)"],
             phase=data_row["Phase"],
-            value=data_row["property_header"],
+            unit=property_header.split("(")[1].split(")")[0],
+            value=data_row[property_header],
             std_error=data_row[property_header.replace("Value", "Uncertainty")],
             components=[
                 Component(
-                    smiles=f"Component {i + 1}",
-                    mole_fraction=f"Mole Fraction {i + 1}",
-                    exact_amount=f"Exact Amount {i + 1}",
-                    role=f"Role {i + 1}"
+                    smiles=data_row[f"Component {i + 1}"],
+                    mole_fraction=data_row.get(f"Mole Fraction {i + 1}", 0.0),
+                    exact_amount=data_row.get(f"Exact Amount {i + 1}", 0),
+                    role=data_row[f"Role {i + 1}"],
                 )
                 for i in range(n_components)
             ],
@@ -110,7 +102,7 @@ class DataSetEntry(BaseORM):
             "N Components": len(self.components),
             value_header: self.value,
             std_error_header: self.std_error,
-            "Source": self.doi
+            "Source": self.doi,
         }
 
         for i, component in enumerate(self.components):
@@ -120,7 +112,7 @@ class DataSetEntry(BaseORM):
                     f"Component {i + 1}": component.smiles,
                     f"Mole Fraction {i + 1}": component.mole_fraction,
                     f"Exact Amount {i + 1}": component.exact_amount,
-                    f"Role {i + 1}": component.role
+                    f"Role {i + 1}": component.role,
                 }
             )
 
@@ -148,16 +140,14 @@ class DataSet(BaseORM):
         data_frame: pandas.DataFrame,
         identifier: str,
         description: str,
-        authors: List[Author]
+        authors: List[Author],
     ):
 
         data_set = cls(
-            identifier=identifier,
+            id=identifier,
             description=description,
             authors=authors,
-            entries=[
-                DataSetEntry.from_series(row) for _, row in data_frame.iterrows()
-            ]
+            entries=[DataSetEntry.from_series(row) for _, row in data_frame.iterrows()],
         )
 
         return data_set

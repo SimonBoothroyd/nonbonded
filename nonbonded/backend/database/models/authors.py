@@ -1,9 +1,10 @@
 from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import Query
 
-from nonbonded.backend.database.models import Base
+from nonbonded.backend.database.models import Base, UniqueMixin
 
 
-class Author(Base):
+class Author(UniqueMixin, Base):
 
     __tablename__ = "authors"
 
@@ -12,3 +13,15 @@ class Author(Base):
     name = Column(String)
     email = Column(String, unique=True)
     institute = Column(String)
+
+    @classmethod
+    def unique_hash(cls, name, email, institute):
+        return name, email, institute
+
+    @classmethod
+    def unique_filter(cls, query: Query, name, email, institute):
+        return (
+            query.filter(Author.name == name)
+            .filter(Author.email == email)
+            .filter(Author.institute == institute)
+        )
