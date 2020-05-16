@@ -5,12 +5,17 @@ from fastapi import HTTPException
 
 class ItemExistsError(HTTPException, abc.ABC):
     def __init__(self, detail: str):
-        super(ItemExistsError, self).__init__(status_code=400, detail=detail)
+        super(ItemExistsError, self).__init__(status_code=409, detail=detail)
 
 
 class ItemNotFound(HTTPException, abc.ABC):
     def __init__(self, detail: str):
         super(ItemNotFound, self).__init__(status_code=404, detail=detail)
+
+
+class UnableToUpdateError(HTTPException, abc.ABC):
+    def __init__(self, detail: str):
+        super(UnableToUpdateError, self).__init__(status_code=400, detail=detail)
 
 
 class DataSetExistsError(ItemExistsError):
@@ -28,6 +33,18 @@ class DataSetNotFoundError(ItemNotFound):
 
         super(DataSetNotFoundError, self).__init__(
             f"The data base does not contain a data set with id={data_set_id}."
+        )
+
+
+class DataSetInUseError(HTTPException):
+    def __init__(self, data_set_id):
+
+        self.data_set_id = data_set_id
+
+        super(DataSetInUseError, self).__init__(
+            status_code=400,
+            detail=f"The data set with id={data_set_id} is still being used in a "
+            f"project and so cannot be deleted.",
         )
 
 

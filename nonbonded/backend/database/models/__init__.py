@@ -8,7 +8,15 @@ from .datasets import (  # isort:skip
 )
 from .forcebalance import ForceBalanceOptions  # isort:skip
 from .forcefield import RefitForceField, Parameter  # isort:skip
-from .projects import Benchmark, Denominator, Optimization, Prior, Project, Study  # isort:skip
+from .projects import (  # isort:skip
+    Benchmark,
+    Denominator,
+    Optimization,
+    Prior,
+    Project,
+    Study,
+)
+
 from .results import (  # isort:skip
     BenchmarkResults,
     ComparisonData,

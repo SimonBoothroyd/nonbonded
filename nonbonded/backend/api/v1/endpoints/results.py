@@ -28,7 +28,7 @@ async def get_benchmark_results(
     db: Session = Depends(depends.get_db),
 ):
 
-    results = BenchmarkResultsCRUD.read_by_identifiers(db, project_id, study_id)
+    results = BenchmarkResultsCRUD.read(db, project_id, study_id)
     return {"results": results}
 
 
@@ -37,7 +37,7 @@ async def post_benchmark_results(
     benchmark_results: BenchmarkResults, db: Session = Depends(depends.get_db)
 ):
 
-    db_results = BenchmarkResultsCRUD.read_by_identifiers(
+    db_results = BenchmarkResultsCRUD.read(
         db, benchmark_results.project_identifier, benchmark_results.study_identifier
     )
 
@@ -69,9 +69,7 @@ async def get_optimization_results(
     db: Session = Depends(depends.get_db),
 ):
 
-    results = OptimizationResultCRUD.read_by_identifiers(
-        db, project_id, study_id, optimization_id
-    )
+    results = OptimizationResultCRUD.read(db, project_id, study_id, optimization_id)
 
     return {"results": results}
 
@@ -81,7 +79,7 @@ async def post_optimization_results(
     optimization_result: OptimizationResult, db: Session = Depends(depends.get_db)
 ):
 
-    db_results = OptimizationResultCRUD.read_by_identifiers(
+    db_results = OptimizationResultCRUD.read(
         db,
         optimization_result.project_identifier,
         optimization_result.study_identifier,

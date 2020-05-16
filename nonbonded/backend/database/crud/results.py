@@ -64,7 +64,7 @@ class BenchmarkResultsCRUD:
         return db_benchmark_results
 
     @staticmethod
-    def read_by_identifiers(
+    def read(
         db: Session, project_identifier: Optional[str], study_identifier: Optional[str]
     ):
 
@@ -169,7 +169,7 @@ class BenchmarkResultsCRUD:
 
 class OptimizationResultCRUD:
     @staticmethod
-    def read_by_identifiers(
+    def read(
         db: Session,
         project_identifier: Optional[str],
         study_identifier: Optional[str],

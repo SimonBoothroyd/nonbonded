@@ -43,3 +43,21 @@ async def post_project(
         raise e
 
     return db_force_field
+
+
+@router.delete("/{force_field_id}")
+async def delete_force_field(
+    force_field_id: int, db: Session = Depends(depends.get_db),
+):
+
+    try:
+        db_force_field = RefitForceFieldCRUD.delete(db, force_field_id)
+
+        db.commit()
+
+    except Exception as e:
+
+        db.rollback()
+        raise e
+
+    return db_force_field

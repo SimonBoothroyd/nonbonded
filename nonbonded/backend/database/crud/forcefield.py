@@ -19,31 +19,15 @@ class ParameterCRUD:
 
 class RefitForceFieldCRUD:
     @staticmethod
-    def read_all(db: Session, skip: int = 0, limit: int = 100):
+    def query(db: Session, force_field_id: int):
 
-        force_fields = db.query(models.RefitForceField).offset(skip).limit(limit).all()
-        return [RefitForceFieldCRUD.db_to_model(x) for x in force_fields]
-
-    @staticmethod
-    def read_by_optimization(
-        db: Session, project_id: str, study_id: str, optimization_id: str
-    ):
-
-        from nonbonded.backend.database.crud.projects import OptimizationCRUD
-
-        db_optimization = OptimizationCRUD.query_optimization(
-            db, project_id, study_id, optimization_id
+        db_force_field = (
+            db.query(models.RefitForceField)
+            .filter(models.RefitForceField.id == force_field_id)
+            .first()
         )
 
-        if not db_optimization:
-            raise OptimizationNotFoundError(project_id, study_id, optimization_id)
-
-        db_force_field = db_optimization.refit_force_field
-
-        if not db_force_field:
-            raise RefitForceFieldNotFoundError(project_id, study_id, optimization_id)
-
-        return RefitForceFieldCRUD.db_to_model(db_force_field)
+        return db_force_field
 
     @staticmethod
     def create(
@@ -52,7 +36,7 @@ class RefitForceFieldCRUD:
 
         from nonbonded.backend.database.crud.projects import OptimizationCRUD
 
-        db_optimization = OptimizationCRUD.query_optimization(
+        db_optimization = OptimizationCRUD.query(
             db,
             refit_force_field.project_id,
             refit_force_field.study_id,
@@ -76,9 +60,50 @@ class RefitForceFieldCRUD:
             )
 
         db_force_field = models.RefitForceField(
-            inner_xml=refit_force_field.inner_xml, optimization_id=db_optimization.id,
+            inner_xml=refit_force_field.inner_xml, optimization=db_optimization,
         )
         return db_force_field
+
+    @staticmethod
+    def read_all(db: Session, skip: int = 0, limit: int = 100):
+
+        force_fields = db.query(models.RefitForceField).offset(skip).limit(limit).all()
+        return [RefitForceFieldCRUD.db_to_model(x) for x in force_fields]
+
+    @staticmethod
+    def read_by_optimization(
+        db: Session, project_id: str, study_id: str, optimization_id: str
+    ):
+
+        from nonbonded.backend.database.crud.projects import OptimizationCRUD
+
+        db_optimization = OptimizationCRUD.query(
+            db, project_id, study_id, optimization_id
+        )
+
+        if not db_optimization:
+            raise OptimizationNotFoundError(project_id, study_id, optimization_id)
+
+        db_force_field = db_optimization.refit_force_field
+
+        if not db_force_field:
+            raise RefitForceFieldNotFoundError(project_id, study_id, optimization_id)
+
+        return RefitForceFieldCRUD.db_to_model(db_force_field)
+
+    @staticmethod
+    def delete(db: Session, force_field_id: int):
+
+        db_force_field = (
+            db.query(models.RefitForceField)
+            .filter(models.RefitForceField.id == force_field_id)
+            .first()
+        )
+
+        if not db_force_field:
+            raise RefitForceFieldNotFoundError(None, None, None)
+
+        db.delete(db_force_field)
 
     @staticmethod
     def db_to_model(

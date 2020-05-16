@@ -29,6 +29,7 @@ dependencies:
   - alembic
   - fastapi
   - sqlalchemy
+  - sqlalchemy-utils
   - sqlite
   - starlette
   - typing-extensions

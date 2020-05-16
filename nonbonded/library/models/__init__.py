@@ -1,3 +1,3 @@
-from nonbonded.library.models.models import BaseORM
+from nonbonded.library.models.models import BaseORM, BaseREST
 
-__all__ = [BaseORM]
+__all__ = [BaseORM, BaseREST]

@@ -39,6 +39,7 @@ class DataSetEntryCRUD:
     @staticmethod
     def db_to_model(db_data_set_entry: models.DataSetEntry,) -> datasets.DataSetEntry:
 
+        # noinspection PyTypeChecker
         data_set_entry = datasets.DataSetEntry(
             property_type=db_data_set_entry.property_type,
             temperature=db_data_set_entry.temperature,
@@ -56,7 +57,7 @@ class DataSetEntryCRUD:
 
 class DataSetCRUD:
     @staticmethod
-    def query_data_set(db: Session, data_set_id: str):
+    def query(db: Session, data_set_id: str):
 
         db_data_set = (
             db.query(models.DataSet).filter(models.DataSet.id == data_set_id).first()
@@ -71,9 +72,9 @@ class DataSetCRUD:
         return [DataSetCRUD.db_to_model(x) for x in data_sets]
 
     @staticmethod
-    def read_by_identifier(db: Session, data_set_id: str):
+    def read(db: Session, data_set_id: str):
 
-        db_data_set = DataSetCRUD.query_data_set(db, data_set_id)
+        db_data_set = DataSetCRUD.query(db, data_set_id)
 
         if db_data_set is None:
             raise DataSetNotFoundError(data_set_id)
@@ -83,7 +84,7 @@ class DataSetCRUD:
     @staticmethod
     def create(db: Session, data_set: datasets.DataSet) -> models.DataSet:
 
-        if DataSetCRUD.query_data_set(db, data_set.id) is not None:
+        if DataSetCRUD.query(db, data_set.id) is not None:
             raise DataSetExistsError(data_set.id)
 
         # noinspection PyTypeChecker
@@ -110,3 +111,13 @@ class DataSetCRUD:
         )
 
         return data_set
+
+    @staticmethod
+    def delete(db: Session, data_set_id: str):
+
+        db_data_set = DataSetCRUD.query(db, data_set_id)
+
+        if not db_data_set:
+            raise DataSetNotFoundError(data_set_id)
+
+        db.delete(db_data_set)

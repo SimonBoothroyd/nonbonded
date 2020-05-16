@@ -1,5 +1,6 @@
 from typing import List
 
+import requests
 from pydantic import Field
 
 from nonbonded.library.models import BaseORM
@@ -44,3 +45,14 @@ class RefitForceFieldCollection(BaseORM):
     force_fields: List[RefitForceField] = Field(
         default_factory=list, description="A collection of refit force fields"
     )
+
+    @classmethod
+    def from_rest(cls) -> "RefitForceFieldCollection":
+
+        force_fields_request = requests.get(
+            f"http://localhost:5000/api/v1/forcefields/"
+        )
+        force_fields_request.raise_for_status()
+
+        force_fields = RefitForceFieldCollection.parse_raw(force_fields_request.text)
+        return force_fields

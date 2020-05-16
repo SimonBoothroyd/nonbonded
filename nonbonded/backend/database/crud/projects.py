@@ -3,7 +3,10 @@ from sqlalchemy.orm import Session
 from nonbonded.backend.database import models
 from nonbonded.backend.database.crud.authors import AuthorCRUD
 from nonbonded.backend.database.crud.datasets import DataSetCRUD
-from nonbonded.backend.database.crud.forcefield import ParameterCRUD
+from nonbonded.backend.database.crud.forcefield import (
+    ParameterCRUD,
+    RefitForceFieldCRUD,
+)
 from nonbonded.backend.database.utilities.exceptions import (
     BenchmarkExistsError,
     BenchmarkNotFoundError,
@@ -12,17 +15,19 @@ from nonbonded.backend.database.utilities.exceptions import (
     OptimizationNotFoundError,
     ProjectExistsError,
     ProjectNotFoundError,
+    RefitForceFieldNotFoundError,
     StudyExistsError,
     StudyNotFoundError,
+    UnableToUpdateError,
 )
 from nonbonded.library.models import projects
 
 
 class OptimizationCRUD:
     @staticmethod
-    def query_optimization(
+    def query(
         db: Session, project_id: str, study_id: str, optimization_id: str
-    ):
+    ) -> models.Optimization:
 
         db_optimization = (
             db.query(models.Optimization)
@@ -37,34 +42,10 @@ class OptimizationCRUD:
         return db_optimization
 
     @staticmethod
-    def read_all(db: Session, project_id: str, study_id: str):
-
-        db_study = StudyCRUD.query_study(db, project_id=project_id, study_id=study_id)
-
-        if not db_study:
-            raise StudyNotFoundError(project_id, study_id)
-
-        return [OptimizationCRUD.db_to_model(x) for x in db_study.optimizations]
-
-    @staticmethod
-    def read_by_identifier(
-        db: Session, project_id: str, study_id: str, optimization_id: str
-    ):
-
-        db_optimization = OptimizationCRUD.query_optimization(
-            db, project_id, study_id, optimization_id
-        )
-
-        if not db_optimization:
-            raise OptimizationNotFoundError(project_id, study_id, optimization_id)
-
-        return OptimizationCRUD.db_to_model(db_optimization)
-
-    @staticmethod
     def create(db: Session, optimization: projects.Optimization) -> models.Optimization:
 
         if (
-            OptimizationCRUD.query_optimization(
+            OptimizationCRUD.query(
                 db, optimization.project_id, optimization.study_id, optimization.id
             )
             is not None
@@ -74,7 +55,9 @@ class OptimizationCRUD:
                 optimization.project_id, optimization.study_id, optimization.id
             )
 
-        if not DataSetCRUD.query_data_set(db, optimization.training_set_id):
+        training_set = DataSetCRUD.query(db, optimization.training_set_id)
+
+        if not training_set:
             raise DataSetNotFoundError(optimization.training_set_id)
 
         # noinspection PyTypeChecker
@@ -82,7 +65,7 @@ class OptimizationCRUD:
             identifier=optimization.id,
             name=optimization.name,
             description=optimization.description,
-            training_set_id=optimization.training_set_id,
+            training_set=training_set,
             parameters_to_train=[
                 ParameterCRUD.create(db, x) for x in optimization.parameters_to_train
             ],
@@ -91,16 +74,101 @@ class OptimizationCRUD:
             ),
             initial_force_field=optimization.initial_force_field,
             denominators=[
-                models.Denominator(property_type=key, value=value) for key, value in
-                optimization.denominators.items()
+                models.Denominator(property_type=key, value=value)
+                for key, value in optimization.denominators.items()
             ],
             priors=[
-                models.Prior(parameter_type=key, value=value) for key, value in
-                optimization.priors.items()
-            ]
+                models.Prior(parameter_type=key, value=value)
+                for key, value in optimization.priors.items()
+            ],
         )
 
         return db_optimization
+
+    @staticmethod
+    def read_all(db: Session, project_id: str, study_id: str):
+
+        db_study = StudyCRUD.query(db, project_id=project_id, study_id=study_id)
+
+        if not db_study:
+            raise StudyNotFoundError(project_id, study_id)
+
+        return [OptimizationCRUD.db_to_model(x) for x in db_study.optimizations]
+
+    @staticmethod
+    def read(db: Session, project_id: str, study_id: str, optimization_id: str):
+
+        db_optimization = OptimizationCRUD.query(
+            db, project_id, study_id, optimization_id
+        )
+
+        if not db_optimization:
+            raise OptimizationNotFoundError(project_id, study_id, optimization_id)
+
+        return OptimizationCRUD.db_to_model(db_optimization)
+
+    @staticmethod
+    def update(db: Session, optimization: projects.Optimization):
+
+        db_optimization = OptimizationCRUD.query(
+            db, optimization.project_id, optimization.study_id, optimization.id
+        )
+
+        if not db_optimization:
+
+            raise OptimizationNotFoundError(
+                optimization.project_id, optimization.study_id, optimization.id
+            )
+
+        if db_optimization.refit_force_field is not None:
+
+            raise UnableToUpdateError(
+                f"This optimization (project_id={optimization.project_id}, "
+                f"study_id={optimization.study_id}, optimization_id={optimization.id}) "
+                f"already has a refit force field associated with it so cannot be "
+                f"updated. Delete the refit force field first and then update."
+            )
+
+        db_optimization.name = optimization.name
+        db_optimization.description = optimization.description
+
+        training_set = DataSetCRUD.query(db, optimization.training_set_id)
+
+        if training_set is None:
+            raise DataSetNotFoundError(optimization.training_set_id)
+
+        db_optimization.training_set = training_set
+        db_optimization.initial_force_field = optimization.initial_force_field
+
+        db_optimization.parameters_to_train = [
+            ParameterCRUD.create(db, x) for x in optimization.parameters_to_train
+        ]
+
+        db_optimization.force_balance_input = models.ForceBalanceOptions(
+            **optimization.force_balance_input.dict()
+        )
+        db_optimization.denominators = [
+            models.Denominator(property_type=key, value=value)
+            for key, value in optimization.denominators.items()
+        ]
+        db_optimization.priors = [
+            models.Prior(parameter_type=key, value=value)
+            for key, value in optimization.priors.items()
+        ]
+
+        return OptimizationCRUD.db_to_model(db_optimization)
+
+    @staticmethod
+    def delete(db: Session, project_id: str, study_id: str, optimization_id: str):
+
+        db_optimization = OptimizationCRUD.query(
+            db, project_id, study_id, optimization_id
+        )
+
+        if not db_optimization:
+            raise OptimizationNotFoundError(project_id, study_id, optimization_id)
+
+        db.delete(db_optimization)
 
     @staticmethod
     def db_to_model(db_optimization: models.Optimization) -> projects.Optimization:
@@ -122,9 +190,7 @@ class OptimizationCRUD:
             denominators={
                 x.property_type: x.value for x in db_optimization.denominators
             },
-            priors={
-                x.parameter_type: x.value for x in db_optimization.priors
-            }
+            priors={x.parameter_type: x.value for x in db_optimization.priors},
         )
 
         return optimization
@@ -132,7 +198,9 @@ class OptimizationCRUD:
 
 class BenchmarkCRUD:
     @staticmethod
-    def query_benchmark(db: Session, project_id: str, study_id: str, benchmark_id: str):
+    def query(
+        db: Session, project_id: str, study_id: str, benchmark_id: str
+    ) -> models.Benchmark:
 
         db_benchmark = (
             db.query(models.Benchmark)
@@ -147,34 +215,10 @@ class BenchmarkCRUD:
         return db_benchmark
 
     @staticmethod
-    def read_all(db: Session, project_id: str, study_id: str):
-
-        db_study = StudyCRUD.query_study(db, project_id=project_id, study_id=study_id)
-
-        if not db_study:
-            raise StudyNotFoundError(project_id, study_id)
-
-        return [BenchmarkCRUD.db_to_model(x) for x in db_study.benchmarks]
-
-    @staticmethod
-    def read_by_identifier(
-        db: Session, project_id: str, study_id: str, benchmark_id: str
-    ):
-
-        db_benchmark = BenchmarkCRUD.query_benchmark(
-            db, project_id, study_id, benchmark_id
-        )
-
-        if not db_benchmark:
-            raise BenchmarkNotFoundError(project_id, study_id, benchmark_id)
-
-        return BenchmarkCRUD.db_to_model(db_benchmark)
-
-    @staticmethod
     def create(db: Session, benchmark: projects.Benchmark) -> models.Benchmark:
 
         if (
-            BenchmarkCRUD.query_benchmark(
+            BenchmarkCRUD.query(
                 db, benchmark.project_id, benchmark.study_id, benchmark.id
             )
             is not None
@@ -184,19 +228,91 @@ class BenchmarkCRUD:
                 benchmark.project_id, benchmark.study_id, benchmark.id
             )
 
-        if not DataSetCRUD.query_data_set(db, benchmark.test_set_id):
+        test_set = DataSetCRUD.query(db, benchmark.test_set_id)
+
+        if not test_set:
             raise DataSetNotFoundError(benchmark.test_set_id)
 
         db_benchmark = models.Benchmark(
             identifier=benchmark.id,
             name=benchmark.name,
             description=benchmark.description,
-            test_set_id=benchmark.test_set_id,
-            optimization_id=benchmark.optimization_id,
+            test_set=test_set,
+            force_field_id=benchmark.force_field_id,
             force_field_name=benchmark.force_field_name,
         )
 
         return db_benchmark
+
+    @staticmethod
+    def read_all(db: Session, project_id: str, study_id: str):
+
+        db_study = StudyCRUD.query(db, project_id=project_id, study_id=study_id)
+
+        if not db_study:
+            raise StudyNotFoundError(project_id, study_id)
+
+        return [BenchmarkCRUD.db_to_model(x) for x in db_study.benchmarks]
+
+    @staticmethod
+    def read(db: Session, project_id: str, study_id: str, benchmark_id: str):
+
+        db_benchmark = BenchmarkCRUD.query(db, project_id, study_id, benchmark_id)
+
+        if not db_benchmark:
+            raise BenchmarkNotFoundError(project_id, study_id, benchmark_id)
+
+        return BenchmarkCRUD.db_to_model(db_benchmark)
+
+    @staticmethod
+    def update(db: Session, benchmark: projects.Benchmark):
+
+        db_benchmark = BenchmarkCRUD.query(
+            db, benchmark.project_id, benchmark.study_id, benchmark.id
+        )
+
+        if not db_benchmark:
+
+            raise BenchmarkNotFoundError(
+                benchmark.project_id, benchmark.study_id, benchmark.id
+            )
+
+        # if db_benchmark.results is not None:
+        #     raise UnableToUpdateError(
+        #         f"This benchmark (project_id={benchmark.project_id}, "
+        #         f"study_id={benchmark.study_id}, benchmark_id={benchmark.id}) "
+        #         f"already has a set of results associated with it so cannot be "
+        #         f"updated. Delete the results first and then update."
+        #     )
+
+        db_benchmark.name = benchmark.name
+        db_benchmark.description = benchmark.description
+
+        test_set = DataSetCRUD.query(db, benchmark.test_set_id)
+
+        if test_set is None:
+            raise DataSetNotFoundError(benchmark.test_set_id)
+
+        db_benchmark.test_set = test_set
+
+        db_benchmark.force_field_name = benchmark.force_field_name
+
+        if benchmark.force_field_id is not None and not RefitForceFieldCRUD.query(
+            db, benchmark.force_field_id
+        ):
+            raise RefitForceFieldNotFoundError(None, None, None)
+
+        return db_benchmark
+
+    @staticmethod
+    def delete(db: Session, project_id: str, study_id: str, benchmark_id: str):
+
+        db_benchmark = BenchmarkCRUD.query(db, project_id, study_id, benchmark_id)
+
+        if not db_benchmark:
+            raise BenchmarkNotFoundError(project_id, study_id, benchmark_id)
+
+        db.delete(db_benchmark)
 
     @staticmethod
     def db_to_model(db_benchmark: models.Benchmark) -> projects.Benchmark:
@@ -211,7 +327,7 @@ class BenchmarkCRUD:
             name=db_benchmark.name,
             description=db_benchmark.description,
             test_set_id=db_benchmark.test_set_id,
-            optimization_id=db_benchmark.optimization_id,
+            force_field_id=db_benchmark.force_field_id,
             force_field_name=db_benchmark.force_field_name,
         )
 
@@ -220,7 +336,7 @@ class BenchmarkCRUD:
 
 class StudyCRUD:
     @staticmethod
-    def query_study(db: Session, project_id: str, study_id: str):
+    def query(db: Session, project_id: str, study_id: str):
 
         db_study = (
             db.query(models.Study)
@@ -233,29 +349,9 @@ class StudyCRUD:
         return db_study
 
     @staticmethod
-    def read_all(db: Session, project_id):
-
-        db_project = ProjectCRUD.query_project(db, project_id)
-
-        if not db_project:
-            raise ProjectNotFoundError(project_id)
-
-        return [StudyCRUD.db_to_model(x) for x in db_project.studies]
-
-    @staticmethod
-    def read_by_identifier(db: Session, project_id: str, study_id: str):
-
-        db_study = StudyCRUD.query_study(db, project_id, study_id)
-
-        if not db_study:
-            raise StudyNotFoundError(project_id, study_id)
-
-        return StudyCRUD.db_to_model(db_study)
-
-    @staticmethod
     def create(db: Session, study: projects.Study) -> models.Study:
 
-        if StudyCRUD.query_study(db, study.project_id, study.id) is not None:
+        if StudyCRUD.query(db, study.project_id, study.id) is not None:
             raise StudyExistsError(study.project_id, study.id)
 
         # noinspection PyTypeChecker
@@ -268,6 +364,81 @@ class StudyCRUD:
         )
 
         return db_study
+
+    @staticmethod
+    def read_all(db: Session, project_id):
+
+        db_project = ProjectCRUD.query(db, project_id)
+
+        if not db_project:
+            raise ProjectNotFoundError(project_id)
+
+        return [StudyCRUD.db_to_model(x) for x in db_project.studies]
+
+    @staticmethod
+    def read(db: Session, project_id: str, study_id: str):
+
+        db_study = StudyCRUD.query(db, project_id, study_id)
+
+        if not db_study:
+            raise StudyNotFoundError(project_id, study_id)
+
+        return StudyCRUD.db_to_model(db_study)
+
+    @staticmethod
+    def update(db: Session, study: projects.Study) -> models.Study:
+
+        db_study = StudyCRUD.query(db, study.project_id, study.id)
+
+        if db_study is None:
+            raise StudyNotFoundError(study.project_id, study.id)
+
+        db_study.name = study.name
+        db_study.description = study.description
+
+        db_optimizations = []
+        db_benchmarks = []
+
+        for optimization in study.optimizations:
+
+            db_optimization = OptimizationCRUD.query(
+                db, study.project_id, study.id, optimization.id
+            )
+
+            if not db_optimization:
+                db_optimization = OptimizationCRUD.create(db, optimization)
+            else:
+                db_optimization = OptimizationCRUD.update(db, optimization)
+
+            db_optimizations.append(db_optimization)
+
+        for benchmark in study.benchmarks:
+
+            db_benchmark = BenchmarkCRUD.query(
+                db, study.project_id, study.id, benchmark.id
+            )
+
+            if not db_benchmark:
+                db_benchmark = BenchmarkCRUD.create(db, benchmark)
+            else:
+                db_benchmark = BenchmarkCRUD.update(db, benchmark)
+
+            db_benchmarks.append(db_benchmark)
+
+        db_study.optimizations = db_optimizations
+        db_study.benchmarks = db_benchmarks
+
+        return db_study
+
+    @staticmethod
+    def delete(db: Session, project_id: str, study_id: str):
+
+        db_study = StudyCRUD.query(db, project_id, study_id)
+
+        if not db_study:
+            raise StudyNotFoundError(project_id, study_id)
+
+        db.delete(db_study)
 
     @staticmethod
     def db_to_model(db_study: models.Study) -> projects.Study:
@@ -291,7 +462,7 @@ class StudyCRUD:
 
 class ProjectCRUD:
     @staticmethod
-    def query_project(db: Session, project_id: str):
+    def query(db: Session, project_id: str):
 
         db_project = (
             db.query(models.Project)
@@ -302,25 +473,9 @@ class ProjectCRUD:
         return db_project
 
     @staticmethod
-    def read_all(db: Session, skip: int = 0, limit: int = 100):
-
-        db_projects = db.query(models.Project).offset(skip).limit(limit).all()
-        return [ProjectCRUD.db_to_model(x) for x in db_projects]
-
-    @staticmethod
-    def read_by_identifier(db: Session, project_id: str):
-
-        db_project = ProjectCRUD.query_project(db, project_id)
-
-        if db_project is None:
-            raise ProjectNotFoundError(project_id)
-
-        return ProjectCRUD.db_to_model(db_project)
-
-    @staticmethod
     def create(db: Session, project: projects.Project) -> models.Project:
 
-        if ProjectCRUD.query_project(db, project.id) is not None:
+        if ProjectCRUD.query(db, project.id) is not None:
             raise ProjectExistsError(project.id)
 
         # noinspection PyTypeChecker
@@ -333,6 +488,61 @@ class ProjectCRUD:
         )
 
         return db_project
+
+    @staticmethod
+    def read_all(db: Session, skip: int = 0, limit: int = 100):
+
+        db_projects = db.query(models.Project).offset(skip).limit(limit).all()
+        return [ProjectCRUD.db_to_model(x) for x in db_projects]
+
+    @staticmethod
+    def read(db: Session, project_id: str):
+
+        db_project = ProjectCRUD.query(db, project_id)
+
+        if db_project is None:
+            raise ProjectNotFoundError(project_id)
+
+        return ProjectCRUD.db_to_model(db_project)
+
+    @staticmethod
+    def update(db: Session, project: projects.Project) -> models.Project:
+
+        db_project = ProjectCRUD.query(db, project.id)
+
+        if db_project is None:
+            raise ProjectNotFoundError(project.id)
+
+        db_project.name = project.name
+        db_project.description = project.description
+
+        db_studies = []
+
+        for study in project.studies:
+
+            db_study = StudyCRUD.query(db, project.id, study.id)
+
+            if not db_study:
+                db_study = StudyCRUD.create(db, study)
+            else:
+                db_study = StudyCRUD.update(db, study)
+
+            db_studies.append(db_study)
+
+        db_project.studies = db_studies
+        db_project.authors = [AuthorCRUD.create(db, x) for x in project.authors]
+
+        return db_project
+
+    @staticmethod
+    def delete(db: Session, project_id: str):
+
+        db_project = ProjectCRUD.query(db, project_id)
+
+        if not db_project:
+            raise ProjectNotFoundError(project_id)
+
+        db.delete(db_project)
 
     @staticmethod
     def db_to_model(db_project: models.Project) -> projects.Project:

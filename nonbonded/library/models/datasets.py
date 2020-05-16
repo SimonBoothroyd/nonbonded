@@ -1,9 +1,10 @@
 from typing import List, Optional
 
 import pandas
+import requests
 from pydantic import Field
 
-from nonbonded.library.models import BaseORM
+from nonbonded.library.models import BaseORM, BaseREST
 from nonbonded.library.models.authors import Author
 
 
@@ -119,7 +120,7 @@ class DataSetEntry(BaseORM):
         return pandas.Series(data_row)
 
 
-class DataSet(BaseORM):
+class DataSet(BaseREST):
 
     id: str = Field(
         ..., description="The unique identifier associated with the data set."
@@ -159,9 +160,32 @@ class DataSet(BaseORM):
 
         return data_frame
 
+    def _post_endpoint(self):
+        return "http://127.0.0.1:5000/api/v1/datasets/"
+
+    def _put_endpoint(self):
+        raise NotImplementedError()
+
+    def _delete_endpoint(self):
+        return f"http://127.0.0.1:5000/api/v1/datasets/{self.id}"
+
+    @classmethod
+    def from_rest(cls, data_set_id: str):
+        request = requests.get(f"http://localhost:5000/api/v1/datasets/{data_set_id}")
+        return cls._from_rest(request)
+
 
 class DataSetCollection(BaseORM):
 
     data_sets: List[DataSet] = Field(
         default_factory=list, description="A collection of data sets.",
     )
+
+    @classmethod
+    def from_rest(cls) -> "DataSetCollection":
+
+        data_sets_request = requests.get(f"http://localhost:5000/api/v1/datasets/")
+        data_sets_request.raise_for_status()
+
+        data_sets = DataSetCollection.parse_raw(data_sets_request.text)
+        return data_sets

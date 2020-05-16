@@ -1,16 +1,18 @@
 """A collection of models which outline the scope and options of a particular project.
 """
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
-from pydantic import Field
+import requests
+from pydantic import Field, root_validator, validator
 
-from nonbonded.library.models import BaseORM
+from nonbonded.library.models import BaseORM, BaseREST
 from nonbonded.library.models.authors import Author
 from nonbonded.library.models.forcebalance import ForceBalanceOptions
 from nonbonded.library.models.forcefield import Parameter
+from nonbonded.library.validators.collection import not_empty
 
 
-class Optimization(BaseORM):
+class Optimization(BaseREST):
 
     id: str = Field(..., description="The unique id assigned to this optimization.")
     study_id: str = Field(..., description="The id of the parent study.")
@@ -49,6 +51,48 @@ class Optimization(BaseORM):
         ..., description="The priors to place on each class of parameter."
     )
 
+    def _post_endpoint(self):
+        return (
+            f"http://localhost:5000/api/v1/projects/"
+            f"{self.project_id}"
+            f"/studies/"
+            f"{self.study_id}"
+            f"/optimizations/"
+        )
+
+    def _put_endpoint(self):
+        return (
+            f"http://localhost:5000/api/v1/projects/"
+            f"{self.project_id}"
+            f"/studies/"
+            f"{self.study_id}"
+            f"/optimizations/"
+        )
+
+    def _delete_endpoint(self):
+
+        return (
+            f"http://localhost:5000/api/v1/projects/"
+            f"{self.project_id}"
+            f"/studies/"
+            f"{self.study_id}"
+            f"/optimizations/"
+            f"{self.id}"
+        )
+
+    @classmethod
+    def from_rest(cls, project_id: str, study_id: str, optimization_id: str):
+        request = requests.get(
+            f"http://localhost:5000/api/v1/projects/"
+            f"{project_id}"
+            f"/studies/"
+            f"{study_id}"
+            f"/optimizations/"
+            f"{optimization_id}"
+        )
+
+        return cls._from_rest(request)
+
 
 class OptimizationCollection(BaseORM):
 
@@ -56,8 +100,23 @@ class OptimizationCollection(BaseORM):
         default_factory=list, description="A collection of optimizations.",
     )
 
+    @classmethod
+    def from_rest(cls, project_id: str, study_id: str) -> "OptimizationCollection":
 
-class Benchmark(BaseORM):
+        optimizations_request = requests.get(
+            f"http://localhost:5000/api/v1/projects/"
+            f"{project_id}"
+            f"/studies/"
+            f"{study_id}"
+            f"/optimizations/"
+        )
+        optimizations_request.raise_for_status()
+
+        optimizations = OptimizationCollection.parse_raw(optimizations_request.text)
+        return optimizations
+
+
+class Benchmark(BaseREST):
 
     id: str = Field(..., description="The unique id assigned to this benchmark.")
     study_id: str = Field(..., description="The id of the parent study.")
@@ -72,17 +131,59 @@ class Benchmark(BaseORM):
         "benchmarking.",
     )
 
-    optimization_id: Optional[str] = Field(
+    force_field_id: Optional[int] = Field(
         ...,
-        description="The unique id of the optimization which should be benchmarked."
-        "This option is mutually exclusive with `force_field_name`.",
+        description="The unique id of the refit force field which should be "
+        "benchmarked. This option is mutually exclusive with `force_field_name`.",
     )
     force_field_name: Optional[str] = Field(
         ...,
-        description="The file name of the force field to use in the benchmark. "
-        "Currently this must be the name of a force field in the `openforcefields` "
-        "GitHub repository. This option is mutually exclusive with `optimized_id`.",
+        description="The file name of the force field to use in the benchmark. This "
+        "must be the name of a force field in the `openforcefields` GitHub repository. "
+        "This option is mutually exclusive with `optimized_id`.",
     )
+
+    def _post_endpoint(self):
+        return (
+            f"http://localhost:5000/api/v1/projects/"
+            f"{self.project_id}"
+            f"/studies/"
+            f"{self.study_id}"
+            f"/benchmarks/"
+        )
+
+    def _put_endpoint(self):
+        return (
+            f"http://localhost:5000/api/v1/projects/"
+            f"{self.project_id}"
+            f"/studies/"
+            f"{self.study_id}"
+            f"/benchmarks/"
+        )
+
+    def _delete_endpoint(self):
+
+        return (
+            f"http://localhost:5000/api/v1/projects/"
+            f"{self.project_id}"
+            f"/studies/"
+            f"{self.study_id}"
+            f"/benchmarks/"
+            f"{self.id}"
+        )
+
+    @classmethod
+    def from_rest(cls, project_id: str, study_id: str, benchmark_id: str):
+        request = requests.get(
+            f"http://localhost:5000/api/v1/projects/"
+            f"{project_id}"
+            f"/studies/"
+            f"{study_id}"
+            f"/benchmarks/"
+            f"{benchmark_id}"
+        )
+
+        return cls._from_rest(request)
 
 
 class BenchmarkCollection(BaseORM):
@@ -91,8 +192,23 @@ class BenchmarkCollection(BaseORM):
         default_factory=list, description="A collection of benchmarks.",
     )
 
+    @classmethod
+    def from_rest(cls, project_id: str, study_id: str) -> "BenchmarkCollection":
 
-class Study(BaseORM):
+        benchmarks_request = requests.get(
+            f"http://localhost:5000/api/v1/projects/"
+            f"{project_id}"
+            f"/studies/"
+            f"{study_id}"
+            f"/benchmarks/"
+        )
+        benchmarks_request.raise_for_status()
+
+        benchmarks = BenchmarkCollection.parse_raw(benchmarks_request.text)
+        return benchmarks
+
+
+class Study(BaseREST):
 
     id: str = Field(..., description="The unique id assigned to this study.")
     project_id: str = Field(..., description="The id of the parent project.")
@@ -109,6 +225,45 @@ class Study(BaseORM):
         description="The benchmarks to perform as part of this study.",
     )
 
+    @root_validator
+    def _validate_studies(cls, values):
+
+        study_id = values.get("id")
+
+        optimizations = values.get("optimizations")
+        benchmarks = values.get("benchmarks")
+
+        assert all(optimization.study_id == study_id for optimization in optimizations)
+        assert all(benchmark.study_id == study_id for benchmark in benchmarks)
+
+        assert len(set(x.id for x in optimizations)) == len(optimizations)
+        assert len(set(x.id for x in benchmarks)) == len(benchmarks)
+
+        return values
+
+    def _post_endpoint(self):
+        return f"http://localhost:5000/api/v1/projects/{self.project_id}/studies/"
+
+    def _put_endpoint(self):
+        return f"http://localhost:5000/api/v1/projects/{self.project_id}/studies/"
+
+    def _delete_endpoint(self):
+
+        return (
+            f"http://localhost:5000/api/v1/projects/"
+            f"{self.project_id}"
+            f"/studies/"
+            f"{self.id}"
+        )
+
+    @classmethod
+    def from_rest(cls, project_id: str, study_id: str):
+        request = requests.get(
+            f"http://localhost:5000/api/v1/projects/{project_id}/studies/{study_id}"
+        )
+
+        return cls._from_rest(request)
+
 
 class StudyCollection(BaseORM):
 
@@ -116,8 +271,19 @@ class StudyCollection(BaseORM):
         default_factory=list, description="A collection of studies.",
     )
 
+    @classmethod
+    def from_rest(cls, project_id: str) -> "StudyCollection":
 
-class Project(BaseORM):
+        studies_request = requests.get(
+            f"http://localhost:5000/api/v1/projects/{project_id}/studies/"
+        )
+        studies_request.raise_for_status()
+
+        studies = StudyCollection.parse_raw(studies_request.text)
+        return studies
+
+
+class Project(BaseREST):
 
     id: str = Field(..., description="The unique id assigned to the project.")
 
@@ -130,9 +296,53 @@ class Project(BaseORM):
         description="The studies conducted as part of the project.",
     )
 
+    @root_validator
+    def _validate_studies(cls, values):
+
+        project_id = values.get("id")
+        studies = values.get("studies")
+
+        assert len(set(x.id for x in studies)) == len(studies)
+
+        assert all(
+            (
+                study.project_id == project_id
+                and all(opt.project_id == project_id for opt in study.optimizations)
+                and all(bench.project_id == project_id for bench in study.benchmarks)
+            )
+            for study in studies
+        )
+
+        return values
+
+    _validate_authors = validator("authors", allow_reuse=True)(not_empty)
+
+    def _post_endpoint(self):
+        return "http://127.0.0.1:5000/api/v1/projects/"
+
+    def _put_endpoint(self):
+        return "http://127.0.0.1:5000/api/v1/projects/"
+
+    def _delete_endpoint(self):
+        return f"http://127.0.0.1:5000/api/v1/projects/{self.id}"
+
+    @classmethod
+    def from_rest(cls, project_id: str):
+        request = requests.get(f"http://localhost:5000/api/v1/projects/{project_id}")
+        return cls._from_rest(request)
+
 
 class ProjectCollection(BaseORM):
 
     projects: List[Project] = Field(
         default_factory=list, description="A collection of projects.",
     )
+
+    @classmethod
+    def from_rest(cls) -> "ProjectCollection":
+
+        projects_request = requests.get(f"http://localhost:5000/api/v1/projects/")
+        projects_request.raise_for_status()
+
+        projects = ProjectCollection.parse_raw(projects_request.text)
+        return projects

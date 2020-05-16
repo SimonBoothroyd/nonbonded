@@ -46,7 +46,7 @@ class DataSetEntry(Base):
 
     doi = Column(String)
 
-    components = relationship("Component")
+    components = relationship("Component", cascade="all, delete-orphan")
 
 
 class DataSet(Base):
@@ -58,4 +58,7 @@ class DataSet(Base):
     description = Column(String)
     authors = relationship("Author", secondary=author_data_sets_table)
 
-    entries = relationship("DataSetEntry")
+    entries = relationship("DataSetEntry", cascade="all, delete-orphan")
+
+    optimizations = relationship("Optimization", back_populates="training_set")
+    benchmarks = relationship("Benchmark", back_populates="test_set")
