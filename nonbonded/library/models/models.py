@@ -28,10 +28,10 @@ class BaseREST(BaseORM, abc.ABC):
     def upload(self) -> T:
         """Attempt to upload this object to the RESTful API for the first time.
         This function should only be used for the initial upload. To update an
-        existing instance, used the `update` function instead.
+        existing instance, used the ``update`` function instead.
 
         Objects which have been uploaded to the RESTful API can be easily retrieved
-        using `from_rest` class function.
+        using ``from_rest`` class function.
 
         An exception will be raised if the API already contains an instance of this
         object with the same identifiers.
@@ -44,7 +44,7 @@ class BaseREST(BaseORM, abc.ABC):
 
     def update(self) -> T:
         """Attempt to update this object on the RESTful API. This function assumes
-        that this object has already been uploaded using the `upload` function.
+        that this object has already been uploaded using the ``upload`` function.
 
         An exception will be raised if this object has not already been uploaded.
         """
@@ -56,7 +56,7 @@ class BaseREST(BaseORM, abc.ABC):
 
     def delete(self):
         """Attempt to delete this object on the RESTful API. This function assumes
-        that this object has already been uploaded using the `upload` function.
+        that this object has already been uploaded using the ``upload`` function.
 
         An exception will be raised if this object has not already been uploaded.
         """

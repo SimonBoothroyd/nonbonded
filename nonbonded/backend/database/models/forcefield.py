@@ -34,5 +34,6 @@ class RefitForceField(Base):
     id = Column(Integer, primary_key=True, index=True)
     inner_xml = Column(String, index=True, unique=True)
 
-    optimization_id = Column(Integer, ForeignKey("optimizations.id"), nullable=False)
-    optimization = relationship("Optimization", back_populates="refit_force_field")
+    parent = relationship(
+        "OptimizationResult", back_populates="refit_force_field", uselist=False
+    )

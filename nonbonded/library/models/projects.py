@@ -9,6 +9,7 @@ from nonbonded.library.models import BaseORM, BaseREST
 from nonbonded.library.models.authors import Author
 from nonbonded.library.models.forcebalance import ForceBalanceOptions
 from nonbonded.library.models.forcefield import Parameter
+from nonbonded.library.utilities.environments import ChemicalEnvironment
 from nonbonded.library.validators.collection import not_empty
 
 
@@ -49,6 +50,12 @@ class Optimization(BaseREST):
     )
     priors: Dict[str, float] = Field(
         ..., description="The priors to place on each class of parameter."
+    )
+
+    analysis_environments: List[ChemicalEnvironment] = Field(
+        ...,
+        description="The chemical environments to consider when analysing the results "
+        "of the optimization.",
     )
 
     def _post_endpoint(self):
@@ -141,6 +148,12 @@ class Benchmark(BaseREST):
         description="The file name of the force field to use in the benchmark. This "
         "must be the name of a force field in the `openforcefields` GitHub repository. "
         "This option is mutually exclusive with `optimized_id`.",
+    )
+
+    analysis_environments: List[ChemicalEnvironment] = Field(
+        ...,
+        description="The chemical environments to consider when analysing the results "
+        "of the benchmark.",
     )
 
     def _post_endpoint(self):

@@ -82,6 +82,8 @@ class Optimization(Base):
     denominators = relationship("Denominator", cascade="all, delete-orphan")
     priors = relationship("Prior", cascade="all, delete-orphan")
 
+    results = relationship("OptimizationResult", uselist=False, back_populates="parent")
+
 
 class Benchmark(Base):
 
@@ -102,6 +104,8 @@ class Benchmark(Base):
 
     force_field_id = Column(Integer, ForeignKey("refit_force_fields.id"))
     force_field_name = Column(String)
+
+    results = relationship("BenchmarkResult", uselist=False, back_populates="parent")
 
 
 class Study(Base):

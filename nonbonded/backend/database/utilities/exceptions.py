@@ -76,6 +76,33 @@ class BenchmarkNotFoundError(ItemNotFound):
         )
 
 
+class BenchmarkResultExistsError(ItemExistsError):
+    def __init__(self, project_id, study_id, benchmark_id):
+
+        self.project_id = project_id
+        self.study_id = study_id
+        self.benchmark_id = benchmark_id
+
+        super(BenchmarkResultExistsError, self).__init__(
+            f"A result belonging to a benchmark with id={benchmark_id} and parent study "
+            f"id={study_id} and parent project id={project_id} already exists."
+        )
+
+
+class BenchmarkResultNotFoundError(ItemNotFound):
+    def __init__(self, project_id, study_id, benchmark_id):
+
+        self.project_id = project_id
+        self.study_id = study_id
+        self.benchmark_id = benchmark_id
+
+        super(BenchmarkResultNotFoundError, self).__init__(
+            f"The data base does not contain a result for the benchmark with "
+            f"id={benchmark_id} which is part of a study with id={study_id} and "
+            f"project with id={project_id}."
+        )
+
+
 class OptimizationExistsError(ItemExistsError):
     def __init__(self, project_id, study_id, optimization_id):
 
@@ -101,6 +128,33 @@ class OptimizationNotFoundError(ItemNotFound):
             f"The data base does not contain an optimization with id={optimization_id} "
             f"which is part of a study with id={study_id} and project with "
             f"id={project_id}."
+        )
+
+
+class OptimizationResultExistsError(ItemExistsError):
+    def __init__(self, project_id, study_id, optimization_id):
+
+        self.project_id = project_id
+        self.study_id = study_id
+        self.optimization_id = optimization_id
+
+        super(OptimizationResultExistsError, self).__init__(
+            f"A result belonging to a optimization with id={optimization_id} and parent "
+            f"study id={study_id} and parent project id={project_id} already exists."
+        )
+
+
+class OptimizationResultNotFoundError(ItemNotFound):
+    def __init__(self, project_id, study_id, optimization_id):
+
+        self.project_id = project_id
+        self.study_id = study_id
+        self.optimization_id = optimization_id
+
+        super(OptimizationResultNotFoundError, self).__init__(
+            f"The data base does not contain a result for the optimization with "
+            f"id={optimization_id} which is part of a study with id={study_id} and "
+            f"project with id={project_id}."
         )
 
 

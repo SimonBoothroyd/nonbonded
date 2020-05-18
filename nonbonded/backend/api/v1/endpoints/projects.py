@@ -8,6 +8,10 @@ from nonbonded.backend.database.crud.projects import (
     ProjectCRUD,
     StudyCRUD,
 )
+from nonbonded.backend.database.crud.results import (
+    BenchmarkResultCRUD,
+    OptimizationResultCRUD,
+)
 from nonbonded.library.models.projects import (
     Benchmark,
     BenchmarkCollection,
@@ -18,6 +22,7 @@ from nonbonded.library.models.projects import (
     Study,
     StudyCollection,
 )
+from nonbonded.library.models.results import BenchmarkResult, OptimizationResult
 
 router = APIRouter()
 
@@ -210,17 +215,13 @@ async def delete_optimization(
 ):
 
     try:
-        db_optimization = OptimizationCRUD.delete(
-            db, project_id, study_id, optimization_id
-        )
+        OptimizationCRUD.delete(db, project_id, study_id, optimization_id)
         db.commit()
 
     except Exception as e:
 
         db.rollback()
         raise e
-
-    return db_optimization
 
 
 @router.get(
@@ -280,7 +281,7 @@ async def delete_benchmark(
 ):
 
     try:
-        db_benchmark = OptimizationCRUD.delete(db, project_id, study_id, benchmark_id)
+        BenchmarkCRUD.delete(db, project_id, study_id, benchmark_id)
         db.commit()
 
     except Exception as e:
@@ -288,4 +289,100 @@ async def delete_benchmark(
         db.rollback()
         raise e
 
-    return db_benchmark
+
+@router.post(
+    "/{project_id}/studies/{study_id}/optimizations/{optimization_id}/results/"
+)
+async def post_optimization_result_result(
+    optimization_result: OptimizationResult, db: Session = Depends(depends.get_db)
+):
+
+    try:
+        db_optimization_result = OptimizationResultCRUD.create(
+            db=db, optimization_result=optimization_result
+        )
+
+        db.add(db_optimization_result)
+        db.commit()
+
+    except Exception as e:
+        db.rollback()
+        raise e
+
+    return OptimizationResultCRUD.db_to_model(db_optimization_result)
+
+
+@router.get("/{project_id}/studies/{study_id}/optimizations/{optimization_id}/results/")
+async def get_optimization_result(
+    project_id, study_id, optimization_id, db: Session = Depends(depends.get_db)
+):
+
+    db_optimization_result = OptimizationResultCRUD.read(
+        db, project_id=project_id, study_id=study_id, optimization_id=optimization_id
+    )
+
+    return db_optimization_result
+
+
+@router.delete(
+    "/{project_id}/studies/{study_id}/optimizations/{optimization_id}/results/"
+)
+async def delete_optimization_result(
+    project_id, study_id, optimization_id, db: Session = Depends(depends.get_db)
+):
+
+    try:
+        OptimizationResultCRUD.delete(db, project_id, study_id, optimization_id)
+        db.commit()
+
+    except Exception as e:
+
+        db.rollback()
+        raise e
+
+
+@router.post("/{project_id}/studies/{study_id}/benchmarks/{benchmark_id}/results/")
+async def post_benchmark_result(
+    benchmark_result: BenchmarkResult, db: Session = Depends(depends.get_db)
+):
+
+    try:
+        db_benchmark_result = BenchmarkResultCRUD.create(
+            db=db, benchmark_result=benchmark_result
+        )
+
+        db.add(db_benchmark_result)
+        db.commit()
+
+    except Exception as e:
+        db.rollback()
+        raise e
+
+    return BenchmarkResultCRUD.db_to_model(db_benchmark_result)
+
+
+@router.get("/{project_id}/studies/{study_id}/benchmarks/{benchmark_id}/results/")
+async def get_benchmark_result(
+    project_id, study_id, benchmark_id, db: Session = Depends(depends.get_db)
+):
+
+    db_benchmark_result = BenchmarkResultCRUD.read(
+        db, project_id=project_id, study_id=study_id, benchmark_id=benchmark_id
+    )
+
+    return db_benchmark_result
+
+
+@router.delete("/{project_id}/studies/{study_id}/benchmarks/{benchmark_id}/results/")
+async def delete_benchmark_result(
+    project_id, study_id, benchmark_id, db: Session = Depends(depends.get_db)
+):
+
+    try:
+        BenchmarkResultCRUD.delete(db, project_id, study_id, benchmark_id)
+        db.commit()
+
+    except Exception as e:
+
+        db.rollback()
+        raise e

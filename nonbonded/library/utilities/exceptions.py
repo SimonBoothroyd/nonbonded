@@ -21,6 +21,10 @@ class UnrecognisedForceFieldError(Exception):
         )
 
 
+class UnsupportedEndpointError(Exception):
+    pass
+
+
 class InvalidFileObjectError(Exception):
     def __init__(self, file_name, found_type, expected_type):
 

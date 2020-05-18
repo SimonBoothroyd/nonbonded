@@ -32,7 +32,7 @@ async def post_data_set(data_set: DataSet, db: Session = Depends(depends.get_db)
         db.rollback()
         raise e
 
-    return db_data_set
+    return DataSetCRUD.db_to_model(db_data_set)
 
 
 @router.get("/{data_set_id}")
@@ -46,7 +46,7 @@ async def get_data_set(data_set_id, db: Session = Depends(depends.get_db)):
 async def delete_data_set(data_set_id, db: Session = Depends(depends.get_db)):
 
     try:
-        db_data_set = DataSetCRUD.delete(db, data_set_id)
+        DataSetCRUD.delete(db, data_set_id)
         db.commit()
 
     except Exception as e:
@@ -57,5 +57,3 @@ async def delete_data_set(data_set_id, db: Session = Depends(depends.get_db)):
             e = DataSetInUseError(data_set_id)
 
         raise e
-
-    return db_data_set
