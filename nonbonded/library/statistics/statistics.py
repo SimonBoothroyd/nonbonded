@@ -158,11 +158,7 @@ def _compute_bootstrapped_statistics(
 
 
 def compute_statistics(
-    measured_values,
-    measured_std,
-    estimated_values,
-    estimated_std,
-    bootstrap_iterations
+    measured_values, measured_std, estimated_values, estimated_std, bootstrap_iterations
 ):
     """Computes a set of statistics comparing deviations of a set
     of estimated properties from the corresponding measured properties
