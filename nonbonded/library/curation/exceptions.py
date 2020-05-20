@@ -1,0 +1,6 @@
+class ComponentException(Exception):
+    ...
+
+
+class InvalidInputException(ComponentException):
+    ...

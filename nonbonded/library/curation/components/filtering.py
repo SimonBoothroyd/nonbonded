@@ -1,19 +1,18 @@
-import abc
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy
 import pandas
 from openforcefield.topology import Molecule
 from openforcefield.utils import UndefinedStereochemistryError
-from pydantic import BaseModel, Field, PositiveInt, root_validator, validator
+from pydantic import Field, PositiveInt, root_validator, validator
 from scipy.optimize import linear_sum_assignment
 
+from nonbonded.library.curation.components import Component, ComponentSchema
 from nonbonded.library.utilities.checkmol import analyse_functional_groups
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 from nonbonded.library.utilities.molecules import find_smirks_matches
 from nonbonded.library.utilities.pandas import reorder_data_frame
-from nonbonded.library.workflow.component import WorkflowComponent
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +20,7 @@ logger = logging.getLogger(__name__)
 ComponentEnvironments = List[List[ChemicalEnvironment]]
 
 
-class FilterDuplicatesSchema(BaseModel, abc.ABC):
+class FilterDuplicatesSchema(ComponentSchema):
 
     temperature_precision: PositiveInt = Field(
         2,
@@ -39,10 +38,10 @@ class FilterDuplicatesSchema(BaseModel, abc.ABC):
     )
 
 
-class FilterDuplicates(WorkflowComponent[FilterDuplicatesSchema]):
+class FilterDuplicates(Component[FilterDuplicatesSchema]):
     @classmethod
     def _apply(
-        cls, data_frame: pandas.DataFrame, schema: FilterDuplicatesSchema
+        cls, data_frame: pandas.DataFrame, schema: FilterDuplicatesSchema, n_processes
     ) -> pandas.DataFrame:
 
         if len(data_frame) == 0:
@@ -111,7 +110,7 @@ class FilterDuplicates(WorkflowComponent[FilterDuplicatesSchema]):
         return filtered_data
 
 
-class FilterByTemperatureSchema(BaseModel, abc.ABC):
+class FilterByTemperatureSchema(ComponentSchema):
 
     minimum_temperature: Optional[float] = Field(
         ...,
@@ -138,10 +137,13 @@ class FilterByTemperatureSchema(BaseModel, abc.ABC):
         return values
 
 
-class FilterByTemperature(WorkflowComponent[FilterByTemperatureSchema]):
+class FilterByTemperature(Component[FilterByTemperatureSchema]):
     @classmethod
     def _apply(
-        cls, data_frame: pandas.DataFrame, schema: FilterByTemperatureSchema
+        cls,
+        data_frame: pandas.DataFrame,
+        schema: FilterByTemperatureSchema,
+        n_processes,
     ) -> pandas.DataFrame:
 
         return data_frame[
@@ -150,7 +152,7 @@ class FilterByTemperature(WorkflowComponent[FilterByTemperatureSchema]):
         ]
 
 
-class FilterByPressureSchema(BaseModel, abc.ABC):
+class FilterByPressureSchema(ComponentSchema):
 
     minimum_pressure: Optional[float] = Field(
         ...,
@@ -177,10 +179,10 @@ class FilterByPressureSchema(BaseModel, abc.ABC):
         return values
 
 
-class FilterByPressure(WorkflowComponent[FilterByPressureSchema]):
+class FilterByPressure(Component[FilterByPressureSchema]):
     @classmethod
     def _apply(
-        cls, data_frame: pandas.DataFrame, schema: FilterByPressureSchema
+        cls, data_frame: pandas.DataFrame, schema: FilterByPressureSchema, n_processes
     ) -> pandas.DataFrame:
 
         return data_frame[
@@ -189,7 +191,7 @@ class FilterByPressure(WorkflowComponent[FilterByPressureSchema]):
         ]
 
 
-class FilterByElementsSchema(BaseModel, abc.ABC):
+class FilterByElementsSchema(ComponentSchema):
 
     allowed_elements: Optional[List[str]] = Field(
         None,
@@ -216,10 +218,10 @@ class FilterByElementsSchema(BaseModel, abc.ABC):
         return values
 
 
-class FilterByElements(WorkflowComponent[FilterByElementsSchema]):
+class FilterByElements(Component[FilterByElementsSchema]):
     @classmethod
     def _apply(
-        cls, data_frame: pandas.DataFrame, schema: FilterByElementsSchema
+        cls, data_frame: pandas.DataFrame, schema: FilterByElementsSchema, n_processes
     ) -> pandas.DataFrame:
         def filter_function(data_row):
 
@@ -251,14 +253,91 @@ class FilterByElements(WorkflowComponent[FilterByElementsSchema]):
         return data_frame[data_frame.apply(cls, filter_function, axis=1)]
 
 
-class FilterByStereochemistrySchema(BaseModel, abc.ABC):
+class FilterByPropertyTypesSchema(ComponentSchema):
+
+    property_types: List[str] = Field(
+        ..., description="The types of property to retain.",
+    )
+    n_components: Dict[str, List[int]] = Field(
+        default_factory=dict,
+        description="Optionally specify the number of components that a property "
+        "should have been measured for (e.g. pure, binary) in order for that data "
+        "point to be retained.",
+    )
+
+    @root_validator
+    def _validate_n_components(cls, values):
+
+        property_types = values.get("property_types")
+        n_components = values.get("n_components")
+
+        assert all(x in property_types for x in n_components)
+
+        return values
+
+
+class FilterByPropertyTypes(Component[FilterByPropertyTypesSchema]):
+    @classmethod
+    def _apply(
+        cls,
+        data_frame: pandas.DataFrame,
+        schema: FilterByPropertyTypesSchema,
+        n_processes,
+    ) -> pandas.DataFrame:
+
+        property_headers = [
+            header for header in data_frame if header.find(" Value ") >= 0
+        ]
+
+        for header in property_headers:
+
+            property_type = header.split(" ")[0]
+
+            if property_type not in schema.property_types:
+                data_frame = data_frame.drop(header, axis=1)
+
+            uncertainty_header = header.replace(" Value ", " Uncertainty ")
+
+            if uncertainty_header in data_frame:
+                data_frame = data_frame.drop(header, axis=1)
+
+        property_headers = [
+            header
+            for header in property_headers
+            if header.split(" ")[0] in schema.property_types
+        ]
+
+        data_frame = data_frame.dropna(subset=property_headers, how="all")
+
+        for property_type, n_components in schema.n_components.values():
+
+            property_header = next(
+                iter(x for x in property_headers if x.find(f"{property_type} ") == 0),
+                None,
+            )
+
+            if property_header is None:
+                continue
+
+            data_frame = data_frame[
+                data_frame[property_header].isna()
+                | data_frame["N Components"].isin(n_components)
+            ]
+
+        return data_frame
+
+
+class FilterByStereochemistrySchema(ComponentSchema):
     ...
 
 
-class FilterByStereochemistry(WorkflowComponent[FilterByStereochemistrySchema]):
+class FilterByStereochemistry(Component[FilterByStereochemistrySchema]):
     @classmethod
     def _apply(
-        cls, data_frame: pandas.DataFrame, schema: FilterByStereochemistrySchema
+        cls,
+        data_frame: pandas.DataFrame,
+        schema: FilterByStereochemistrySchema,
+        n_processes,
     ) -> pandas.DataFrame:
         def filter_function(data_row):
 
@@ -278,18 +357,18 @@ class FilterByStereochemistry(WorkflowComponent[FilterByStereochemistrySchema]):
         return data_frame[data_frame.apply(cls, filter_function, axis=1)]
 
 
-class FilterByChargedSchema(BaseModel, abc.ABC):
+class FilterByChargedSchema(ComponentSchema):
     ...
 
 
-class FilterByCharged(WorkflowComponent[FilterByChargedSchema]):
+class FilterByCharged(Component[FilterByChargedSchema]):
     """Filters out any substance where any of the constituent components
     have a net non-zero charge.
     """
 
     @classmethod
     def _apply(
-        cls, data_frame: pandas.DataFrame, schema: FilterByChargedSchema
+        cls, data_frame: pandas.DataFrame, schema: FilterByChargedSchema, n_processes
     ) -> pandas.DataFrame:
         def filter_function(data_row):
 
@@ -313,17 +392,20 @@ class FilterByCharged(WorkflowComponent[FilterByChargedSchema]):
         return data_frame[data_frame.apply(cls, filter_function, axis=1)]
 
 
-class FilterByIonicLiquidSchema(BaseModel, abc.ABC):
+class FilterByIonicLiquidSchema(ComponentSchema):
     ...
 
 
-class FilterByIonicLiquid(WorkflowComponent[FilterByIonicLiquidSchema]):
+class FilterByIonicLiquid(Component[FilterByIonicLiquidSchema]):
     """Filters out any substance which contain or are classed as an ionic liquid.
     """
 
     @classmethod
     def _apply(
-        cls, data_frame: pandas.DataFrame, schema: FilterByIonicLiquidSchema
+        cls,
+        data_frame: pandas.DataFrame,
+        schema: FilterByIonicLiquidSchema,
+        n_processes,
     ) -> pandas.DataFrame:
         def filter_function(data_row):
 
@@ -341,7 +423,7 @@ class FilterByIonicLiquid(WorkflowComponent[FilterByIonicLiquidSchema]):
         return data_frame[data_frame.apply(cls, filter_function, axis=1)]
 
 
-class FilterBySmilesSchema(BaseModel, abc.ABC):
+class FilterBySmilesSchema(ComponentSchema):
 
     smiles_to_include: Optional[List[str]] = Field(
         None,
@@ -372,14 +454,14 @@ class FilterBySmilesSchema(BaseModel, abc.ABC):
         return values
 
 
-class FilterBySmiles(WorkflowComponent[FilterBySmilesSchema]):
+class FilterBySmiles(Component[FilterBySmilesSchema]):
     """Filters the data set so that it only contains either a specific set
     of smiles, or does not contain any of a set of specifically excluded smiles.
     """
 
     @classmethod
     def _apply(
-        cls, data_frame: pandas.DataFrame, schema: FilterBySmilesSchema
+        cls, data_frame: pandas.DataFrame, schema: FilterBySmilesSchema, n_processes
     ) -> pandas.DataFrame:
 
         smiles_to_include = schema.smiles_to_include
@@ -418,7 +500,7 @@ class FilterBySmiles(WorkflowComponent[FilterBySmilesSchema]):
         return data_frame[data_frame.apply(filter_function, axis=1)]
 
 
-class FilterBySmirksSchema(BaseModel, abc.ABC):
+class FilterBySmirksSchema(ComponentSchema):
 
     smirks_to_include: Optional[List[str]] = Field(
         None,
@@ -452,7 +534,7 @@ class FilterBySmirksSchema(BaseModel, abc.ABC):
         return values
 
 
-class FilterBySmirks(WorkflowComponent[FilterBySmirksSchema]):
+class FilterBySmirks(Component[FilterBySmirksSchema]):
     """Filters a data set so that it only contains measurements made
     for molecules which contain (or don't) a set of chemical environments
     represented by SMIRKS patterns.
@@ -460,7 +542,7 @@ class FilterBySmirks(WorkflowComponent[FilterBySmirksSchema]):
 
     @classmethod
     def _apply(
-        cls, data_frame: pandas.DataFrame, schema: FilterBySmirksSchema
+        cls, data_frame: pandas.DataFrame, schema: FilterBySmirksSchema, n_processes
     ) -> pandas.DataFrame:
 
         smirks_to_match = (
@@ -493,7 +575,7 @@ class FilterBySmirks(WorkflowComponent[FilterBySmirksSchema]):
         return data_frame[data_frame.apply(filter_function, axis=1)]
 
 
-class FilterByNComponentsSchema(BaseModel, abc.ABC):
+class FilterByNComponentsSchema(ComponentSchema):
 
     n_components: List[int] = Field(
         ...,
@@ -510,19 +592,22 @@ class FilterByNComponentsSchema(BaseModel, abc.ABC):
         return value
 
 
-class FilterByNComponents(WorkflowComponent[FilterByNComponentsSchema]):
+class FilterByNComponents(Component[FilterByNComponentsSchema]):
     """
     """
 
     @classmethod
     def _apply(
-        cls, data_frame: pandas.DataFrame, schema: FilterByNComponentsSchema
+        cls,
+        data_frame: pandas.DataFrame,
+        schema: FilterByNComponentsSchema,
+        n_processes,
     ) -> pandas.DataFrame:
 
         return data_frame[data_frame["N Components"].isin(schema.n_components)]
 
 
-class FilterBySubstancesSchema(BaseModel, abc.ABC):
+class FilterBySubstancesSchema(ComponentSchema):
 
     substances_to_include: Optional[List[Tuple[str, ...]]] = Field(
         None,
@@ -549,7 +634,7 @@ class FilterBySubstancesSchema(BaseModel, abc.ABC):
         return values
 
 
-class FilterBySubstances(WorkflowComponent[FilterBySubstancesSchema]):
+class FilterBySubstances(Component[FilterBySubstancesSchema]):
     """Filters the data set so that it only contains properties measured for
     particular substances.
 
@@ -579,7 +664,7 @@ class FilterBySubstances(WorkflowComponent[FilterBySubstancesSchema]):
 
     @classmethod
     def _apply(
-        cls, data_frame: pandas.DataFrame, schema: FilterBySubstancesSchema
+        cls, data_frame: pandas.DataFrame, schema: FilterBySubstancesSchema, n_processes
     ) -> pandas.DataFrame:
         def filter_function(data_row):
 
@@ -605,7 +690,7 @@ class FilterBySubstances(WorkflowComponent[FilterBySubstancesSchema]):
         return data_frame[data_frame.apply(filter_function, axis=1)]
 
 
-class FilterByEnvironmentsSchema(BaseModel, abc.ABC):
+class FilterByEnvironmentsSchema(ComponentSchema):
 
     per_component_environments: Optional[Dict[int, ComponentEnvironments]] = Field(
         None,
@@ -662,7 +747,7 @@ class FilterByEnvironmentsSchema(BaseModel, abc.ABC):
         return values
 
 
-class FilterByEnvironments(WorkflowComponent[FilterByEnvironmentsSchema]):
+class FilterByEnvironments(Component[FilterByEnvironmentsSchema]):
     """Filters a data set so that it only contains measurements made for substances
     which contain specific chemical environments..
     """
@@ -689,12 +774,7 @@ class FilterByEnvironments(WorkflowComponent[FilterByEnvironmentsSchema]):
         return component_moieties
 
     @classmethod
-    def _is_match(
-        cls,
-        component_environments,
-        environments_to_match,
-        schema
-    ):
+    def _is_match(cls, component_environments, environments_to_match, schema):
 
         operator = all if schema.all_of else any
 
@@ -748,15 +828,16 @@ class FilterByEnvironments(WorkflowComponent[FilterByEnvironmentsSchema]):
                     component_environments, environments_to_match, schema
                 )
 
-        x_indices, y_indices = linear_sum_assignment(
-            match_matrix, maximize=True
-        )
+        x_indices, y_indices = linear_sum_assignment(match_matrix, maximize=True)
 
         return numpy.all(match_matrix[x_indices, y_indices] > 0)
 
     @classmethod
     def _apply(
-        cls, data_frame: pandas.DataFrame, schema: FilterByEnvironmentsSchema
+        cls,
+        data_frame: pandas.DataFrame,
+        schema: FilterByEnvironmentsSchema,
+        n_processes,
     ) -> pandas.DataFrame:
 
         if schema.environments is not None:
@@ -765,3 +846,20 @@ class FilterByEnvironments(WorkflowComponent[FilterByEnvironmentsSchema]):
             filter_function = cls._filter_by_per_component
 
         return data_frame[data_frame.apply(filter_function, axis=1)]
+
+
+FilterComponentSchema = Union[
+    FilterDuplicatesSchema,
+    FilterByTemperatureSchema,
+    FilterByPressureSchema,
+    FilterByElementsSchema,
+    FilterByPropertyTypesSchema,
+    FilterByStereochemistrySchema,
+    FilterByChargedSchema,
+    FilterByIonicLiquidSchema,
+    FilterBySmilesSchema,
+    FilterBySmirksSchema,
+    FilterByNComponentsSchema,
+    FilterBySubstancesSchema,
+    FilterByEnvironmentsSchema,
+]

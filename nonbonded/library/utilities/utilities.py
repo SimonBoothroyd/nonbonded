@@ -1,4 +1,6 @@
 import os
+from contextlib import contextmanager
+from tempfile import TemporaryDirectory
 
 
 def get_data_filename(relative_path):
@@ -25,3 +27,18 @@ def get_data_filename(relative_path):
         )
 
     return file_name
+
+
+@contextmanager
+def cd_to_temporary_directory():
+
+    old_directory = os.getcwd()
+
+    try:
+
+        with TemporaryDirectory() as new_directory:
+            os.chdir(new_directory)
+            yield
+
+    finally:
+        os.chdir(old_directory)
