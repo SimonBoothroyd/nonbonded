@@ -220,7 +220,7 @@ def checkmol_code_to_environment(checkmol_code) -> ChemicalEnvironment:
     return checkmol_code_map[checkmol_code]
 
 
-@functools.lru_cache(500)
+@functools.lru_cache(1000)
 def analyse_functional_groups(smiles):
     """Employs checkmol to determine which chemical moieties
     are encoded by a given smiles pattern.

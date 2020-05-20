@@ -1,13 +1,13 @@
 import functools
+import urllib.parse
 
 from cmiles.utils import load_molecule
+from openforcefield.topology import Molecule
 from rdkit.Chem import rdDepictor
 from rdkit.Chem.Draw import rdMolDraw2D
 
-import urllib.parse
 
-
-@functools.lru_cache(500)
+@functools.lru_cache(1000)
 def smiles_to_image(smiles: str):
 
     rdkit_molecule = load_molecule(smiles, toolkit="rdkit")
@@ -33,3 +33,35 @@ def smiles_to_url_string(smiles):
 
 def url_string_to_smiles(url_string):
     return urllib.parse.unquote(url_string)
+
+
+@functools.lru_cache(1000)
+def find_smirks_matches(smiles_pattern, *smirks_patterns):
+    """Determines which (if any) of the specified smirks match the specified
+    molecule.
+
+    Parameters
+    ----------
+    smiles_pattern: str
+        The SMILES representation to try and match against.
+    smirks_patterns: str
+        The smirks patterns to try and match.
+
+    Returns
+    -------
+    list of str
+        The matched smirks patterns.
+    """
+
+    if len(smirks_patterns) == 0:
+        return []
+
+    molecule = Molecule.from_smiles(smiles_pattern, allow_undefined_stereo=True)
+
+    matches = [
+        smirks
+        for smirks in smirks_patterns
+        if len(molecule.chemical_environment_matches(smirks)) > 0
+    ]
+
+    return matches
