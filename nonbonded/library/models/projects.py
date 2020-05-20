@@ -138,10 +138,11 @@ class Benchmark(BaseREST):
         "benchmarking.",
     )
 
-    force_field_id: Optional[int] = Field(
+    optimization_id: Optional[str] = Field(
         ...,
-        description="The unique id of the refit force field which should be "
-        "benchmarked. This option is mutually exclusive with `force_field_name`.",
+        description="The id of the optimization that should be benchmarked. This must "
+        "be the id of an optimization which is part of the same study and project. "
+        "This option is mutually exclusive with `force_field_name`.",
     )
     force_field_name: Optional[str] = Field(
         ...,

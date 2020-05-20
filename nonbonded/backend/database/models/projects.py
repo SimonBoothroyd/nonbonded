@@ -10,6 +10,40 @@ author_projects_table = Table(
     Column("project_id", Integer, ForeignKey("projects.id"), primary_key=True),
     Column("author_id", Integer, ForeignKey("authors.id"), primary_key=True),
 )
+
+optimization_environment_table = Table(
+    "optimization_environments",
+    Base.metadata,
+    Column(
+        "optimization_id",
+        Integer,
+        ForeignKey("optimizations.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "environment_id",
+        String,
+        ForeignKey("chemical_environments.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
+benchmark_environment_table = Table(
+    "benchmark_environments",
+    Base.metadata,
+    Column(
+        "benchmark_id",
+        Integer,
+        ForeignKey("benchmarks.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "environment_id",
+        String,
+        ForeignKey("chemical_environments.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
+
 optimization_parameters_table = Table(
     "optimization_parameters",
     Base.metadata,
@@ -68,9 +102,6 @@ class Optimization(Base):
     training_set = relationship("DataSet", back_populates="optimizations")
 
     initial_force_field = Column(String)
-    refit_force_field = relationship(
-        "RefitForceField", back_populates="optimization", uselist=False
-    )
 
     parameters_to_train = relationship(
         "Parameter", secondary=optimization_parameters_table, backref="optimizations"
@@ -81,6 +112,10 @@ class Optimization(Base):
 
     denominators = relationship("Denominator", cascade="all, delete-orphan")
     priors = relationship("Prior", cascade="all, delete-orphan")
+
+    analysis_environments = relationship(
+        "ChemicalEnvironment", secondary=optimization_environment_table
+    )
 
     results = relationship("OptimizationResult", uselist=False, back_populates="parent")
 
@@ -102,8 +137,14 @@ class Benchmark(Base):
     test_set_id = Column(String, ForeignKey("data_sets.id"), nullable=False)
     test_set = relationship("DataSet", back_populates="benchmarks")
 
-    force_field_id = Column(Integer, ForeignKey("refit_force_fields.id"))
+    optimization_id = Column(Integer, ForeignKey("optimizations.id"))
+    optimization = relationship("Optimization", backref="benchmarks")
+
     force_field_name = Column(String)
+
+    analysis_environments = relationship(
+        "ChemicalEnvironment", secondary=benchmark_environment_table
+    )
 
     results = relationship("BenchmarkResult", uselist=False, back_populates="parent")
 

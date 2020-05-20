@@ -3,10 +3,7 @@ from sqlalchemy.orm import Session
 from nonbonded.backend.database import models
 from nonbonded.backend.database.crud.authors import AuthorCRUD
 from nonbonded.backend.database.crud.datasets import DataSetCRUD
-from nonbonded.backend.database.crud.forcefield import (
-    ParameterCRUD,
-    RefitForceFieldCRUD,
-)
+from nonbonded.backend.database.crud.forcefield import ParameterCRUD
 from nonbonded.backend.database.utilities.exceptions import (
     BenchmarkExistsError,
     BenchmarkNotFoundError,
@@ -15,12 +12,14 @@ from nonbonded.backend.database.utilities.exceptions import (
     OptimizationNotFoundError,
     ProjectExistsError,
     ProjectNotFoundError,
-    RefitForceFieldNotFoundError,
     StudyExistsError,
     StudyNotFoundError,
+    UnableToCreateError,
+    UnableToDeleteError,
     UnableToUpdateError,
 )
 from nonbonded.library.models import projects
+from nonbonded.library.utilities.environments import ChemicalEnvironment
 
 
 class OptimizationCRUD:
@@ -81,6 +80,10 @@ class OptimizationCRUD:
                 models.Prior(parameter_type=key, value=value)
                 for key, value in optimization.priors.items()
             ],
+            analysis_environments=[
+                models.ChemicalEnvironment.as_unique(db, id=x.value)
+                for x in optimization.analysis_environments
+            ],
         )
 
         return db_optimization
@@ -120,13 +123,29 @@ class OptimizationCRUD:
                 optimization.project_id, optimization.study_id, optimization.id
             )
 
-        if db_optimization.refit_force_field is not None:
+        if db_optimization.results is not None:
 
             raise UnableToUpdateError(
                 f"This optimization (project_id={optimization.project_id}, "
                 f"study_id={optimization.study_id}, optimization_id={optimization.id}) "
-                f"already has a refit force field associated with it so cannot be "
-                f"updated. Delete the refit force field first and then update."
+                f"already has a set of results associated with it so cannot be "
+                f"updated. Delete the results first and then try again."
+            )
+
+        if (
+            db_optimization.benchmarks is not None
+            and len(db_optimization.benchmarks) > 0
+        ):
+
+            benchmark_ids = [
+                ", ".join(x.identifier for x in db_optimization.benchmarks)
+            ]
+
+            raise UnableToUpdateError(
+                f"This optimization (project_id={optimization.project_id}, "
+                f"study_id={optimization.study_id}, optimization_id={optimization.id}) "
+                f"has benchmarks (with ids={benchmark_ids}) associated with it and so "
+                f"cannot be updated. Delete the benchmarks first and then try again."
             )
 
         db_optimization.name = optimization.name
@@ -168,6 +187,31 @@ class OptimizationCRUD:
         if not db_optimization:
             raise OptimizationNotFoundError(project_id, study_id, optimization_id)
 
+        if db_optimization.results is not None:
+
+            raise UnableToDeleteError(
+                f"This optimization (project_id={project_id}, "
+                f"study_id={study_id}, optimization_id={optimization_id}) "
+                f"already has a set of results associated with it so cannot be "
+                f"deleted. Delete the results first and then try again."
+            )
+
+        if (
+            db_optimization.benchmarks is not None
+            and len(db_optimization.benchmarks) > 0
+        ):
+
+            benchmark_ids = [
+                ", ".join(x.identifier for x in db_optimization.benchmarks)
+            ]
+
+            raise UnableToDeleteError(
+                f"This optimization (project_id={project_id}, "
+                f"study_id={study_id}, optimization_id={optimization_id}) "
+                f"has benchmarks (with ids={benchmark_ids}) associated with it and so "
+                f"cannot be deleted. Delete the benchmarks first and then try again."
+            )
+
         db.delete(db_optimization)
 
     @staticmethod
@@ -191,6 +235,9 @@ class OptimizationCRUD:
                 x.property_type: x.value for x in db_optimization.denominators
             },
             priors={x.parameter_type: x.value for x in db_optimization.priors},
+            analysis_environments=[
+                ChemicalEnvironment(x.id) for x in db_optimization.analysis_environments
+            ],
         )
 
         return optimization
@@ -233,13 +280,40 @@ class BenchmarkCRUD:
         if not test_set:
             raise DataSetNotFoundError(benchmark.test_set_id)
 
+        db_optimization = None
+
+        if benchmark.optimization_id is not None:
+
+            db_optimization = OptimizationCRUD.query(
+                db, benchmark.project_id, benchmark.study_id, benchmark.optimization_id
+            )
+
+            if db_optimization is None:
+
+                raise OptimizationNotFoundError(
+                    benchmark.project_id, benchmark.study_id, benchmark.optimization_id
+                )
+
+            if db_optimization.results is None:
+
+                raise UnableToCreateError(
+                    f"The benchmark is for an optimization ("
+                    f"id={benchmark.optimization_id}) which does not have any results "
+                    f"uploaded yet. Upload results for the optimization and then try "
+                    f"again."
+                )
+
         db_benchmark = models.Benchmark(
             identifier=benchmark.id,
             name=benchmark.name,
             description=benchmark.description,
             test_set=test_set,
-            force_field_id=benchmark.force_field_id,
+            optimization=db_optimization,
             force_field_name=benchmark.force_field_name,
+            analysis_environments=[
+                models.ChemicalEnvironment.as_unique(db, id=x.value)
+                for x in benchmark.analysis_environments
+            ],
         )
 
         return db_benchmark
@@ -277,13 +351,14 @@ class BenchmarkCRUD:
                 benchmark.project_id, benchmark.study_id, benchmark.id
             )
 
-        # if db_benchmark.results is not None:
-        #     raise UnableToUpdateError(
-        #         f"This benchmark (project_id={benchmark.project_id}, "
-        #         f"study_id={benchmark.study_id}, benchmark_id={benchmark.id}) "
-        #         f"already has a set of results associated with it so cannot be "
-        #         f"updated. Delete the results first and then update."
-        #     )
+        if db_benchmark.results is not None:
+
+            raise UnableToUpdateError(
+                f"This benchmark (project_id={benchmark.project_id}, "
+                f"study_id={benchmark.study_id}, benchmark_id={benchmark.id}) "
+                f"already has a set of results associated with it so cannot be "
+                f"updated. Delete the results first and then update."
+            )
 
         db_benchmark.name = benchmark.name
         db_benchmark.description = benchmark.description
@@ -297,10 +372,19 @@ class BenchmarkCRUD:
 
         db_benchmark.force_field_name = benchmark.force_field_name
 
-        if benchmark.force_field_id is not None and not RefitForceFieldCRUD.query(
-            db, benchmark.force_field_id
-        ):
-            raise RefitForceFieldNotFoundError(None, None, None)
+        if benchmark.optimization_id is not None:
+
+            db_optimization = OptimizationCRUD.query(
+                db, benchmark.project_id, benchmark.study_id, benchmark.optimization_id
+            )
+
+            if db_optimization is None:
+
+                raise OptimizationNotFoundError(
+                    benchmark.project_id, benchmark.study_id, benchmark.optimization_id
+                )
+
+            db_benchmark.optimization = db_optimization
 
         return db_benchmark
 
@@ -312,6 +396,15 @@ class BenchmarkCRUD:
         if not db_benchmark:
             raise BenchmarkNotFoundError(project_id, study_id, benchmark_id)
 
+        if db_benchmark.results is not None:
+
+            raise UnableToDeleteError(
+                f"This benchmark (project_id={project_id}, "
+                f"study_id={study_id}, benchmark_id={benchmark_id}) "
+                f"already has a set of results associated with it so cannot be "
+                f"deleted. Delete the results first and then try again."
+            )
+
         db.delete(db_benchmark)
 
     @staticmethod
@@ -320,6 +413,11 @@ class BenchmarkCRUD:
         db_parent_study = db_benchmark.parent
         db_parent_project = db_parent_study.parent
 
+        optimization_id = None
+
+        if db_benchmark.optimization is not None:
+            optimization_id = db_benchmark.optimization.identifier
+
         benchmark = projects.Benchmark(
             id=db_benchmark.identifier,
             study_id=db_parent_study.identifier,
@@ -327,8 +425,11 @@ class BenchmarkCRUD:
             name=db_benchmark.name,
             description=db_benchmark.description,
             test_set_id=db_benchmark.test_set_id,
-            force_field_id=db_benchmark.force_field_id,
+            optimization_id=optimization_id,
             force_field_name=db_benchmark.force_field_name,
+            analysis_environments=[
+                ChemicalEnvironment(x.id) for x in db_benchmark.analysis_environments
+            ],
         )
 
         return benchmark
@@ -438,6 +539,12 @@ class StudyCRUD:
         if not db_study:
             raise StudyNotFoundError(project_id, study_id)
 
+        for optimization in db_study.optimizations:
+            OptimizationCRUD.delete(db, project_id, study_id, optimization.identifier)
+
+        for benchmark in db_study.benchmarks:
+            BenchmarkCRUD.delete(db, project_id, study_id, benchmark.identifier)
+
         db.delete(db_study)
 
     @staticmethod
@@ -541,6 +648,9 @@ class ProjectCRUD:
 
         if not db_project:
             raise ProjectNotFoundError(project_id)
+
+        for study in db_project.studies:
+            StudyCRUD.delete(db, project_id, study.identifier)
 
         db.delete(db_project)
 

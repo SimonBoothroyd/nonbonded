@@ -1,13 +1,23 @@
 from .models import Base, UniqueMixin  # isort:skip
 
 from .authors import Author  # isort:skip
+from .environments import ChemicalEnvironment  # isort:skip
 from .datasets import (  # isort:skip
     Component,
     DataSet,
     DataSetEntry,
 )
 from .forcebalance import ForceBalanceOptions  # isort:skip
-from .forcefield import RefitForceField, Parameter  # isort:skip
+from .forcefield import Parameter  # isort:skip
+from .results import (  # isort:skip
+    ResultsComponent,
+    ResultsEntry,
+    StatisticsEntry,
+    BenchmarkResult,
+    ObjectiveFunction,
+    OptimizationResult,
+    RefitForceField,
+)
 from .projects import (  # isort:skip
     Benchmark,
     Denominator,
@@ -17,20 +27,12 @@ from .projects import (  # isort:skip
     Study,
 )
 
-from .results import (  # isort:skip
-    ResultsComponent,
-    ResultsEntry,
-    StatisticsEntry,
-    BenchmarkResult,
-    ObjectiveFunction,
-    OptimizationResult,
-)
-
 __all__ = [
     Author,
     Base,
     Benchmark,
     BenchmarkResult,
+    ChemicalEnvironment,
     Component,
     DataSet,
     DataSetEntry,

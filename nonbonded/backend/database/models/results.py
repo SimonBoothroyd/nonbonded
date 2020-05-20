@@ -9,7 +9,7 @@ class ResultsComponent(Base):
     __tablename__ = "results_components"
 
     id = Column(Integer, primary_key=True, index=True)
-    parent_id = Column(Integer, ForeignKey("data_set_entries.id"))
+    parent_id = Column(Integer, ForeignKey("results_entries.id"))
 
     smiles = Column(String)
 
@@ -24,6 +24,7 @@ class ResultsEntry(Base):
     __tablename__ = "results_entries"
 
     id = Column(Integer, primary_key=True, index=True)
+    parent_id = Column(Integer, ForeignKey("benchmark_results.id"))
 
     property_type = Column(String)
 
@@ -49,6 +50,7 @@ class StatisticsEntry(Base):
     __tablename__ = "statistics_entries"
 
     id = Column(Integer, primary_key=True, index=True)
+    parent_id = Column(Integer, ForeignKey("benchmark_results.id"))
 
     statistics_type = Column(String)
 
@@ -72,12 +74,9 @@ class BenchmarkResult(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     parent_id = Column(Integer, ForeignKey("benchmarks.id"), nullable=False)
-    parent = relationship("Benchmark", back_populates="results", nullable=False)
+    parent = relationship("Benchmark", back_populates="results")
 
-    statistic_entries_id = Column(Integer, ForeignKey("statistics_entries.id"))
     statistic_entries = relationship("StatisticsEntry", cascade="all, delete-orphan")
-
-    result_entries_id = Column(Integer, ForeignKey("results_entries.id"))
     results_entries = relationship("ResultsEntry", cascade="all, delete-orphan")
 
 
@@ -92,6 +91,20 @@ class ObjectiveFunction(Base):
     value = Column(Float)
 
 
+class RefitForceField(Base):
+
+    __tablename__ = "refit_force_fields"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    parent_id = Column(Integer, ForeignKey("optimization_results.id"))
+    parent = relationship(
+        "OptimizationResult", back_populates="refit_force_field", uselist=False
+    )
+
+    inner_xml = Column(String, index=True, unique=True)
+
+
 class OptimizationResult(Base):
 
     __tablename__ = "optimization_results"
@@ -99,11 +112,13 @@ class OptimizationResult(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     parent_id = Column(Integer, ForeignKey("optimizations.id"), nullable=False)
-    parent = relationship("Optimization", back_populates="results", nullable=False)
+    parent = relationship("Optimization", back_populates="results")
 
     objective_function = relationship("ObjectiveFunction", cascade="all, delete-orphan")
 
-    refit_force_field_id = Column(Integer, ForeignKey("refit_force_fields.id"))
     refit_force_field = relationship(
-        "RefitForceField", back_populates="parent", cascade="all, delete-orphan"
+        "RefitForceField",
+        back_populates="parent",
+        cascade="all, delete-orphan",
+        uselist=False,
     )

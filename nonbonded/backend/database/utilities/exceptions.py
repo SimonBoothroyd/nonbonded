@@ -13,9 +13,19 @@ class ItemNotFound(HTTPException, abc.ABC):
         super(ItemNotFound, self).__init__(status_code=404, detail=detail)
 
 
+class UnableToCreateError(HTTPException, abc.ABC):
+    def __init__(self, detail: str):
+        super(UnableToCreateError, self).__init__(status_code=400, detail=detail)
+
+
 class UnableToUpdateError(HTTPException, abc.ABC):
     def __init__(self, detail: str):
         super(UnableToUpdateError, self).__init__(status_code=400, detail=detail)
+
+
+class UnableToDeleteError(HTTPException, abc.ABC):
+    def __init__(self, detail: str):
+        super(UnableToDeleteError, self).__init__(status_code=400, detail=detail)
 
 
 class DataSetExistsError(ItemExistsError):

@@ -133,9 +133,7 @@ class BenchmarkResultCRUD:
     @staticmethod
     def read(db: Session, project_id: str, study_id: str, benchmark_id: str):
 
-        db_benchmark = BenchmarkCRUD.query(
-            db, project_id, study_id, benchmark_id
-        )
+        db_benchmark = BenchmarkCRUD.query(db, project_id, study_id, benchmark_id)
 
         if not db_benchmark:
             raise BenchmarkNotFoundError(project_id, study_id, benchmark_id)
