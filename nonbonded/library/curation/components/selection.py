@@ -3,6 +3,7 @@ from typing import List, Tuple, Union
 import numpy
 import pandas
 from pydantic import BaseModel, Field, validator
+from typing_extensions import Literal
 
 from nonbonded.library.curation.components import Component, ComponentSchema
 from nonbonded.library.utilities.pandas import reorder_data_frame
@@ -42,6 +43,8 @@ class TargetState(BaseModel):
 
 class SelectDataPointsSchema(ComponentSchema):
 
+    type: Literal["SelectDataPoints"] = "SelectDataPoints"
+
     target_states: List[TargetState] = Field(
         ...,
         description="A list of the target states for which we would ideally include "
@@ -51,7 +54,7 @@ class SelectDataPointsSchema(ComponentSchema):
     )
 
 
-class SelectDataPoints(Component[SelectDataPointsSchema]):
+class SelectDataPoints(Component):
     """The method attempts to find a set of data points for each substance
     in a data set which are clustered around the set of conditions specified
     in the ``target_states`` input array.

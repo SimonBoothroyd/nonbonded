@@ -1,12 +1,16 @@
+import logging
 from typing import List, Union
 
+import numpy
 import pandas
 from pydantic import BaseModel, Field
 
+from nonbonded.library.curation.components import Component
 from nonbonded.library.curation.components.filtering import FilterComponentSchema
 from nonbonded.library.curation.components.processing import ProcessComponentSchema
 from nonbonded.library.curation.components.selection import SelectionComponentSchema
-from nonbonded.library.models.datasets import Component
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowSchema(BaseModel):
@@ -44,17 +48,26 @@ class Workflow:
             The data frame which has had the components applied to it.
         """
 
-        component_classes = {
-            class_type.__name__: class_type for class_type in Component.__subclasses__()
-        }
+        component_classes = Component.components
+
+        data_frame = data_frame.copy()
+        data_frame = data_frame.fillna(value=numpy.nan)
 
         for component_schema in schema.component_schemas:
 
-            component_class_name = component_schema.__name__.replace("Schema", "")
+            component_class_name = component_schema.__class__.__name__.replace(
+                "Schema", ""
+            )
             component_class = component_classes[component_class_name]
+
+            logger.info(f"Applying {component_class_name}")
 
             data_frame = component_class.apply(
                 data_frame, component_schema, n_processes
             )
+
+            logger.info(f"{component_class_name} applied")
+
+            data_frame = data_frame.fillna(value=numpy.nan)
 
         return data_frame

@@ -7,6 +7,7 @@ from openforcefield.topology import Molecule
 from openforcefield.utils import UndefinedStereochemistryError
 from pydantic import Field, PositiveInt, root_validator, validator
 from scipy.optimize import linear_sum_assignment
+from typing_extensions import Literal
 
 from nonbonded.library.curation.components import Component, ComponentSchema
 from nonbonded.library.utilities.checkmol import analyse_functional_groups
@@ -21,6 +22,8 @@ ComponentEnvironments = List[List[ChemicalEnvironment]]
 
 
 class FilterDuplicatesSchema(ComponentSchema):
+
+    type: Literal["FilterDuplicates"] = "FilterDuplicates"
 
     temperature_precision: PositiveInt = Field(
         2,
@@ -38,7 +41,7 @@ class FilterDuplicatesSchema(ComponentSchema):
     )
 
 
-class FilterDuplicates(Component[FilterDuplicatesSchema]):
+class FilterDuplicates(Component):
     @classmethod
     def _apply(
         cls, data_frame: pandas.DataFrame, schema: FilterDuplicatesSchema, n_processes
@@ -57,7 +60,9 @@ class FilterDuplicates(Component[FilterDuplicatesSchema]):
 
         for n_components in range(minimum_n_components, maximum_n_components + 1):
 
-            component_data = data_frame[data_frame["N Components"] == n_components]
+            component_data = data_frame[
+                data_frame["N Components"] == n_components
+            ].copy()
 
             component_data["Temperature (K)"] = component_data["Temperature (K)"].round(
                 schema.temperature_precision
@@ -112,6 +117,8 @@ class FilterDuplicates(Component[FilterDuplicatesSchema]):
 
 class FilterByTemperatureSchema(ComponentSchema):
 
+    type: Literal["FilterByTemperature"] = "FilterByTemperature"
+
     minimum_temperature: Optional[float] = Field(
         ...,
         description="Retain data points measured for temperatures above this value (K)",
@@ -137,7 +144,7 @@ class FilterByTemperatureSchema(ComponentSchema):
         return values
 
 
-class FilterByTemperature(Component[FilterByTemperatureSchema]):
+class FilterByTemperature(Component):
     @classmethod
     def _apply(
         cls,
@@ -153,6 +160,8 @@ class FilterByTemperature(Component[FilterByTemperatureSchema]):
 
 
 class FilterByPressureSchema(ComponentSchema):
+
+    type: Literal["FilterByPressure"] = "FilterByPressure"
 
     minimum_pressure: Optional[float] = Field(
         ...,
@@ -179,7 +188,7 @@ class FilterByPressureSchema(ComponentSchema):
         return values
 
 
-class FilterByPressure(Component[FilterByPressureSchema]):
+class FilterByPressure(Component):
     @classmethod
     def _apply(
         cls, data_frame: pandas.DataFrame, schema: FilterByPressureSchema, n_processes
@@ -192,6 +201,8 @@ class FilterByPressure(Component[FilterByPressureSchema]):
 
 
 class FilterByElementsSchema(ComponentSchema):
+
+    type: Literal["FilterByElements"] = "FilterByElements"
 
     allowed_elements: Optional[List[str]] = Field(
         None,
@@ -218,7 +229,7 @@ class FilterByElementsSchema(ComponentSchema):
         return values
 
 
-class FilterByElements(Component[FilterByElementsSchema]):
+class FilterByElements(Component):
     @classmethod
     def _apply(
         cls, data_frame: pandas.DataFrame, schema: FilterByElementsSchema, n_processes
@@ -250,10 +261,12 @@ class FilterByElements(Component[FilterByElementsSchema]):
 
             return True
 
-        return data_frame[data_frame.apply(cls, filter_function, axis=1)]
+        return data_frame[data_frame.apply(filter_function, axis=1)]
 
 
 class FilterByPropertyTypesSchema(ComponentSchema):
+
+    type: Literal["FilterByPropertyTypes"] = "FilterByPropertyTypes"
 
     property_types: List[str] = Field(
         ..., description="The types of property to retain.",
@@ -276,7 +289,7 @@ class FilterByPropertyTypesSchema(ComponentSchema):
         return values
 
 
-class FilterByPropertyTypes(Component[FilterByPropertyTypesSchema]):
+class FilterByPropertyTypes(Component):
     @classmethod
     def _apply(
         cls,
@@ -293,13 +306,15 @@ class FilterByPropertyTypes(Component[FilterByPropertyTypesSchema]):
 
             property_type = header.split(" ")[0]
 
-            if property_type not in schema.property_types:
-                data_frame = data_frame.drop(header, axis=1)
+            if property_type in schema.property_types:
+                continue
+
+            data_frame = data_frame.drop(header, axis=1)
 
             uncertainty_header = header.replace(" Value ", " Uncertainty ")
 
             if uncertainty_header in data_frame:
-                data_frame = data_frame.drop(header, axis=1)
+                data_frame = data_frame.drop(uncertainty_header, axis=1)
 
         property_headers = [
             header
@@ -309,7 +324,7 @@ class FilterByPropertyTypes(Component[FilterByPropertyTypesSchema]):
 
         data_frame = data_frame.dropna(subset=property_headers, how="all")
 
-        for property_type, n_components in schema.n_components.values():
+        for property_type, n_components in schema.n_components.items():
 
             property_header = next(
                 iter(x for x in property_headers if x.find(f"{property_type} ") == 0),
@@ -324,14 +339,16 @@ class FilterByPropertyTypes(Component[FilterByPropertyTypesSchema]):
                 | data_frame["N Components"].isin(n_components)
             ]
 
+        data_frame = data_frame.dropna(axis=1, how="all")
         return data_frame
 
 
 class FilterByStereochemistrySchema(ComponentSchema):
-    ...
+
+    type: Literal["FilterByStereochemistry"] = "FilterByStereochemistry"
 
 
-class FilterByStereochemistry(Component[FilterByStereochemistrySchema]):
+class FilterByStereochemistry(Component):
     @classmethod
     def _apply(
         cls,
@@ -354,14 +371,15 @@ class FilterByStereochemistry(Component[FilterByStereochemistrySchema]):
 
             return True
 
-        return data_frame[data_frame.apply(cls, filter_function, axis=1)]
+        return data_frame[data_frame.apply(filter_function, axis=1)]
 
 
 class FilterByChargedSchema(ComponentSchema):
-    ...
+
+    type: Literal["FilterByCharged"] = "FilterByCharged"
 
 
-class FilterByCharged(Component[FilterByChargedSchema]):
+class FilterByCharged(Component):
     """Filters out any substance where any of the constituent components
     have a net non-zero charge.
     """
@@ -389,14 +407,14 @@ class FilterByCharged(Component[FilterByChargedSchema]):
 
             return True
 
-        return data_frame[data_frame.apply(cls, filter_function, axis=1)]
+        return data_frame[data_frame.apply(filter_function, axis=1)]
 
 
 class FilterByIonicLiquidSchema(ComponentSchema):
-    ...
+    type: Literal["FilterByIonicLiquid"] = "FilterByIonicLiquid"
 
 
-class FilterByIonicLiquid(Component[FilterByIonicLiquidSchema]):
+class FilterByIonicLiquid(Component):
     """Filters out any substance which contain or are classed as an ionic liquid.
     """
 
@@ -420,10 +438,11 @@ class FilterByIonicLiquid(Component[FilterByIonicLiquidSchema]):
 
             return True
 
-        return data_frame[data_frame.apply(cls, filter_function, axis=1)]
+        return data_frame[data_frame.apply(filter_function, axis=1)]
 
 
 class FilterBySmilesSchema(ComponentSchema):
+    type: Literal["FilterBySmiles"] = "FilterBySmiles"
 
     smiles_to_include: Optional[List[str]] = Field(
         None,
@@ -454,7 +473,7 @@ class FilterBySmilesSchema(ComponentSchema):
         return values
 
 
-class FilterBySmiles(Component[FilterBySmilesSchema]):
+class FilterBySmiles(Component):
     """Filters the data set so that it only contains either a specific set
     of smiles, or does not contain any of a set of specifically excluded smiles.
     """
@@ -502,6 +521,8 @@ class FilterBySmiles(Component[FilterBySmilesSchema]):
 
 class FilterBySmirksSchema(ComponentSchema):
 
+    type: Literal["FilterBySmirks"] = "FilterBySmirks"
+
     smirks_to_include: Optional[List[str]] = Field(
         None,
         description="The smirks patterns which must be matched by a substance in "
@@ -534,7 +555,7 @@ class FilterBySmirksSchema(ComponentSchema):
         return values
 
 
-class FilterBySmirks(Component[FilterBySmirksSchema]):
+class FilterBySmirks(Component):
     """Filters a data set so that it only contains measurements made
     for molecules which contain (or don't) a set of chemical environments
     represented by SMIRKS patterns.
@@ -577,6 +598,8 @@ class FilterBySmirks(Component[FilterBySmirksSchema]):
 
 class FilterByNComponentsSchema(ComponentSchema):
 
+    type: Literal["FilterByNComponents"] = "FilterByNComponents"
+
     n_components: List[int] = Field(
         ...,
         description="The number of components that measurements should have been "
@@ -592,7 +615,7 @@ class FilterByNComponentsSchema(ComponentSchema):
         return value
 
 
-class FilterByNComponents(Component[FilterByNComponentsSchema]):
+class FilterByNComponents(Component):
     """
     """
 
@@ -608,6 +631,8 @@ class FilterByNComponents(Component[FilterByNComponentsSchema]):
 
 
 class FilterBySubstancesSchema(ComponentSchema):
+
+    type: Literal["FilterBySubstances"] = "FilterBySubstances"
 
     substances_to_include: Optional[List[Tuple[str, ...]]] = Field(
         None,
@@ -634,7 +659,7 @@ class FilterBySubstancesSchema(ComponentSchema):
         return values
 
 
-class FilterBySubstances(Component[FilterBySubstancesSchema]):
+class FilterBySubstances(Component):
     """Filters the data set so that it only contains properties measured for
     particular substances.
 
@@ -692,6 +717,8 @@ class FilterBySubstances(Component[FilterBySubstancesSchema]):
 
 class FilterByEnvironmentsSchema(ComponentSchema):
 
+    type: Literal["FilterByEnvironments"] = "FilterByEnvironments"
+
     per_component_environments: Optional[Dict[int, ComponentEnvironments]] = Field(
         None,
         description="The environments which should be present in the components of "
@@ -747,7 +774,7 @@ class FilterByEnvironmentsSchema(ComponentSchema):
         return values
 
 
-class FilterByEnvironments(Component[FilterByEnvironmentsSchema]):
+class FilterByEnvironments(Component):
     """Filters a data set so that it only contains measurements made for substances
     which contain specific chemical environments..
     """

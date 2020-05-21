@@ -1,6 +1,5 @@
 import abc
 import logging
-from typing import Generic, TypeVar
 
 import pandas
 from pydantic import BaseModel
@@ -8,25 +7,36 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 
 
+class MetaComponent(type):
+
+    components = {}
+
+    def __init__(cls, name, bases, attrs):
+
+        type.__init__(cls, name, bases, attrs)
+
+        if name in MetaComponent.components:
+            raise ValueError("Cannot have more than one component with the same name")
+
+        MetaComponent.components[name] = cls
+
+
 class ComponentSchema(BaseModel, abc.ABC):
 
     ...
 
 
-T = TypeVar("T", bound=ComponentSchema)
-
-
-class Component(Generic[T], abc.ABC):
+class Component(metaclass=MetaComponent):
     @classmethod
     @abc.abstractmethod
     def _apply(
-        cls, data_frame: pandas.DataFrame, schema: T, n_processes
+        cls, data_frame: pandas.DataFrame, schema, n_processes
     ) -> pandas.DataFrame:
         raise NotImplementedError()
 
     @classmethod
     def apply(
-        cls, data_frame: pandas.DataFrame, schema: T, n_processes=1
+        cls, data_frame: pandas.DataFrame, schema, n_processes=1
     ) -> pandas.DataFrame:
         """Apply this component to a data frame.
 

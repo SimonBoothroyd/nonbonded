@@ -1,4 +1,5 @@
 import numpy
+import pandas
 
 
 def reorder_data_frame(data_frame):
@@ -16,35 +17,47 @@ def reorder_data_frame(data_frame):
         The re-ordered data frame.
     """
 
-    max_n_substances = data_frame["N Components"].max()
+    min_n_components = data_frame["N Components"].min()
+    max_n_components = data_frame["N Components"].max()
 
-    component_headers = [f"Component {i + 1}" for i in range(max_n_substances)]
-    component_order = numpy.argsort(data_frame[component_headers], axis=1)
+    ordered_frames = []
 
-    substance_headers = ["Component", "Role", "Mole Fraction", "Exact Amount"]
+    for n_components in range(min_n_components, max_n_components + 1):
 
-    ordered_data_frame = data_frame.copy()
+        component_frame = data_frame[data_frame["N Components"] == n_components]
+        ordered_frame = data_frame[data_frame["N Components"] == n_components].copy()
 
-    #
-    for component_index in range(max_n_substances):
+        component_headers = [f"Component {i + 1}" for i in range(n_components)]
+        component_order = numpy.argsort(component_frame[component_headers], axis=1)
 
-        indices = component_order[f"Component {component_index + 1}"]
+        substance_headers = ["Component", "Role", "Mole Fraction", "Exact Amount"]
 
-        for substance_header in substance_headers:
+        for component_index in range(n_components):
 
-            component_header = f"{substance_header} {component_index + 1}"
+            indices = component_order[f"Component {component_index + 1}"]
 
-            for replacement_index in range(max_n_substances):
+            for substance_header in substance_headers:
 
-                if component_index == replacement_index:
+                component_header = f"{substance_header} {component_index + 1}"
+
+                if not component_header in ordered_frame:
                     continue
 
-                replacement_header = f"{substance_header} {replacement_index + 1}"
+                for replacement_index in range(n_components):
 
-                ordered_data_frame[component_header] = numpy.where(
-                    indices == replacement_index,
-                    data_frame[replacement_header],
-                    data_frame[component_header],
-                )
+                    if component_index == replacement_index:
+                        continue
+
+                    replacement_header = f"{substance_header} {replacement_index + 1}"
+
+                    ordered_frame[component_header] = numpy.where(
+                        indices == replacement_index,
+                        component_frame[replacement_header],
+                        component_frame[component_header],
+                    )
+
+        ordered_frames.append(ordered_frame)
+
+    ordered_data_frame = pandas.concat(ordered_frames, ignore_index=True, sort=False)
 
     return ordered_data_frame

@@ -11,15 +11,17 @@ import pandas
 import requests
 from evaluator.datasets.thermoml import ThermoMLDataSet
 from pydantic import Field
+from typing_extensions import Literal
 
 from nonbonded.library.curation.components import Component, ComponentSchema
-from nonbonded.library.curation.exceptions import InvalidInputException
 from nonbonded.library.utilities import cd_to_temporary_directory
 
 logger = logging.getLogger(__name__)
 
 
 class ProcessThermoMLDataSchema(ComponentSchema, abc.ABC):
+
+    type: Literal["ProcessThermoMLData"] = "ProcessThermoMLData"
 
     retain_uncertainties: bool = Field(
         True,
@@ -34,7 +36,7 @@ class ProcessThermoMLDataSchema(ComponentSchema, abc.ABC):
     )
 
 
-class ProcessThermoMLData(Component[ProcessThermoMLDataSchema]):
+class ProcessThermoMLData(Component):
     @classmethod
     def _download_data(cls):
 
@@ -56,6 +58,8 @@ class ProcessThermoMLData(Component[ProcessThermoMLDataSchema]):
 
     @classmethod
     def _process_archive(cls, file_path: str) -> pandas.DataFrame:
+
+        logger.debug(f"Processing {file_path}")
 
         # noinspection PyBroadException
         try:
@@ -85,12 +89,6 @@ class ProcessThermoMLData(Component[ProcessThermoMLDataSchema]):
         n_processes,
     ) -> pandas.DataFrame:
 
-        if len(data_frame) > 0:
-
-            raise InvalidInputException(
-                "This protocol expects the input data frame to be empty"
-            )
-
         if schema.cache_file_name is not None and os.path.isfile(
             schema.cache_file_name
         ):
@@ -100,20 +98,30 @@ class ProcessThermoMLData(Component[ProcessThermoMLDataSchema]):
 
         with cd_to_temporary_directory():
 
+            logger.debug("Downloading archive data")
+
             cls._download_data()
 
             # Get the names of the extracted files
             file_names = glob.glob("*.xml")
 
+            logger.debug("Processing archives")
+
             with Pool(processes=n_processes) as pool:
-                data_frames = pool.imap(cls._process_archive, file_names)
+                data_frames = [*pool.imap(cls._process_archive, file_names)]
 
-        data_frame = pandas.concat(data_frames, ignore_index=True, sort=False)
+        logger.debug("Joining archives")
 
-        for header in data_frame:
+        thermoml_data_frame = pandas.concat(data_frames, ignore_index=True, sort=False)
+
+        for header in thermoml_data_frame:
 
             if header.find(" Uncertainty ") >= 0 and not schema.retain_uncertainties:
-                data_frame = data_frame.drop(header, axis=1)
+                thermoml_data_frame = thermoml_data_frame.drop(header, axis=1)
+
+        data_frame = pandas.concat(
+            [data_frame, thermoml_data_frame], ignore_index=True, sort=False
+        )
 
         if schema.cache_file_name is not None:
             data_frame.to_csv(schema.cache_file_name, index=False)
