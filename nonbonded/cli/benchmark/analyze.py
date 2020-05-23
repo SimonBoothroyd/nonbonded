@@ -14,7 +14,7 @@ from nonbonded.library.utilities.logging import (
 logger = logging.getLogger(__name__)
 
 
-@click.command(help="Analyzes the output of an benchmark.")
+@click.command(help="Analyzes the output of a benchmark.")
 @click.option(
     "--log-level",
     default="info",
@@ -68,5 +68,5 @@ def analyze(log_level):
     )
 
     # Save the results
-    with open(os.path.join(output_directory, f"benchmark-results.json"), "w") as file:
+    with open(os.path.join(output_directory, "benchmark-results.json"), "w") as file:
         file.write(benchmark_results.json())

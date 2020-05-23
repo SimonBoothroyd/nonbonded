@@ -61,9 +61,7 @@ def run(server_config, polling_interval, log_level):
         with evaluator_server:
 
             # Request the estimates.
-            client = EvaluatorClient(
-                ConnectionOptions(server_port=server_config.port)
-            )
+            client = EvaluatorClient(ConnectionOptions(server_port=server_config.port))
 
             request, error = client.request_estimate(
                 property_set=data_set, force_field_source=force_field,
@@ -79,4 +77,4 @@ def run(server_config, polling_interval, log_level):
                 raise Exception(str(error))
 
             # Save the results to disk.
-            results.json(f"results.json")
+            results.json("results.json")

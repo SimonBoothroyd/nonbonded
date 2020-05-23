@@ -80,7 +80,7 @@ class BenchmarkNotFoundError(ItemNotFound):
         self.benchmark_id = benchmark_id
 
         super(BenchmarkNotFoundError, self).__init__(
-            f"The data base does not contain an benchmark with id={benchmark_id} "
+            f"The data base does not contain a benchmark with id={benchmark_id} "
             f"which is part of a study with id={study_id} and project with "
             f"id={project_id}."
         )
