@@ -2,7 +2,7 @@ import click
 
 
 @click.group()
-def generate():
+def upload():
     pass
 
 

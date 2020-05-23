@@ -15,7 +15,7 @@ class ComputeResources(BaseModel):
 
     def to_evaluator(self):
 
-        from evaluator import backends
+        from openff.evaluator import backends
 
         evaluator_resources = backends.ComputeResources(
             number_of_threads=self.n_processes, number_of_gpus=self.n_gpus
@@ -38,8 +38,8 @@ class QueueWorkerResources(ComputeResources):
 
     def to_evaluator(self):
 
-        from evaluator import backends
-        from evaluator import unit
+        from openff.evaluator import backends
+        from openff.evaluator import unit
 
         evaluator_resources = backends.QueueWorkerResources(
             number_of_threads=self.n_processes,
@@ -84,7 +84,7 @@ class DaskHPCClusterConfig(BaseModel):
 
     def to_evaluator(self):
 
-        from evaluator.backends import dask
+        from openff.evaluator.backends import dask
 
         evaluator_backend = dask.DaskLSFBackend(
             minimum_number_of_workers=self.minimum_workers,
@@ -111,7 +111,7 @@ class DaskLocalClusterConfig(BaseModel):
 
     def to_evaluator(self):
 
-        from evaluator.backends import dask
+        from openff.evaluator.backends import dask
 
         evaluator_backend = dask.DaskLocalCluster(
             number_of_workers=self.number_of_workers,
@@ -138,7 +138,7 @@ class EvaluatorServerConfig(BaseModel):
 
     def to_evaluator(self):
 
-        from evaluator import server
+        from openff.evaluator import server
 
         evaluator_backend = self.backend_config.to_evaluator()
 
