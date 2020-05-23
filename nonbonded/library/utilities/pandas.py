@@ -40,7 +40,7 @@ def reorder_data_frame(data_frame):
 
                 component_header = f"{substance_header} {component_index + 1}"
 
-                if not component_header in ordered_frame:
+                if component_header not in ordered_frame:
                     continue
 
                 for replacement_index in range(n_components):

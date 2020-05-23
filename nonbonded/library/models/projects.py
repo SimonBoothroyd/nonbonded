@@ -355,7 +355,7 @@ class ProjectCollection(BaseORM):
     @classmethod
     def from_rest(cls) -> "ProjectCollection":
 
-        projects_request = requests.get(f"http://localhost:5000/api/v1/projects/")
+        projects_request = requests.get("http://localhost:5000/api/v1/projects/")
         projects_request.raise_for_status()
 
         projects = ProjectCollection.parse_raw(projects_request.text)

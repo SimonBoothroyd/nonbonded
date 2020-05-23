@@ -16,10 +16,12 @@ dependencies:
     # Core dependencies
   - click
   - cmiles
-  - forcebalance
+#  - forcebalance
   - jinja2
   - numpy
   - openeye-toolkits
+  - openforcefield
+  - openff-evaluator
   - pandas
   - pydantic
   - requests

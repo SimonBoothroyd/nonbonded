@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional, Type
 
 import pandas
 import requests
@@ -6,6 +6,13 @@ from pydantic import Field
 
 from nonbonded.library.models import BaseORM, BaseREST
 from nonbonded.library.models.authors import Author
+from nonbonded.library.utilities.exceptions import UnrecognisedPropertyType
+
+if TYPE_CHECKING:
+    from openff.evaluator.datasets import (
+        PhysicalProperty,
+        PhysicalPropertyDataSet,
+    )
 
 
 class Component(BaseORM):
@@ -27,7 +34,7 @@ class DataSetEntry(BaseORM):
     property_type: str = Field(
         ...,
         description="The type of property that this value corresponds to. This should "
-        "correspond to an `evaluator.properties` property class name.",
+        "correspond to an `openff.evaluator.properties` property class name.",
     )
 
     temperature: float = Field(
@@ -119,6 +126,55 @@ class DataSetEntry(BaseORM):
 
         return pandas.Series(data_row)
 
+    def to_evaluator(self) -> "PhysicalProperty":
+
+        from openff.evaluator import properties, unit, substances
+        from openff.evaluator.datasets import MeasurementSource, PropertyPhase
+        from openff.evaluator.thermodynamics import ThermodynamicState
+
+        if not hasattr(properties, self.property_type):
+            raise UnrecognisedPropertyType(self.property_type)
+
+        property_class: Type[PhysicalProperty] = getattr(properties, self.property_type)
+
+        thermodynamic_state = ThermodynamicState(
+            temperature=self.temperature * unit.kelvin,
+            pressure=self.pressure * unit.kilopascal,
+        )
+
+        phase = PropertyPhase.from_string(self.phase)
+
+        substance = substances.Substance()
+
+        for component in self.components:
+
+            off_component = substances.Component(
+                smiles=component.smiles, role=substances.Component.Role[component.role]
+            )
+
+            if component.mole_fraction > 0:
+
+                mole_fraction = substances.MoleFraction(component.mole_fraction)
+                substance.add_component(off_component, mole_fraction)
+
+            if component.exact_amount > 0:
+
+                exact_amount = substances.ExactAmount(component.exact_amount)
+                substance.add_component(off_component, exact_amount)
+
+        pint_unit = unit.Unit(self.unit)
+
+        physical_property = property_class(
+            thermodynamic_state=thermodynamic_state,
+            phase=phase,
+            substance=substance,
+            value=self.value * pint_unit,
+            uncertainty=self.std_error * pint_unit,
+            source=MeasurementSource(doi=self.doi),
+        )
+
+        return physical_property
+
 
 class DataSet(BaseREST):
 
@@ -160,6 +216,17 @@ class DataSet(BaseREST):
 
         return data_frame
 
+    def to_evaluator(self) -> "PhysicalPropertyDataSet":
+
+        from openff.evaluator.datasets import PhysicalPropertyDataSet
+
+        physical_properties = [entry.to_evaluator() for entry in self.entries]
+
+        evaluator_set = PhysicalPropertyDataSet()
+        evaluator_set.add_properties(*physical_properties)
+
+        return evaluator_set
+
     def _post_endpoint(self):
         return "http://127.0.0.1:5000/api/v1/datasets/"
 
@@ -184,7 +251,7 @@ class DataSetCollection(BaseORM):
     @classmethod
     def from_rest(cls) -> "DataSetCollection":
 
-        data_sets_request = requests.get(f"http://localhost:5000/api/v1/datasets/")
+        data_sets_request = requests.get("http://localhost:5000/api/v1/datasets/")
         data_sets_request.raise_for_status()
 
         data_sets = DataSetCollection.parse_raw(data_sets_request.text)
