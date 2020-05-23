@@ -9,10 +9,7 @@ from nonbonded.library.utilities.logging import (
 )
 
 
-@click.command(
-    help="Curates a data set by executing a curation workflow defined by a "
-    "corresponding schema."
-)
+@click.command(help="Curate a data set by applying a curation schema.")
 @click.option(
     "--schema",
     "schema_path",
