@@ -7,8 +7,8 @@ from pydantic import BaseModel, Field
 
 from nonbonded.library.curation.components import Component
 from nonbonded.library.curation.components.filtering import FilterComponentSchema
-from nonbonded.library.curation.components.processing import ProcessComponentSchema
 from nonbonded.library.curation.components.selection import SelectionComponentSchema
+from nonbonded.library.curation.components.thermoml import ThermoMLComponentSchema
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class WorkflowSchema(BaseModel):
 
     component_schemas: List[
-        Union[FilterComponentSchema, ProcessComponentSchema, SelectionComponentSchema]
+        Union[FilterComponentSchema, ThermoMLComponentSchema, SelectionComponentSchema]
     ] = Field(
         default_factory=list,
         description="The schemas of the components to apply as part of this workflow. "

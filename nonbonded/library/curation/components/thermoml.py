@@ -9,7 +9,7 @@ from typing import Optional, Union
 
 import pandas
 import requests
-from evaluator.datasets.thermoml import ThermoMLDataSet
+from openff.evaluator.datasets.thermoml import ThermoMLDataSet
 from pydantic import Field
 from typing_extensions import Literal
 
@@ -19,9 +19,9 @@ from nonbonded.library.utilities import cd_to_temporary_directory
 logger = logging.getLogger(__name__)
 
 
-class ProcessThermoMLDataSchema(ComponentSchema, abc.ABC):
+class ImportThermoMLDataSchema(ComponentSchema, abc.ABC):
 
-    type: Literal["ProcessThermoMLData"] = "ProcessThermoMLData"
+    type: Literal["ImportThermoMLData"] = "ImportThermoMLData"
 
     retain_uncertainties: bool = Field(
         True,
@@ -36,7 +36,7 @@ class ProcessThermoMLDataSchema(ComponentSchema, abc.ABC):
     )
 
 
-class ProcessThermoMLData(Component):
+class ImportThermoMLData(Component):
     @classmethod
     def _download_data(cls):
 
@@ -85,7 +85,7 @@ class ProcessThermoMLData(Component):
     def _apply(
         cls,
         data_frame: pandas.DataFrame,
-        schema: ProcessThermoMLDataSchema,
+        schema: ImportThermoMLDataSchema,
         n_processes,
     ) -> pandas.DataFrame:
 
@@ -129,4 +129,4 @@ class ProcessThermoMLData(Component):
         return data_frame
 
 
-ProcessComponentSchema = Union[ProcessThermoMLDataSchema]
+ThermoMLComponentSchema = Union[ImportThermoMLDataSchema]

@@ -1,4 +1,13 @@
-class UnrecognisedKwargsError(Exception):
+class NonbondedException(Exception):
+    """The base exception for most of the custom exceptions
+    within this framework with the exception of HTTP based
+    exceptions.
+    """
+
+    ...
+
+
+class UnrecognisedKwargsError(NonbondedException):
     def __init__(self, kwarg_names):
 
         self.kwarg_names = kwarg_names
@@ -10,7 +19,7 @@ class UnrecognisedKwargsError(Exception):
         )
 
 
-class UnrecognisedForceFieldError(Exception):
+class UnrecognisedForceFieldError(NonbondedException):
     def __init__(self, file_extesion):
 
         self.file_extesion = file_extesion
@@ -21,11 +30,26 @@ class UnrecognisedForceFieldError(Exception):
         )
 
 
-class UnsupportedEndpointError(Exception):
+class UnrecognisedPropertyType(NonbondedException):
+    def __init__(self, property_type):
+
+        self.property_type = property_type
+
+        super(UnrecognisedPropertyType, self).__init__(
+            f"{property_type} is not a valid property type. The property type must "
+            f"be the name of a class defined in `openff.evaluator.properties`."
+        )
+
+
+class ForceFieldNotFound(NonbondedException):
+    ...
+
+
+class UnsupportedEndpointError(NonbondedException):
     pass
 
 
-class InvalidFileObjectError(Exception):
+class InvalidFileObjectError(NonbondedException):
     def __init__(self, file_name, found_type, expected_type):
 
         self.file_name = file_name
