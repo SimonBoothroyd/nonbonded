@@ -16,6 +16,7 @@ from nonbonded.library.utilities.logging import (
 )
 @click.option(
     "--config",
+    "server_config",
     default="server-config.json",
     type=click.Path(exists=True, dir_okay=False),
     help="The path to the OpenFF Evaluator server configuration file.",
@@ -28,7 +29,7 @@ from nonbonded.library.utilities.logging import (
     help="The verbosity of the server logger.",
     show_default=True,
 )
-def run(input_path, server_config, log_level):
+def run(server_config, log_level):
 
     # Set up logging if requested.
     logging_level = string_to_log_level(log_level)
@@ -44,4 +45,4 @@ def run(input_path, server_config, log_level):
         with evaluator_server:
 
             with open("force_balance.log", "w") as file:
-                check_call(["ForceBalance.py", input_path], stdout=file)
+                check_call(["ForceBalance.py", "optimize.in"], stdout=file)

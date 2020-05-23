@@ -1,8 +1,13 @@
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from pydantic import Field
 
 from nonbonded.library.models import BaseORM
+
+if TYPE_CHECKING:
+    from openforcefield.typing.engines.smirnoff.forcefield import (
+        ForceField as OpenForceField,
+    )
 
 
 class Parameter(BaseORM):
@@ -27,6 +32,14 @@ class ForceField(BaseORM):
         description="The xml representation of a force field in the SMIRNOFF "
         "force field format",
     )
+
+    def to_openff(self) -> "OpenForceField":
+
+        from openforcefield.typing.engines.smirnoff.forcefield import ForceField
+
+        force_field = ForceField(self.inner_xml)
+
+        return force_field
 
 
 class ForceFieldCollection(BaseORM):
