@@ -10,9 +10,9 @@ class ChemicalEnvironment(UniqueMixin, Base):
     id = Column(String, primary_key=True, index=True, unique=True)
 
     @classmethod
-    def unique_hash(cls, identifier):
-        return identifier
+    def unique_hash(cls, id):
+        return id
 
     @classmethod
-    def unique_filter(cls, query: Query, identifier):
-        return query.filter(ChemicalEnvironment.id == identifier)
+    def unique_filter(cls, query: Query, id):
+        return query.filter(ChemicalEnvironment.id == id)
