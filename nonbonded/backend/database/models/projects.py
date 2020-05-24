@@ -90,7 +90,7 @@ class Optimization(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    parent_id = Column(Integer, ForeignKey("studies.id"))
+    parent_id = Column(Integer, ForeignKey("studies.id"), nullable=False)
     parent = relationship("Study", back_populates="optimizations")
 
     identifier = Column(String, index=True)
@@ -126,7 +126,7 @@ class Benchmark(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    parent_id = Column(Integer, ForeignKey("studies.id"))
+    parent_id = Column(Integer, ForeignKey("studies.id"), nullable=False)
     parent = relationship("Study", back_populates="benchmarks")
 
     identifier = Column(String, index=True)
@@ -155,7 +155,7 @@ class Study(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    parent_id = Column(Integer, ForeignKey("projects.id"))
+    parent_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
     parent = relationship("Project", back_populates="studies")
 
     identifier = Column(String, index=True)

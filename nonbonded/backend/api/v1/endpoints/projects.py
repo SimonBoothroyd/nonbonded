@@ -12,6 +12,7 @@ from nonbonded.backend.database.crud.results import (
     BenchmarkResultCRUD,
     OptimizationResultCRUD,
 )
+from nonbonded.library.models.datasets import DataSetCollection
 from nonbonded.library.models.projects import (
     Benchmark,
     BenchmarkCollection,
@@ -131,6 +132,20 @@ async def get_study(project_id, study_id, db: Session = Depends(depends.get_db))
     db_study = StudyCRUD.read(db, study_id=study_id, project_id=project_id)
 
     return db_study
+
+
+@router.get(
+    "/{project_id}/studies/{study_id}/datasets/", response_model=DataSetCollection
+)
+async def get_study_data_sets(
+    project_id, study_id, db: Session = Depends(depends.get_db)
+):
+
+    db_data_sets = StudyCRUD.read_all_data_sets(
+        db, study_id=study_id, project_id=project_id
+    )
+
+    return db_data_sets
 
 
 @router.delete("/{project_id}/studies/{study_id}")

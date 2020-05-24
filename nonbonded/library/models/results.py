@@ -316,10 +316,15 @@ class BenchmarkResult(BaseResult):
                 mole_fraction = data_row.get(f"Mole Fraction {index + 1}", 0.0)
                 exact_amount = data_row.get(f"Exact Amount {index + 1}", 0)
 
+                if pandas.isnull(mole_fraction):
+                    mole_fraction = 0.0
+                if pandas.isnull(exact_amount):
+                    exact_amount = 0
+
                 component = Component(
                     smiles=smiles,
-                    mole_fraction=mole_fraction or 0.0,
-                    exact_amount=exact_amount or 0,
+                    mole_fraction=mole_fraction,
+                    exact_amount=exact_amount,
                     role=role,
                 )
 

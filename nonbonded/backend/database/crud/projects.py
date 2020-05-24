@@ -19,6 +19,7 @@ from nonbonded.backend.database.utilities.exceptions import (
     UnableToUpdateError,
 )
 from nonbonded.library.models import projects
+from nonbonded.library.models.datasets import DataSetCollection
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 
 
@@ -41,7 +42,9 @@ class OptimizationCRUD:
         return db_optimization
 
     @staticmethod
-    def create(db: Session, optimization: projects.Optimization) -> models.Optimization:
+    def create(
+        db: Session, optimization: projects.Optimization, parent=None
+    ) -> models.Optimization:
 
         if (
             OptimizationCRUD.query(
@@ -59,9 +62,16 @@ class OptimizationCRUD:
         if not training_set:
             raise DataSetNotFoundError(optimization.training_set_id)
 
+        if parent is None:
+            parent = StudyCRUD.query(db, optimization.project_id, optimization.study_id)
+
+        if parent is None:
+            raise StudyNotFoundError(optimization.project_id, optimization.study_id)
+
         # noinspection PyTypeChecker
         db_optimization = models.Optimization(
             identifier=optimization.id,
+            parent=parent,
             name=optimization.name,
             description=optimization.description,
             training_set=training_set,
@@ -262,7 +272,9 @@ class BenchmarkCRUD:
         return db_benchmark
 
     @staticmethod
-    def create(db: Session, benchmark: projects.Benchmark) -> models.Benchmark:
+    def create(
+        db: Session, benchmark: projects.Benchmark, parent=None
+    ) -> models.Benchmark:
 
         if (
             BenchmarkCRUD.query(
@@ -303,8 +315,15 @@ class BenchmarkCRUD:
                     f"again."
                 )
 
+        if parent is None:
+            parent = StudyCRUD.query(db, benchmark.project_id, benchmark.study_id)
+
+        if parent is None:
+            raise StudyNotFoundError(benchmark.project_id, benchmark.study_id)
+
         db_benchmark = models.Benchmark(
             identifier=benchmark.id,
+            parent=parent,
             name=benchmark.name,
             description=benchmark.description,
             test_set=test_set,
@@ -450,19 +469,31 @@ class StudyCRUD:
         return db_study
 
     @staticmethod
-    def create(db: Session, study: projects.Study) -> models.Study:
+    def create(db: Session, study: projects.Study, parent=None) -> models.Study:
 
         if StudyCRUD.query(db, study.project_id, study.id) is not None:
             raise StudyExistsError(study.project_id, study.id)
 
+        if parent is None:
+            parent = ProjectCRUD.query(db, study.project_id)
+
+        if parent is None:
+            raise ProjectNotFoundError(study.project_id)
+
         # noinspection PyTypeChecker
         db_study = models.Study(
             identifier=study.id,
+            parent=parent,
             name=study.name,
             description=study.description,
-            optimizations=[OptimizationCRUD.create(db, x) for x in study.optimizations],
-            benchmarks=[BenchmarkCRUD.create(db, x) for x in study.benchmarks],
         )
+
+        db_study.optimizations = [
+            OptimizationCRUD.create(db, x, db_study) for x in study.optimizations
+        ]
+        db_study.benchmarks = [
+            BenchmarkCRUD.create(db, x, db_study) for x in study.benchmarks
+        ]
 
         return db_study
 
@@ -485,6 +516,32 @@ class StudyCRUD:
             raise StudyNotFoundError(project_id, study_id)
 
         return StudyCRUD.db_to_model(db_study)
+
+    @staticmethod
+    def read_all_data_sets(
+        db: Session, project_id: str, study_id: str
+    ) -> DataSetCollection:
+
+        db_study = StudyCRUD.query(db, project_id, study_id)
+
+        if not db_study:
+            raise StudyNotFoundError(project_id, study_id)
+
+        data_set_ids = set()
+
+        for optimization in db_study.optimizations:
+            data_set_ids.add(optimization.training_set_id)
+        for benchmark in db_study.benchmarks:
+            data_set_ids.add(benchmark.test_set_id)
+
+        data_sets = []
+
+        for data_set_id in data_set_ids:
+
+            db_data_set = DataSetCRUD.query(db, data_set_id)
+            data_sets.append(DataSetCRUD.db_to_model(db_data_set))
+
+        return DataSetCollection(data_sets=data_sets)
 
     @staticmethod
     def update(db: Session, study: projects.Study) -> models.Study:
@@ -591,8 +648,11 @@ class ProjectCRUD:
             name=project.name,
             description=project.description,
             authors=[AuthorCRUD.create(db, x) for x in project.authors],
-            studies=[StudyCRUD.create(db, x) for x in project.studies],
         )
+
+        db_project.studies = [
+            StudyCRUD.create(db, x, db_project) for x in project.studies
+        ]
 
         return db_project
 
