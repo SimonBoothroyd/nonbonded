@@ -129,16 +129,18 @@ def generate(
         )
         force_field = optimization_results.refit_force_field.to_openff()
 
-    force_field.to_file("force-field.offxml", io_format="offxml")
+    force_field.to_file(
+        os.path.join(root_directory, "force-field.offxml"), io_format="offxml"
+    )
 
     # Retrieve the data set.
     test_set: DataSet = DataSet.from_rest(benchmark.test_set_id)
 
-    with open("test-set-definition.json", "w") as file:
+    with open(os.path.join(root_directory, "test-set-definition.json"), "w") as file:
         file.write(test_set.json())
 
     evaluator_set = test_set.to_evaluator()
-    evaluator_set.json("test-set.json")
+    evaluator_set.json(os.path.join(root_directory, "test-set.json"))
 
     # Generate a server configuration
     if backend_name == "lilac-local":

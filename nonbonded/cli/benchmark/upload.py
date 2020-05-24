@@ -1,3 +1,5 @@
+import os
+
 import click
 
 from nonbonded.library.models.results import BenchmarkResult
@@ -24,7 +26,7 @@ def upload(log_level):
     if logging_level is not None:
         setup_timestamp_logging(logging_level)
 
-    benchmark_results_path = "benchmark-results.json"
+    benchmark_results_path = os.path.join("analysis", "benchmark-results.json")
     benchmark_results = BenchmarkResult.parse_file(benchmark_results_path)
 
     benchmark_results = benchmark_results.upload()
