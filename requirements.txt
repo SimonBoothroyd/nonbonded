@@ -3,6 +3,7 @@ fastapi
 sqlalchemy
 sqlalchemy-utils
 typing-extensions
+uvicorn
 gunicorn
 pydantic
 psycopg2
