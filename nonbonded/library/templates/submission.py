@@ -2,7 +2,6 @@ import abc
 import os
 from typing import List
 
-from jinja2 import Template
 from pydantic import Field
 from pydantic.main import BaseModel
 
@@ -37,6 +36,7 @@ class SubmissionTemplate(BaseTemplate, abc.ABC):
     @classmethod
     def generate(cls, template_name: str, submission_options: Submission, **options):
 
+        from jinja2 import Template
         cls._check_unrecognised_options(**options)
 
         template_file_name = get_data_filename(os.path.join("jinja", template_name))

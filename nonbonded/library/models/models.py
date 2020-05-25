@@ -1,10 +1,12 @@
 import abc
-from typing import Type, TypeVar
+from typing import Type, TypeVar, TYPE_CHECKING
 
-import requests
 from pydantic.main import BaseModel
 
 T = TypeVar("T", bound="BaseREST")
+
+if TYPE_CHECKING:
+    import requests
 
 
 class BaseORM(BaseModel, abc.ABC):
@@ -36,6 +38,8 @@ class BaseREST(BaseORM, abc.ABC):
         An exception will be raised if the API already contains an instance of this
         object with the same identifiers.
         """
+        import requests
+
         request = requests.post(url=self._post_endpoint(), data=self.json())
         request.raise_for_status()
 
@@ -48,6 +52,8 @@ class BaseREST(BaseORM, abc.ABC):
 
         An exception will be raised if this object has not already been uploaded.
         """
+        import requests
+
         request = requests.put(url=self._put_endpoint(), data=self.json())
         request.raise_for_status()
 
@@ -60,11 +66,13 @@ class BaseREST(BaseORM, abc.ABC):
 
         An exception will be raised if this object has not already been uploaded.
         """
+        import requests
+
         request = requests.delete(url=self._delete_endpoint())
         request.raise_for_status()
 
     @classmethod
-    def _from_rest(cls: Type[T], request: requests.Response) -> T:
+    def _from_rest(cls: Type[T], request: "requests.Response") -> T:
         request.raise_for_status()
 
         return_object = cls.parse_raw(request.text)

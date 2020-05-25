@@ -1,0 +1,10 @@
+alembic
+fastapi
+sqlalchemy
+sqlalchemy-utils
+typing-extensions
+gunicorn
+pydantic
+psycopg2
+click
+requests

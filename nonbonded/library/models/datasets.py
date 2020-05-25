@@ -1,7 +1,5 @@
 from typing import TYPE_CHECKING, List, Optional, Type
 
-import pandas
-import requests
 from pydantic import Field
 
 from nonbonded.library.models import BaseORM, BaseREST
@@ -13,6 +11,8 @@ if TYPE_CHECKING:
         PhysicalProperty,
         PhysicalPropertyDataSet,
     )
+
+    import pandas
 
 
 class Component(BaseORM):
@@ -66,7 +66,7 @@ class DataSetEntry(BaseORM):
     )
 
     @classmethod
-    def from_series(cls, data_row: pandas.Series) -> "DataSetEntry":
+    def from_series(cls, data_row: "pandas.Series") -> "DataSetEntry":
 
         data_row = data_row.dropna()
 
@@ -98,7 +98,9 @@ class DataSetEntry(BaseORM):
 
         return data_entry
 
-    def to_series(self) -> pandas.Series:
+    def to_series(self) -> "pandas.Series":
+
+        import pandas
 
         value_header = f"{self.property_type} Value ({self.unit})"
         std_error_header = f"{self.property_type} Uncertainty ({self.unit})"
@@ -194,7 +196,7 @@ class DataSet(BaseREST):
     @classmethod
     def from_pandas(
         cls,
-        data_frame: pandas.DataFrame,
+        data_frame: "pandas.DataFrame",
         identifier: str,
         description: str,
         authors: List[Author],
@@ -209,7 +211,9 @@ class DataSet(BaseREST):
 
         return data_set
 
-    def to_pandas(self) -> pandas.DataFrame:
+    def to_pandas(self) -> "pandas.DataFrame":
+
+        import pandas
 
         data_rows = [entry.to_series() for entry in self.entries]
         data_frame = pandas.DataFrame(data_rows)
@@ -238,6 +242,9 @@ class DataSet(BaseREST):
 
     @classmethod
     def from_rest(cls, data_set_id: str):
+
+        import requests
+
         request = requests.get(f"http://localhost:5000/api/v1/datasets/{data_set_id}")
         return cls._from_rest(request)
 
@@ -250,6 +257,8 @@ class DataSetCollection(BaseORM):
 
     @classmethod
     def from_rest(cls) -> "DataSetCollection":
+
+        import requests
 
         data_sets_request = requests.get("http://localhost:5000/api/v1/datasets/")
         data_sets_request.raise_for_status()

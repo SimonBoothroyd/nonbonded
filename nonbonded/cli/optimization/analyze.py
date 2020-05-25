@@ -3,7 +3,6 @@ import os
 from glob import glob
 
 import click
-import numpy
 
 from nonbonded.library.models.forcefield import ForceField
 from nonbonded.library.models.projects import Optimization
@@ -27,6 +26,7 @@ logger = logging.getLogger(__name__)
     show_default=True,
 )
 def analyze(log_level):
+    import numpy
 
     from forcebalance.nifty import lp_load
 

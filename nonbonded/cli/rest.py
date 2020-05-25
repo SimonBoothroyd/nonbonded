@@ -1,5 +1,4 @@
 import click
-import uvicorn
 
 from nonbonded.library.utilities.logging import get_log_levels
 
@@ -38,6 +37,8 @@ def rest():
     show_default=True,
 )
 def start_server(debug, host, port, log_level):
+
+    import uvicorn
 
     uvicorn.run(
         "nonbonded.backend.app:app",

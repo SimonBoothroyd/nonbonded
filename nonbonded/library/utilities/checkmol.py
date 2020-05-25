@@ -1,9 +1,4 @@
 import functools
-import shutil
-import subprocess
-import tempfile
-
-from openforcefield.topology import Molecule
 
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 
@@ -242,6 +237,11 @@ def analyse_functional_groups(smiles):
         number, and each value if the number of instances of that moiety. If
         `checkmol` did not execute correctly, returns None.
     """
+    import shutil
+    import subprocess
+    import tempfile
+
+    from openforcefield.topology import Molecule
 
     # Make sure the checkmol utility has been installed separately.
     if shutil.which("checkmol") is None:

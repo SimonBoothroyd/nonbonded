@@ -2,7 +2,6 @@
 """
 from typing import Dict, List, Optional
 
-import requests
 from pydantic import Field, root_validator, validator
 
 from nonbonded.library.models import BaseORM, BaseREST
@@ -89,6 +88,9 @@ class Optimization(BaseREST):
 
     @classmethod
     def from_rest(cls, project_id: str, study_id: str, optimization_id: str):
+
+        import requests
+
         request = requests.get(
             f"http://localhost:5000/api/v1/projects/"
             f"{project_id}"
@@ -109,6 +111,8 @@ class OptimizationCollection(BaseORM):
 
     @classmethod
     def from_rest(cls, project_id: str, study_id: str) -> "OptimizationCollection":
+
+        import requests
 
         optimizations_request = requests.get(
             f"http://localhost:5000/api/v1/projects/"
@@ -188,6 +192,9 @@ class Benchmark(BaseREST):
 
     @classmethod
     def from_rest(cls, project_id: str, study_id: str, benchmark_id: str):
+
+        import requests
+
         request = requests.get(
             f"http://localhost:5000/api/v1/projects/"
             f"{project_id}"
@@ -208,6 +215,8 @@ class BenchmarkCollection(BaseORM):
 
     @classmethod
     def from_rest(cls, project_id: str, study_id: str) -> "BenchmarkCollection":
+
+        import requests
 
         benchmarks_request = requests.get(
             f"http://localhost:5000/api/v1/projects/"
@@ -272,6 +281,8 @@ class Study(BaseREST):
 
     @classmethod
     def from_rest(cls, project_id: str, study_id: str):
+
+        import requests
         request = requests.get(
             f"http://localhost:5000/api/v1/projects/{project_id}/studies/{study_id}"
         )
@@ -287,6 +298,8 @@ class StudyCollection(BaseORM):
 
     @classmethod
     def from_rest(cls, project_id: str) -> "StudyCollection":
+
+        import requests
 
         studies_request = requests.get(
             f"http://localhost:5000/api/v1/projects/{project_id}/studies/"
@@ -342,6 +355,8 @@ class Project(BaseREST):
 
     @classmethod
     def from_rest(cls, project_id: str):
+        import requests
+
         request = requests.get(f"http://localhost:5000/api/v1/projects/{project_id}")
         return cls._from_rest(request)
 
@@ -354,6 +369,7 @@ class ProjectCollection(BaseORM):
 
     @classmethod
     def from_rest(cls) -> "ProjectCollection":
+        import requests
 
         projects_request = requests.get("http://localhost:5000/api/v1/projects/")
         projects_request.raise_for_status()

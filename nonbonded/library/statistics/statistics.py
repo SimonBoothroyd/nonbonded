@@ -1,7 +1,5 @@
 from enum import Enum
 
-import numpy
-
 
 class StatisticType(Enum):
 
@@ -32,6 +30,7 @@ def _compute_statistics(measured_values, estimated_values, statistics):
         Human readable labels for each of the statistics.
     """
     import scipy.stats
+    import numpy
 
     if statistics is None:
         statistics = [StatisticType.R2, StatisticType.RMSE, StatisticType.MSE]
@@ -94,6 +93,7 @@ def _compute_bootstrapped_statistics(
     bootstrap_iterations: int
         The number of bootstrap iterations to perform.
     """
+    import numpy
 
     sample_count = len(measured_values)
 

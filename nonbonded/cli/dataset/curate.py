@@ -1,7 +1,5 @@
 import click
-import pandas
 
-from nonbonded.library.curation.workflow import Workflow, WorkflowSchema
 from nonbonded.library.utilities.logging import (
     get_log_levels,
     setup_timestamp_logging,
@@ -49,6 +47,9 @@ from nonbonded.library.utilities.logging import (
     show_default=True,
 )
 def curate(schema_path, output_path, initial_data_set_path, n_processes, log_level):
+
+    import pandas
+    from nonbonded.library.curation.workflow import Workflow, WorkflowSchema
 
     # Set up logging if requested.
     logging_level = string_to_log_level(log_level)

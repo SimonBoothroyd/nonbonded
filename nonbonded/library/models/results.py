@@ -2,9 +2,6 @@ import abc
 import logging
 from typing import TYPE_CHECKING, List, Optional
 
-import numpy
-import pandas
-import requests
 from pydantic import Field
 
 from nonbonded.library.models import BaseORM, BaseREST
@@ -17,6 +14,7 @@ from nonbonded.library.utilities.exceptions import UnsupportedEndpointError
 
 if TYPE_CHECKING:
 
+    import pandas
     from openff.evaluator.datasets import PhysicalPropertyDataSet
 
 logger = logging.getLogger(__name__)
@@ -148,6 +146,7 @@ class BaseResult(BaseREST, abc.ABC):
 
     @classmethod
     def from_rest(cls, project_id: str, study_id: str, id: str):
+        import requests
 
         request = requests.get(
             f"http://localhost:5000/api/v1/projects/"
@@ -182,6 +181,8 @@ class BenchmarkResult(BaseResult):
         components: List[Component],
         analysis_environments: List[ChemicalEnvironment],
     ) -> str:
+
+        import numpy
 
         sorted_components = [*sorted(components, key=lambda x: x.smiles)]
         assigned_environments = []
@@ -268,6 +269,9 @@ class BenchmarkResult(BaseResult):
         analysis_environments: List[ChemicalEnvironment],
     ) -> List[ResultsEntry]:
 
+        import numpy
+        import pandas
+
         from openff.evaluator import properties
 
         reference_data_frame = reference_data_set.to_pandas()
@@ -351,7 +355,7 @@ class BenchmarkResult(BaseResult):
     @classmethod
     def _results_frame_to_statistics(
         cls,
-        results_frame: pandas.DataFrame,
+        results_frame: "pandas.DataFrame",
         property_type: str,
         n_components: int,
         unit: str,
@@ -389,6 +393,8 @@ class BenchmarkResult(BaseResult):
     def _results_entries_to_statistics(
         cls, results_entries: List[ResultsEntry], bootstrap_iterations: int
     ) -> List[StatisticsEntry]:
+
+        import pandas
 
         results_rows = []
 
