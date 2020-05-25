@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, List, Optional
 
 from pydantic import Field
 
+from nonbonded.library.config import settings
 from nonbonded.library.models import BaseORM, BaseREST
 from nonbonded.library.models.datasets import Component
 from nonbonded.library.models.forcefield import ForceField
@@ -119,7 +120,7 @@ class BaseResult(BaseREST, abc.ABC):
     def _post_endpoint(self):
 
         return (
-            f"http://localhost:5000/api/v1/projects/"
+            f"{settings.API_URL}/projects/"
             f"{self.project_id}"
             f"/studies/"
             f"{self.study_id}"
@@ -135,7 +136,7 @@ class BaseResult(BaseREST, abc.ABC):
     def _delete_endpoint(self):
 
         return (
-            f"http://localhost:5000/api/v1/projects/"
+            f"{settings.API_URL}/projects/"
             f"{self.project_id}"
             f"/studies/"
             f"{self.study_id}"
@@ -149,7 +150,7 @@ class BaseResult(BaseREST, abc.ABC):
         import requests
 
         request = requests.get(
-            f"http://localhost:5000/api/v1/projects/"
+            f"{settings.API_URL}/projects/"
             f"{project_id}"
             f"/studies/"
             f"{study_id}"

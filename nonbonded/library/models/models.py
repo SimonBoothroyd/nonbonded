@@ -1,8 +1,9 @@
 import abc
-import os
 from typing import TYPE_CHECKING, Type, TypeVar
 
 from pydantic.main import BaseModel
+
+from nonbonded.library.config import settings
 
 T = TypeVar("T", bound="BaseREST")
 
@@ -41,12 +42,10 @@ class BaseREST(BaseORM, abc.ABC):
         """
         import requests
 
-        access_token = os.environ["ACCESS_TOKEN"]
-
         request = requests.post(
             url=self._post_endpoint(),
             data=self.json(),
-            headers={"access_token": access_token},
+            headers={"access_token": settings.ACCESS_TOKEN},
         )
         request.raise_for_status()
 
@@ -61,12 +60,10 @@ class BaseREST(BaseORM, abc.ABC):
         """
         import requests
 
-        access_token = os.environ["ACCESS_TOKEN"]
-
         request = requests.put(
             url=self._put_endpoint(),
             data=self.json(),
-            headers={"access_token": access_token},
+            headers={"access_token": settings.ACCESS_TOKEN},
         )
         request.raise_for_status()
 
@@ -81,10 +78,8 @@ class BaseREST(BaseORM, abc.ABC):
         """
         import requests
 
-        access_token = os.environ["ACCESS_TOKEN"]
-
         request = requests.delete(
-            url=self._delete_endpoint(), headers={"access_token": access_token}
+            url=self._delete_endpoint(), headers={"access_token": settings.ACCESS_TOKEN}
         )
         request.raise_for_status()
 

@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 
 from pydantic import Field, root_validator, validator
 
+from nonbonded.library.config import settings
 from nonbonded.library.models import BaseORM, BaseREST
 from nonbonded.library.models.authors import Author
 from nonbonded.library.models.forcebalance import ForceBalanceOptions
@@ -59,7 +60,7 @@ class Optimization(BaseREST):
 
     def _post_endpoint(self):
         return (
-            f"http://localhost:5000/api/v1/projects/"
+            f"{settings.API_URL}/projects/"
             f"{self.project_id}"
             f"/studies/"
             f"{self.study_id}"
@@ -68,7 +69,7 @@ class Optimization(BaseREST):
 
     def _put_endpoint(self):
         return (
-            f"http://localhost:5000/api/v1/projects/"
+            f"{settings.API_URL}/projects/"
             f"{self.project_id}"
             f"/studies/"
             f"{self.study_id}"
@@ -78,7 +79,7 @@ class Optimization(BaseREST):
     def _delete_endpoint(self):
 
         return (
-            f"http://localhost:5000/api/v1/projects/"
+            f"{settings.API_URL}/projects/"
             f"{self.project_id}"
             f"/studies/"
             f"{self.study_id}"
@@ -92,7 +93,7 @@ class Optimization(BaseREST):
         import requests
 
         request = requests.get(
-            f"http://localhost:5000/api/v1/projects/"
+            f"{settings.API_URL}/projects/"
             f"{project_id}"
             f"/studies/"
             f"{study_id}"
@@ -115,7 +116,7 @@ class OptimizationCollection(BaseORM):
         import requests
 
         optimizations_request = requests.get(
-            f"http://localhost:5000/api/v1/projects/"
+            f"{settings.API_URL}/projects/"
             f"{project_id}"
             f"/studies/"
             f"{study_id}"
@@ -163,7 +164,7 @@ class Benchmark(BaseREST):
 
     def _post_endpoint(self):
         return (
-            f"http://localhost:5000/api/v1/projects/"
+            f"{settings.API_URL}/projects/"
             f"{self.project_id}"
             f"/studies/"
             f"{self.study_id}"
@@ -172,7 +173,7 @@ class Benchmark(BaseREST):
 
     def _put_endpoint(self):
         return (
-            f"http://localhost:5000/api/v1/projects/"
+            f"{settings.API_URL}/projects/"
             f"{self.project_id}"
             f"/studies/"
             f"{self.study_id}"
@@ -182,7 +183,7 @@ class Benchmark(BaseREST):
     def _delete_endpoint(self):
 
         return (
-            f"http://localhost:5000/api/v1/projects/"
+            f"{settings.API_URL}/projects/"
             f"{self.project_id}"
             f"/studies/"
             f"{self.study_id}"
@@ -196,7 +197,7 @@ class Benchmark(BaseREST):
         import requests
 
         request = requests.get(
-            f"http://localhost:5000/api/v1/projects/"
+            f"{settings.API_URL}/projects/"
             f"{project_id}"
             f"/studies/"
             f"{study_id}"
@@ -219,7 +220,7 @@ class BenchmarkCollection(BaseORM):
         import requests
 
         benchmarks_request = requests.get(
-            f"http://localhost:5000/api/v1/projects/"
+            f"{settings.API_URL}/projects/"
             f"{project_id}"
             f"/studies/"
             f"{study_id}"
@@ -265,15 +266,15 @@ class Study(BaseREST):
         return values
 
     def _post_endpoint(self):
-        return f"http://localhost:5000/api/v1/projects/{self.project_id}/studies/"
+        return f"{settings.API_URL}/projects/{self.project_id}/studies/"
 
     def _put_endpoint(self):
-        return f"http://localhost:5000/api/v1/projects/{self.project_id}/studies/"
+        return f"{settings.API_URL}/projects/{self.project_id}/studies/"
 
     def _delete_endpoint(self):
 
         return (
-            f"http://localhost:5000/api/v1/projects/"
+            f"{settings.API_URL}/projects/"
             f"{self.project_id}"
             f"/studies/"
             f"{self.id}"
@@ -285,7 +286,7 @@ class Study(BaseREST):
         import requests
 
         request = requests.get(
-            f"http://localhost:5000/api/v1/projects/{project_id}/studies/{study_id}"
+            f"{settings.API_URL}/projects/{project_id}/studies/{study_id}"
         )
 
         return cls._from_rest(request)
@@ -303,7 +304,7 @@ class StudyCollection(BaseORM):
         import requests
 
         studies_request = requests.get(
-            f"http://localhost:5000/api/v1/projects/{project_id}/studies/"
+            f"{settings.API_URL}/projects/{project_id}/studies/"
         )
         studies_request.raise_for_status()
 
@@ -346,19 +347,19 @@ class Project(BaseREST):
     _validate_authors = validator("authors", allow_reuse=True)(not_empty)
 
     def _post_endpoint(self):
-        return "http://127.0.0.1:5000/api/v1/projects/"
+        return f"{settings.API_URL}/projects/"
 
     def _put_endpoint(self):
-        return "http://127.0.0.1:5000/api/v1/projects/"
+        return f"{settings.API_URL}/projects/"
 
     def _delete_endpoint(self):
-        return f"http://127.0.0.1:5000/api/v1/projects/{self.id}"
+        return f"{settings.API_URL}/projects/{self.id}"
 
     @classmethod
     def from_rest(cls, project_id: str):
         import requests
 
-        request = requests.get(f"http://localhost:5000/api/v1/projects/{project_id}")
+        request = requests.get(f"{settings.API_URL}/projects/{project_id}")
         return cls._from_rest(request)
 
 
@@ -372,7 +373,7 @@ class ProjectCollection(BaseORM):
     def from_rest(cls) -> "ProjectCollection":
         import requests
 
-        projects_request = requests.get("http://localhost:5000/api/v1/projects/")
+        projects_request = requests.get("{settings.API_URL}/projects/")
         projects_request.raise_for_status()
 
         projects = ProjectCollection.parse_raw(projects_request.text)

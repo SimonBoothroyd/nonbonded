@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, List, Optional, Type
 
 from pydantic import Field
 
+from nonbonded.library.config import settings
 from nonbonded.library.models import BaseORM, BaseREST
 from nonbonded.library.models.authors import Author
 from nonbonded.library.utilities.exceptions import UnrecognisedPropertyType
@@ -232,20 +233,20 @@ class DataSet(BaseREST):
         return evaluator_set
 
     def _post_endpoint(self):
-        return "http://127.0.0.1:5000/api/v1/datasets/"
+        return f"{settings.API_URL}/datasets/"
 
     def _put_endpoint(self):
         raise NotImplementedError()
 
     def _delete_endpoint(self):
-        return f"http://127.0.0.1:5000/api/v1/datasets/{self.id}"
+        return f"{settings.API_URL}/datasets/{self.id}"
 
     @classmethod
     def from_rest(cls, data_set_id: str):
 
         import requests
 
-        request = requests.get(f"http://localhost:5000/api/v1/datasets/{data_set_id}")
+        request = requests.get(f"{settings.API_URL}/datasets/{data_set_id}")
         return cls._from_rest(request)
 
 
@@ -260,7 +261,7 @@ class DataSetCollection(BaseORM):
 
         import requests
 
-        data_sets_request = requests.get("http://localhost:5000/api/v1/datasets/")
+        data_sets_request = requests.get(f"{settings.API_URL}/datasets/")
         data_sets_request.raise_for_status()
 
         data_sets = DataSetCollection.parse_raw(data_sets_request.text)
