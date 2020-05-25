@@ -283,6 +283,7 @@ class Study(BaseREST):
     def from_rest(cls, project_id: str, study_id: str):
 
         import requests
+
         request = requests.get(
             f"http://localhost:5000/api/v1/projects/{project_id}/studies/{study_id}"
         )

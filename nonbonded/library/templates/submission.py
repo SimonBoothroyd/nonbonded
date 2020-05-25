@@ -37,6 +37,7 @@ class SubmissionTemplate(BaseTemplate, abc.ABC):
     def generate(cls, template_name: str, submission_options: Submission, **options):
 
         from jinja2 import Template
+
         cls._check_unrecognised_options(**options)
 
         template_file_name = get_data_filename(os.path.join("jinja", template_name))

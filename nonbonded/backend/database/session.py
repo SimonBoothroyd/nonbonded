@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from nonbonded.backend.core.config import settings, DatabaseType
+from nonbonded.backend.core.config import DatabaseType, settings
 
 # connect_args={"check_same_thread": False} is required for SQLite
 if settings.DATABASE_TYPE == DatabaseType.SQLite:
