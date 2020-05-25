@@ -1,6 +1,13 @@
+from enum import Enum
 from typing import List, Union
 
 from pydantic import AnyHttpUrl, BaseSettings, validator
+
+
+class DatabaseType(Enum):
+
+    PostgreSql = "PostgreSql"
+    SQLite = "SQLite"
 
 
 class Settings(BaseSettings):
@@ -21,7 +28,14 @@ class Settings(BaseSettings):
 
         raise ValueError(v)
 
+    DATABASE_TYPE: DatabaseType = DatabaseType.PostgreSql
+
     SQLALCHEMY_DATABASE_URI: str = "sqlite:///./nonbonded.db"
+
+    POSTGRESQL_SERVER: str
+    POSTGRESQL_USER: str
+    POSTGRESQL_PASSWORD: str
+    POSTGRESQL_DB: str
 
 
 settings = Settings()

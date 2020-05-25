@@ -1,0 +1,26 @@
+name: test
+channels:
+  - conda-forge
+  - omnia
+  - openeye
+dependencies:
+    # Base depends
+  - python
+  - pip
+
+    # REST dependencies
+  - alembic
+  - fastapi
+  - sqlalchemy
+  - sqlalchemy-utils
+  - typing-extensions
+  - gunicorn
+  - pydantic
+
+    # Core dependencies
+  - click
+  - requests
+
+   # API dependencies
+  - rdkit
+  - cmiles
