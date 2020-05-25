@@ -1,7 +1,8 @@
+import secrets
 from enum import Enum
-from typing import List, Union
+from typing import List, Union, Optional, Dict, Any
 
-from pydantic import AnyHttpUrl, BaseSettings, validator
+from pydantic import AnyHttpUrl, BaseSettings, validator, PostgresDsn, AnyUrl
 
 
 class DatabaseType(Enum):
@@ -12,6 +13,7 @@ class DatabaseType(Enum):
 
 class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
+    SECRET_KEY: str = secrets.token_urlsafe(32)
 
     PROJECT_NAME: str = "nonbonded"
 
@@ -30,12 +32,29 @@ class Settings(BaseSettings):
 
     DATABASE_TYPE: DatabaseType = DatabaseType.PostgreSql
 
-    SQLALCHEMY_DATABASE_URI: str = "sqlite:///./nonbonded.db"
+    POSTGRES_SERVER: str
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_DB: str
 
-    POSTGRESQL_SERVER: str
-    POSTGRESQL_USER: str
-    POSTGRESQL_PASSWORD: str
-    POSTGRESQL_DB: str
+    SQLALCHEMY_DATABASE_URI: Optional[AnyUrl] = None
+
+    @validator("SQLALCHEMY_DATABASE_URI", pre=True)
+    def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
+
+        if isinstance(v, str):
+            return v
+
+        if values.get("DATABASE_TYPE") != "PostgreSql":
+            raise NotImplementedError()
+
+        return PostgresDsn.build(
+            scheme="postgresql",
+            user=values.get("POSTGRES_USER"),
+            password=values.get("POSTGRES_PASSWORD"),
+            host=values.get("POSTGRES_SERVER"),
+            path=f"/{values.get('POSTGRES_DB') or ''}",
+        )
 
 
 settings = Settings()

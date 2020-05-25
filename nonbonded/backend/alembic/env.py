@@ -3,7 +3,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from nonbonded.backend.core.config import settings, DatabaseType
+from nonbonded.backend.core.config import settings
 from nonbonded.backend.database import models
 
 # this is the Alembic Config object, which provides
@@ -20,19 +20,7 @@ target_metadata = models.Base.metadata
 
 
 def get_url():
-
-    if settings.DATABASE_TYPE == DatabaseType.SQLite:
-        return settings.SQLALCHEMY_DATABASE_URI
-    elif settings.DATABASE_TYPE == DatabaseType.PostgreSql:
-
-        user = settings.POSTGRESQL_USER
-        password = settings.POSTGRESQL_PASSWORD
-        server = settings.POSTGRESQL_SERVER
-        db = settings.POSTGRESQL_DB
-
-        return f"postgresql://{user}:{password}@{server}/{db}"
-
-    raise NotImplementedError
+    return settings.SQLALCHEMY_DATABASE_URI
 
 
 def run_migrations_offline():
