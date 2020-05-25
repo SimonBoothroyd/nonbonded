@@ -32,14 +32,14 @@ class Settings(BaseSettings):
 
     DATABASE_TYPE: DatabaseType = DatabaseType.PostgreSql
 
-    POSTGRES_SERVER: str
-    POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
-    POSTGRES_DB: str
+    POSTGRES_SERVER: Optional[str] = None
+    POSTGRES_USER: Optional[str] = None
+    POSTGRES_PASSWORD: Optional[str] = None
+    POSTGRES_DB: Optional[str] = None
 
-    SQLALCHEMY_DATABASE_URI: Optional[AnyUrl] = None
+    DATABASE_URL: Optional[AnyUrl] = None
 
-    @validator("SQLALCHEMY_DATABASE_URI", pre=True)
+    @validator("DATABASE_URL", pre=True)
     def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
 
         if isinstance(v, str):
@@ -50,6 +50,11 @@ class Settings(BaseSettings):
             and values.get("DATABASE_TYPE") != "PostgreSql"
         ):
             raise NotImplementedError()
+
+        assert values.get("POSTGRES_USER") is not None
+        assert values.get("POSTGRES_PASSWORD") is not None
+        assert values.get("POSTGRES_SERVER") is not None
+        assert values.get("POSTGRES_DB") is not None
 
         return PostgresDsn.build(
             scheme="postgresql",

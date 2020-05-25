@@ -5,10 +5,10 @@ from nonbonded.backend.core.config import DatabaseType, settings
 
 if settings.DATABASE_TYPE == DatabaseType.SQLite:
     engine = create_engine(
-        settings.SQLALCHEMY_DATABASE_URI, connect_args={"check_same_thread": False}
+        settings.DATABASE_URL, connect_args={"check_same_thread": False}
     )
 elif settings.DATABASE_TYPE == DatabaseType.PostgreSql:
-    engine = create_engine(settings.SQLALCHEMY_DATABASE_URI)
+    engine = create_engine(settings.DATABASE_URL)
 
 else:
     raise NotImplementedError
