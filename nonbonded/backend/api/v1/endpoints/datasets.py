@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends
+from fastapi.openapi.models import APIKey
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.api import depends
+from nonbonded.backend.core.security import check_access_token
 from nonbonded.backend.database.crud.datasets import DataSetCRUD
 from nonbonded.backend.database.utilities.exceptions import DataSetInUseError
 from nonbonded.library.models.datasets import DataSet, DataSetCollection
@@ -20,7 +22,11 @@ async def get_data_sets(
 
 
 @router.post("/")
-async def post_data_set(data_set: DataSet, db: Session = Depends(depends.get_db)):
+async def post_data_set(
+    data_set: DataSet,
+    db: Session = Depends(depends.get_db),
+    _: APIKey = Depends(check_access_token),
+):
 
     try:
         db_data_set = DataSetCRUD.create(db, data_set)
@@ -43,7 +49,11 @@ async def get_data_set(data_set_id, db: Session = Depends(depends.get_db)):
 
 
 @router.delete("/{data_set_id}")
-async def delete_data_set(data_set_id, db: Session = Depends(depends.get_db)):
+async def delete_data_set(
+    data_set_id,
+    db: Session = Depends(depends.get_db),
+    _: APIKey = Depends(check_access_token),
+):
 
     try:
         DataSetCRUD.delete(db, data_set_id)

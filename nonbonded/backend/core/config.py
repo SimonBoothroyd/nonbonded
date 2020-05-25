@@ -1,8 +1,8 @@
 import secrets
 from enum import Enum
-from typing import List, Union, Optional, Dict, Any
+from typing import Any, Dict, List, Optional, Union
 
-from pydantic import AnyHttpUrl, BaseSettings, validator, PostgresDsn, AnyUrl
+from pydantic import AnyHttpUrl, AnyUrl, BaseSettings, PostgresDsn, validator
 
 
 class DatabaseType(Enum):
@@ -13,7 +13,7 @@ class DatabaseType(Enum):
 
 class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
-    SECRET_KEY: str = secrets.token_urlsafe(32)
+    ACCESS_TOKEN: str = secrets.token_urlsafe(32)
 
     PROJECT_NAME: str = "nonbonded"
 

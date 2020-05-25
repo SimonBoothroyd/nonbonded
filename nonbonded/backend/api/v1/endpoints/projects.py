@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends
+from fastapi.openapi.models import APIKey
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.api import depends
+from nonbonded.backend.core.security import check_access_token
 from nonbonded.backend.database.crud.projects import (
     BenchmarkCRUD,
     OptimizationCRUD,
@@ -38,7 +40,11 @@ async def get_projects(
 
 
 @router.post("/")
-async def post_project(project: Project, db: Session = Depends(depends.get_db)):
+async def post_project(
+    project: Project,
+    db: Session = Depends(depends.get_db),
+    _: APIKey = Depends(check_access_token),
+):
 
     try:
         db_project = ProjectCRUD.create(db=db, project=project)
@@ -54,7 +60,11 @@ async def post_project(project: Project, db: Session = Depends(depends.get_db)):
 
 
 @router.put("/")
-async def put_project(project: Project, db: Session = Depends(depends.get_db)):
+async def put_project(
+    project: Project,
+    db: Session = Depends(depends.get_db),
+    _: APIKey = Depends(check_access_token),
+):
 
     try:
         db_project = ProjectCRUD.update(db=db, project=project)
@@ -75,7 +85,11 @@ async def get_project(project_id, db: Session = Depends(depends.get_db)):
 
 
 @router.delete("/{project_id}")
-async def delete_project(project_id, db: Session = Depends(depends.get_db)):
+async def delete_project(
+    project_id,
+    db: Session = Depends(depends.get_db),
+    _: APIKey = Depends(check_access_token),
+):
 
     try:
         db_project = ProjectCRUD.delete(db, project_id)
@@ -97,7 +111,11 @@ async def get_studies(project_id, db: Session = Depends(depends.get_db)):
 
 
 @router.post("/{project_id}/studies/")
-async def post_study(study: Study, db: Session = Depends(depends.get_db)):
+async def post_study(
+    study: Study,
+    db: Session = Depends(depends.get_db),
+    _: APIKey = Depends(check_access_token),
+):
 
     try:
         db_study = StudyCRUD.create(db=db, study=study)
@@ -113,7 +131,11 @@ async def post_study(study: Study, db: Session = Depends(depends.get_db)):
 
 
 @router.put("/{project_id}/studies/")
-async def put_study(study: Study, db: Session = Depends(depends.get_db)):
+async def put_study(
+    study: Study,
+    db: Session = Depends(depends.get_db),
+    _: APIKey = Depends(check_access_token),
+):
 
     try:
         db_study = StudyCRUD.update(db=db, study=study)
@@ -149,7 +171,12 @@ async def get_study_data_sets(
 
 
 @router.delete("/{project_id}/studies/{study_id}")
-async def delete_study(project_id, study_id, db: Session = Depends(depends.get_db)):
+async def delete_study(
+    project_id,
+    study_id,
+    db: Session = Depends(depends.get_db),
+    _: APIKey = Depends(check_access_token),
+):
 
     try:
         db_study = StudyCRUD.delete(db, project_id, study_id)
@@ -180,7 +207,9 @@ async def get_optimizations(
 
 @router.post("/{project_id}/studies/{study_id}/optimizations/")
 async def post_optimization(
-    optimization: Optimization, db: Session = Depends(depends.get_db)
+    optimization: Optimization,
+    db: Session = Depends(depends.get_db),
+    _: APIKey = Depends(check_access_token),
 ):
 
     try:
@@ -198,7 +227,9 @@ async def post_optimization(
 
 @router.put("/{project_id}/studies/{study_id}/optimizations/")
 async def put_optimization(
-    optimization: Optimization, db: Session = Depends(depends.get_db)
+    optimization: Optimization,
+    db: Session = Depends(depends.get_db),
+    _: APIKey = Depends(check_access_token),
 ):
 
     try:
@@ -226,7 +257,11 @@ async def get_optimization(
 
 @router.delete("/{project_id}/studies/{study_id}/optimizations/{optimization_id}")
 async def delete_optimization(
-    project_id, study_id, optimization_id, db: Session = Depends(depends.get_db)
+    project_id,
+    study_id,
+    optimization_id,
+    db: Session = Depends(depends.get_db),
+    _: APIKey = Depends(check_access_token),
 ):
 
     try:
@@ -249,7 +284,11 @@ async def get_benchmarks(project_id, study_id, db: Session = Depends(depends.get
 
 
 @router.post("/{project_id}/studies/{study_id}/benchmarks/")
-async def post_benchmark(benchmark: Benchmark, db: Session = Depends(depends.get_db)):
+async def post_benchmark(
+    benchmark: Benchmark,
+    db: Session = Depends(depends.get_db),
+    _: APIKey = Depends(check_access_token),
+):
 
     try:
         db_benchmark = BenchmarkCRUD.create(db=db, benchmark=benchmark)
@@ -265,7 +304,11 @@ async def post_benchmark(benchmark: Benchmark, db: Session = Depends(depends.get
 
 
 @router.put("/{project_id}/studies/{study_id}/benchmarks/")
-async def put_benchmark(benchmark: Benchmark, db: Session = Depends(depends.get_db)):
+async def put_benchmark(
+    benchmark: Benchmark,
+    db: Session = Depends(depends.get_db),
+    _: APIKey = Depends(check_access_token),
+):
 
     try:
         db_benchmark = BenchmarkCRUD.update(db=db, benchmark=benchmark)
@@ -292,7 +335,11 @@ async def get_benchmark(
 
 @router.delete("/{project_id}/studies/{study_id}/benchmarks/{benchmark_id}")
 async def delete_benchmark(
-    project_id, study_id, benchmark_id, db: Session = Depends(depends.get_db)
+    project_id,
+    study_id,
+    benchmark_id,
+    db: Session = Depends(depends.get_db),
+    _: APIKey = Depends(check_access_token),
 ):
 
     try:
@@ -309,7 +356,9 @@ async def delete_benchmark(
     "/{project_id}/studies/{study_id}/optimizations/{optimization_id}/results/"
 )
 async def post_optimization_result_result(
-    optimization_result: OptimizationResult, db: Session = Depends(depends.get_db)
+    optimization_result: OptimizationResult,
+    db: Session = Depends(depends.get_db),
+    _: APIKey = Depends(check_access_token),
 ):
 
     try:
@@ -343,7 +392,11 @@ async def get_optimization_result(
     "/{project_id}/studies/{study_id}/optimizations/{optimization_id}/results/"
 )
 async def delete_optimization_result(
-    project_id, study_id, optimization_id, db: Session = Depends(depends.get_db)
+    project_id,
+    study_id,
+    optimization_id,
+    db: Session = Depends(depends.get_db),
+    _: APIKey = Depends(check_access_token),
 ):
 
     try:
@@ -358,7 +411,9 @@ async def delete_optimization_result(
 
 @router.post("/{project_id}/studies/{study_id}/benchmarks/{benchmark_id}/results/")
 async def post_benchmark_result(
-    benchmark_result: BenchmarkResult, db: Session = Depends(depends.get_db)
+    benchmark_result: BenchmarkResult,
+    db: Session = Depends(depends.get_db),
+    _: APIKey = Depends(check_access_token),
 ):
 
     try:
@@ -390,7 +445,11 @@ async def get_benchmark_result(
 
 @router.delete("/{project_id}/studies/{study_id}/benchmarks/{benchmark_id}/results/")
 async def delete_benchmark_result(
-    project_id, study_id, benchmark_id, db: Session = Depends(depends.get_db)
+    project_id,
+    study_id,
+    benchmark_id,
+    db: Session = Depends(depends.get_db),
+    _: APIKey = Depends(check_access_token),
 ):
 
     try:
