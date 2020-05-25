@@ -1,4 +1,5 @@
 import abc
+import os
 from typing import TYPE_CHECKING, Type, TypeVar
 
 from pydantic.main import BaseModel
@@ -40,7 +41,13 @@ class BaseREST(BaseORM, abc.ABC):
         """
         import requests
 
-        request = requests.post(url=self._post_endpoint(), data=self.json())
+        access_token = os.environ["ACCESS_TOKEN"]
+
+        request = requests.post(
+            url=self._post_endpoint(),
+            data=self.json(),
+            headers={"access_token": access_token},
+        )
         request.raise_for_status()
 
         return_object = self.__class__.parse_raw(request.text)
@@ -54,7 +61,13 @@ class BaseREST(BaseORM, abc.ABC):
         """
         import requests
 
-        request = requests.put(url=self._put_endpoint(), data=self.json())
+        access_token = os.environ["ACCESS_TOKEN"]
+
+        request = requests.put(
+            url=self._put_endpoint(),
+            data=self.json(),
+            headers={"access_token": access_token},
+        )
         request.raise_for_status()
 
         return_object = self.__class__.parse_raw(request.text)
@@ -68,7 +81,11 @@ class BaseREST(BaseORM, abc.ABC):
         """
         import requests
 
-        request = requests.delete(url=self._delete_endpoint())
+        access_token = os.environ["ACCESS_TOKEN"]
+
+        request = requests.delete(
+            url=self._delete_endpoint(), headers={"access_token": access_token}
+        )
         request.raise_for_status()
 
     @classmethod

@@ -45,7 +45,10 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return v
 
-        if values.get("DATABASE_TYPE") != "PostgreSql":
+        if (
+            values.get("DATABASE_TYPE") != DatabaseType.PostgreSql
+            and values.get("DATABASE_TYPE") != "PostgreSql"
+        ):
             raise NotImplementedError()
 
         return PostgresDsn.build(
