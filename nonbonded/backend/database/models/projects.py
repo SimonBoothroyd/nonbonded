@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Float, ForeignKey, Integer, String, Table
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Query
 from sqlalchemy_utils import auto_delete_orphans
 
-from nonbonded.backend.database.models import Base
+from nonbonded.backend.database.models import Base, UniqueMixin
 
 author_projects_table = Table(
     "author_projects",
@@ -61,6 +61,23 @@ optimization_parameters_table = Table(
     ),
 )
 
+optimization_force_field_table = Table(
+    "optimization_force_fields",
+    Base.metadata,
+    Column(
+        "optimization_id",
+        Integer,
+        ForeignKey("optimizations.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "force_field_id",
+        Integer,
+        ForeignKey("initial_force_fields.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
+
 
 class Denominator(Base):
 
@@ -84,6 +101,22 @@ class Prior(Base):
     value = Column(Float)
 
 
+class InitialForceField(UniqueMixin, Base):
+
+    __tablename__ = "initial_force_fields"
+
+    id = Column(Integer, primary_key=True, index=True)
+    inner_xml = Column(String, unique=True)
+
+    @classmethod
+    def unique_hash(cls, inner_xml):
+        return inner_xml
+
+    @classmethod
+    def unique_filter(cls, query: Query, inner_xml):
+        return query.filter(InitialForceField.inner_xml == inner_xml)
+
+
 class Optimization(Base):
 
     __tablename__ = "optimizations"
@@ -101,7 +134,12 @@ class Optimization(Base):
     training_set_id = Column(String, ForeignKey("data_sets.id"), nullable=False)
     training_set = relationship("DataSet", back_populates="optimizations")
 
-    initial_force_field = Column(String)
+    initial_force_field = relationship(
+        "InitialForceField",
+        secondary=optimization_force_field_table,
+        backref="optimizations",
+        uselist=False
+    )
 
     parameters_to_train = relationship(
         "Parameter", secondary=optimization_parameters_table, backref="optimizations"
@@ -187,4 +225,5 @@ class Project(Base):
     )
 
 
+auto_delete_orphans(Optimization.initial_force_field)
 auto_delete_orphans(Optimization.parameters_to_train)

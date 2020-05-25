@@ -39,6 +39,13 @@ class BaseREST(BaseORM, abc.ABC):
 
         An exception will be raised if the API already contains an instance of this
         object with the same identifiers.
+
+        Notes
+        -----
+        The RESTful API returns back the object which was posted - this may not be
+        identical to the initially submitted object as the API may have assigned /
+        changed some of the ids. The returned object should **always** be used in
+        place of the initial one.
         """
         import requests
 

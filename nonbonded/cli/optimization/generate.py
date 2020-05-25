@@ -103,7 +103,6 @@ def generate(
 
     from forcebalance.evaluator_io import Evaluator_SMIRNOFF
     from openff.evaluator import unit
-    from openforcefield.typing.engines.smirnoff import ForceField
 
     # Set up logging if requested.
     logging_level = string_to_log_level(log_level)
@@ -129,7 +128,7 @@ def generate(
     force_field_directory = os.path.join(root_directory, "forcefield")
     os.makedirs(force_field_directory, exist_ok=True)
 
-    force_field = ForceField(optimization.initial_force_field)
+    off_force_field = optimization.initial_force_field.to_openff()
 
     # Add the required cosmetic attributes to the force field.
     parameters_to_train = defaultdict(lambda: defaultdict(list))
@@ -146,15 +145,13 @@ def generate(
             attributes = parameters_to_train[handler_type][smirks]
             attributes_string = ", ".join(attributes)
 
-            parameter_handler = force_field.get_parameter_handler(handler_type)
+            parameter_handler = off_force_field.get_parameter_handler(handler_type)
 
             parameter = parameter_handler.parameters[smirks]
             parameter.add_cosmetic_attribute("parameterize", attributes_string)
 
-    force_field_path = os.path.join(
-        force_field_directory, optimization.initial_force_field
-    )
-    force_field.to_file(
+    force_field_path = os.path.join(force_field_directory, "force-field.offxml")
+    off_force_field.to_file(
         force_field_path, io_format="offxml", discard_cosmetic_attributes=False
     )
 
@@ -162,7 +159,7 @@ def generate(
     optimize_in_path = os.path.join(root_directory, "optimize.in")
 
     optimize_in_contents = ForceBalanceInput.generate(
-        optimization.initial_force_field,
+        "force-field.offxml",
         optimization.force_balance_input.max_iterations,
         optimization.force_balance_input.convergence_step_criteria,
         optimization.force_balance_input.convergence_objective_criteria,

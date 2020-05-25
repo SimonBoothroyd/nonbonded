@@ -8,7 +8,7 @@ from nonbonded.library.config import settings
 from nonbonded.library.models import BaseORM, BaseREST
 from nonbonded.library.models.authors import Author
 from nonbonded.library.models.forcebalance import ForceBalanceOptions
-from nonbonded.library.models.forcefield import Parameter
+from nonbonded.library.models.forcefield import Parameter, ForceField
 from nonbonded.library.models.validators.collection import not_empty
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 
@@ -28,11 +28,10 @@ class Optimization(BaseREST):
         "optimization.",
     )
 
-    initial_force_field: str = Field(
+    initial_force_field: ForceField = Field(
         ...,
         description="The file name of the force field which will be used as "
-        "the starting point for all optimizations. Currently this must be the name "
-        "of a force field in the `openforcefields` GitHub repository.",
+        "the starting point for all optimizations.",
     )
 
     parameters_to_train: List[Parameter] = Field(

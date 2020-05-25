@@ -30,7 +30,7 @@ class DataSetEntry(Base):
 
     __tablename__ = "data_set_entries"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True, unique=True)
     parent_id = Column(String, ForeignKey("data_sets.id"))
 
     property_type = Column(String)

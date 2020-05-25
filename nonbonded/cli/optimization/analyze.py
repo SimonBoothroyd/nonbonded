@@ -4,9 +4,10 @@ from glob import glob
 
 import click
 
+from nonbonded.library.models.datasets import DataSet
 from nonbonded.library.models.forcefield import ForceField
 from nonbonded.library.models.projects import Optimization
-from nonbonded.library.models.results import BenchmarkResult, OptimizationResult
+from nonbonded.library.models.results import AnalysedResult, OptimizationResult
 from nonbonded.library.utilities.exceptions import ForceFieldNotFound
 from nonbonded.library.utilities.logging import (
     get_log_levels,
@@ -26,13 +27,9 @@ logger = logging.getLogger(__name__)
     show_default=True,
 )
 def analyze(log_level):
-    import numpy
 
     from forcebalance.nifty import lp_load
-
     from openff.evaluator.client import RequestResult
-    from openff.evaluator.datasets import PhysicalPropertyDataSet
-
     from openforcefield.typing.engines.smirnoff import ForceField as OFFForceField
 
     # Set up logging if requested.
@@ -50,7 +47,7 @@ def analyze(log_level):
 
     # Load in the refit force field (if it exists)
     refit_force_field_path = os.path.join(
-        "result", "optimize", optimization.initial_force_field
+        "result", "optimize", "force-field.offxml"
     )
 
     if not os.path.isfile(refit_force_field_path):
@@ -64,14 +61,14 @@ def analyze(log_level):
     refit_force_field_off = OFFForceField(
         refit_force_field_path, allow_cosmetic_attributes=True
     )
-    refit_force_field = ForceField(
-        inner_xml=refit_force_field_off.to_string(discard_cosmetic_attributes=True)
-    )
+    refit_force_field = ForceField.from_openff(refit_force_field_off)
 
     # Load the reference data set
-    reference_data_set = PhysicalPropertyDataSet.from_json(
+    reference_data_set = DataSet.parse_file(
         os.path.join(
-            "targets", optimization.force_balance_input.target_name, "training-set.json"
+            "targets",
+            optimization.force_balance_input.target_name,
+            "training-set-definition.json",
         )
     )
 
@@ -91,7 +88,8 @@ def analyze(log_level):
         )
 
     # Analyse the results of each iteration.
-    objective_function = []
+    objective_function = {}
+    iteration_statistics = {}
 
     for iteration in range(n_iterations):
 
@@ -103,25 +101,23 @@ def analyze(log_level):
         iteration_results_path = os.path.join(iteration_directory, "results.json")
 
         if not os.path.isfile(iteration_results_path):
+
             logger.info(
                 f"The results file could not be found for iteration {iteration}."
             )
 
-            objective_function.append(numpy.nan)
             continue
 
         iteration_results = RequestResult.from_json(iteration_results_path)
         estimated_data_set = iteration_results.estimated_properties
 
         # Generate statistics about each iteration.
-        analyzed_results = BenchmarkResult.from_evaluator(
-            project_id=optimization.project_id,
-            study_id=optimization.study_id,
-            benchmark_id=optimization.id,
+        analyzed_results = AnalysedResult.from_evaluator(
             reference_data_set=reference_data_set,
             estimated_data_set=estimated_data_set,
             analysis_environments=optimization.analysis_environments,
         )
+        iteration_statistics[iteration] = analyzed_results.statistic_entries
 
         # Save the results
         with open(
@@ -134,7 +130,7 @@ def analyze(log_level):
         objective_file_path = os.path.join(iteration_directory, "objective.p")
         objective_statistics = lp_load(objective_file_path)
 
-        objective_function.append(objective_statistics["X"])
+        objective_function[iteration] = objective_statistics["X"]
 
     # Save the full results
     optimization_results = OptimizationResult(
@@ -143,6 +139,7 @@ def analyze(log_level):
         id=optimization.id,
         objective_function=objective_function,
         refit_force_field=refit_force_field,
+        statistics=iteration_statistics,
     )
 
     with open(os.path.join(output_directory, "optimization-results.json"), "w") as file:

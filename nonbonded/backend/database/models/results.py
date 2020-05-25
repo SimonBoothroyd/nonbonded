@@ -4,53 +4,11 @@ from sqlalchemy.orm import relationship
 from nonbonded.backend.database.models import Base
 
 
-class ResultsComponent(Base):
+class BaseStatisticsEntry(Base):
 
-    __tablename__ = "results_components"
-
-    id = Column(Integer, primary_key=True, index=True)
-    parent_id = Column(Integer, ForeignKey("results_entries.id"))
-
-    smiles = Column(String)
-
-    mole_fraction = Column(Float)
-    exact_amount = Column(Integer)
-
-    role = Column(String)
-
-
-class ResultsEntry(Base):
-
-    __tablename__ = "results_entries"
+    __abstract__ = True
 
     id = Column(Integer, primary_key=True, index=True)
-    parent_id = Column(Integer, ForeignKey("benchmark_results.id"))
-
-    property_type = Column(String)
-
-    temperature = Column(Float)
-    pressure = Column(Float)
-    phase = Column(String)
-
-    components = relationship("ResultsComponent", cascade="all, delete-orphan")
-
-    unit = Column(String)
-
-    reference_value = Column(Float)
-    reference_std_error = Column(Float)
-
-    estimated_value = Column(Float)
-    estimated_std_error = Column(Float)
-
-    category = Column(String)
-
-
-class StatisticsEntry(Base):
-
-    __tablename__ = "statistics_entries"
-
-    id = Column(Integer, primary_key=True, index=True)
-    parent_id = Column(Integer, ForeignKey("benchmark_results.id"))
 
     statistics_type = Column(String)
 
@@ -59,12 +17,31 @@ class StatisticsEntry(Base):
 
     category = Column(String)
 
-    unit = Column(String)
-
     value = Column(Float)
 
     lower_95_ci = Column(Float)
     upper_95_ci = Column(Float)
+
+
+class BenchmarkResultsEntry(Base):
+
+    __tablename__ = "benchmark_results_entries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    parent_id = Column(Integer, ForeignKey("benchmark_results.id"), nullable=False)
+
+    reference_id = Column(Integer, ForeignKey("data_set_entries.id"), nullable=False)
+
+    estimated_value = Column(Float)
+    estimated_std_error = Column(Float)
+
+    category = Column(String)
+
+
+class BenchmarkStatisticsEntry(BaseStatisticsEntry):
+
+    __tablename__ = "benchmark_statistics_entries"
+    parent_id = Column(Integer, ForeignKey("benchmark_results.id"), nullable=False)
 
 
 class BenchmarkResult(Base):
@@ -76,8 +53,12 @@ class BenchmarkResult(Base):
     parent_id = Column(Integer, ForeignKey("benchmarks.id"), nullable=False)
     parent = relationship("Benchmark", back_populates="results")
 
-    statistic_entries = relationship("StatisticsEntry", cascade="all, delete-orphan")
-    results_entries = relationship("ResultsEntry", cascade="all, delete-orphan")
+    results_entries = relationship(
+        "BenchmarkResultsEntry", cascade="all, delete-orphan", lazy="joined"
+    )
+    statistic_entries = relationship(
+        "BenchmarkStatisticsEntry", cascade="all, delete-orphan", lazy="joined"
+    )
 
 
 class ObjectiveFunction(Base):
@@ -105,6 +86,14 @@ class RefitForceField(Base):
     inner_xml = Column(String, index=True, unique=True)
 
 
+class OptimizationStatisticsEntry(BaseStatisticsEntry):
+
+    __tablename__ = "optimization_statistics_entries"
+
+    parent_id = Column(Integer, ForeignKey("optimization_results.id"), nullable=False)
+    iteration = Column(Integer)
+
+
 class OptimizationResult(Base):
 
     __tablename__ = "optimization_results"
@@ -114,7 +103,12 @@ class OptimizationResult(Base):
     parent_id = Column(Integer, ForeignKey("optimizations.id"), nullable=False)
     parent = relationship("Optimization", back_populates="results")
 
-    objective_function = relationship("ObjectiveFunction", cascade="all, delete-orphan")
+    objective_function = relationship(
+        "ObjectiveFunction", cascade="all, delete-orphan", lazy="joined"
+    )
+    statistics = relationship(
+        "OptimizationStatisticsEntry", cascade="all, delete-orphan", lazy="joined"
+    )
 
     refit_force_field = relationship(
         "RefitForceField",

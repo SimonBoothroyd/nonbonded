@@ -19,7 +19,6 @@ class DataSetEntryCRUD:
             temperature=data_set_entry.temperature,
             pressure=data_set_entry.pressure,
             phase=data_set_entry.phase,
-            unit=data_set_entry.unit,
             value=data_set_entry.value,
             std_error=data_set_entry.std_error,
             doi=data_set_entry.doi,
@@ -41,11 +40,11 @@ class DataSetEntryCRUD:
 
         # noinspection PyTypeChecker
         data_set_entry = datasets.DataSetEntry(
+            id=db_data_set_entry.id,
             property_type=db_data_set_entry.property_type,
             temperature=db_data_set_entry.temperature,
             pressure=db_data_set_entry.pressure,
             phase=db_data_set_entry.phase,
-            unit=db_data_set_entry.unit,
             value=db_data_set_entry.value,
             std_error=db_data_set_entry.std_error,
             doi=db_data_set_entry.doi,

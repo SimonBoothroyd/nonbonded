@@ -3,6 +3,7 @@ import os
 
 import click
 
+from nonbonded.library.models.datasets import DataSet
 from nonbonded.library.models.projects import Benchmark
 from nonbonded.library.models.results import BenchmarkResult
 from nonbonded.library.utilities.logging import (
@@ -25,7 +26,6 @@ logger = logging.getLogger(__name__)
 def analyze(log_level):
 
     from openff.evaluator.client import RequestResult
-    from openff.evaluator.datasets import PhysicalPropertyDataSet
 
     # Set up logging if requested.
     logging_level = string_to_log_level(log_level)
@@ -41,7 +41,7 @@ def analyze(log_level):
     os.makedirs(output_directory, exist_ok=True)
 
     # Load the reference data set
-    reference_data_set = PhysicalPropertyDataSet.from_json("test-set.json")
+    reference_data_set = DataSet.parse_file("test-set-definition.json")
 
     # Load in the request results.
     request_results: RequestResult = RequestResult.from_json("results.json")

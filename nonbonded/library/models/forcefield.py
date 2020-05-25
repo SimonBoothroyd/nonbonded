@@ -33,6 +33,13 @@ class ForceField(BaseORM):
         "force field format",
     )
 
+    @classmethod
+    def from_openff(cls, force_field: "OpenForceField") -> "ForceField":
+
+        return ForceField(
+            inner_xml=force_field.to_string(discard_cosmetic_attributes=True)
+        )
+
     def to_openff(self) -> "OpenForceField":
 
         from openforcefield.typing.engines.smirnoff.forcefield import ForceField

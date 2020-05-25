@@ -81,7 +81,9 @@ class OptimizationCRUD:
             force_balance_input=models.ForceBalanceOptions(
                 **optimization.force_balance_input.dict()
             ),
-            initial_force_field=optimization.initial_force_field,
+            initial_force_field=models.InitialForceField.as_unique(
+                db, inner_xml=optimization.initial_force_field.inner_xml
+            ),
             denominators=[
                 models.Denominator(property_type=key, value=value)
                 for key, value in optimization.denominators.items()
@@ -167,7 +169,9 @@ class OptimizationCRUD:
             raise DataSetNotFoundError(optimization.training_set_id)
 
         db_optimization.training_set = training_set
-        db_optimization.initial_force_field = optimization.initial_force_field
+        db_optimization.initial_force_field = models.InitialForceField.as_unique(
+            db, inner_xml=optimization.initial_force_field.inner_xml
+        )
 
         db_optimization.parameters_to_train = [
             ParameterCRUD.create(db, x) for x in optimization.parameters_to_train

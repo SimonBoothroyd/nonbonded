@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.database import models
@@ -9,56 +11,6 @@ from nonbonded.backend.database.utilities.exceptions import (
     OptimizationResultExistsError,
 )
 from nonbonded.library.models import results
-
-
-class ResultEntryCRUD:
-    @staticmethod
-    def create(results_entry: results.ResultsEntry) -> models.ResultsEntry:
-
-        results_entry_dict = results_entry.dict()
-        results_entry_dict["components"] = [
-            models.ResultsComponent(**component.dict())
-            for component in results_entry.components
-        ]
-
-        db_results_entry = models.ResultsEntry(**results_entry_dict)
-        return db_results_entry
-
-    @staticmethod
-    def db_to_model(db_results_entry: models.ResultsEntry) -> results.ResultsEntry:
-
-        # noinspection PyTypeChecker
-        results_entry = models.ResultsEntry(
-            property_type=db_results_entry.property_type,
-            temperature=db_results_entry.temperature,
-            pressure=db_results_entry.pressure,
-            phase=db_results_entry.phase,
-            unit=db_results_entry.unit,
-            reference_value=db_results_entry.reference_value,
-            reference_std_error=db_results_entry.reference_std_error,
-            estimated_value=db_results_entry.estimated_value,
-            estimated_std_error=db_results_entry.estimated_std_error,
-            category=db_results_entry.category,
-            components=db_results_entry.components,
-        )
-
-        return results_entry
-
-
-class StatisticsEntryCRUD:
-    @staticmethod
-    def create(statistics_entry: results.StatisticsEntry) -> models.StatisticsEntry:
-        # noinspection PyTypeChecker
-        db_statistics_entry = models.StatisticsEntry(**statistics_entry.dict())
-
-        return db_statistics_entry
-
-    @staticmethod
-    def db_to_model(
-        db_statistics_entry: models.StatisticsEntry,
-    ) -> results.StatisticsEntry:
-
-        return db_statistics_entry
 
 
 class BenchmarkResultCRUD:
@@ -112,11 +64,10 @@ class BenchmarkResultCRUD:
         db_benchmark_result = models.BenchmarkResult(
             parent=db_benchmark,
             statistic_entries=[
-                StatisticsEntryCRUD.create(x)
-                for x in benchmark_result.statistic_entries
+                x for x in benchmark_result.analysed_result.statistic_entries
             ],
             results_entries=[
-                ResultEntryCRUD.create(x) for x in benchmark_result.results_entries
+                x for x in benchmark_result.analysed_result.results_entries
             ],
         )
 
@@ -162,18 +113,16 @@ class BenchmarkResultCRUD:
         project_id = db_benchmark_result.parent.parent.parent.identifier
 
         # noinspection PyTypeChecker
+        analysed_result = results.AnalysedResult(
+            statistic_entries=[x for x in db_benchmark_result.statistic_entries],
+            results_entries=[x for x in db_benchmark_result.results_entries],
+        )
+
         benchmark_result = results.BenchmarkResult(
             project_id=project_id,
             study_id=study_id,
             id=benchmark_id,
-            statistic_entries=[
-                StatisticsEntryCRUD.db_to_model(x)
-                for x in db_benchmark_result.statistic_entries
-            ],
-            results_entries=[
-                ResultEntryCRUD.db_to_model(x)
-                for x in db_benchmark_result.results_entries
-            ],
+            analysed_result=analysed_result,
         )
 
         return benchmark_result
@@ -238,6 +187,13 @@ class OptimizationResultCRUD:
             refit_force_field=models.RefitForceField(
                 inner_xml=optimization_result.refit_force_field.inner_xml
             ),
+            statistics=[
+                models.OptimizationStatisticsEntry(
+                    **{iteration: iteration, **statistic.dict()}
+                )
+                for iteration, statistics in optimization_result.statistics.items()
+                for statistic in statistics
+            ],
         )
 
         return db_optimization_result
@@ -288,14 +244,20 @@ class OptimizationResultCRUD:
             x.iteration: x.value for x in db_optimization_result.objective_function
         }
 
+        statistics = defaultdict(list)
+
+        # noinspection PyTypeChecker
+        for db_statistic in db_optimization_result.statistics:
+            statistics[db_statistic.iteration].append(db_statistic)
+
+        # noinspection PyTypeChecker
         optimization_result = results.OptimizationResult(
             project_id=project_id,
             study_id=study_id,
             id=optimization_id,
-            objective_function=[
-                db_objective_function[i] for i in range(len(db_objective_function))
-            ],
+            objective_function=db_objective_function,
             refit_force_field=db_optimization_result.refit_force_field,
+            statistics=statistics,
         )
 
         return optimization_result

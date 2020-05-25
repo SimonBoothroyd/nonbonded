@@ -32,6 +32,8 @@ class Component(BaseORM):
 
 class DataSetEntry(BaseORM):
 
+    id: Optional[int] = Field(None, description="The unique id assigned to this entry")
+
     property_type: str = Field(
         ...,
         description="The type of property that this value corresponds to. This should "
@@ -48,13 +50,11 @@ class DataSetEntry(BaseORM):
         "Liquid", description="The phase that the property was measured in."
     )
 
-    unit: str = Field(
-        ..., description="The unit that the `value` and `std_error` is reported in."
+    value: float = Field(
+        ..., description="The value in the default unit for the property."
     )
-
-    value: float = Field(..., description="The value in units of `unit`.")
     std_error: Optional[float] = Field(
-        ..., description="The std error in units of `unit`",
+        ..., description="The std error in the default unit for the property.",
     )
 
     doi: str = Field(
@@ -78,11 +78,11 @@ class DataSetEntry(BaseORM):
         n_components = data_row["N Components"]
 
         data_entry = cls(
+            id=data_row.get("Id", None),
             property_type=property_header.split(" ")[0],
             temperature=data_row["Temperature (K)"],
             pressure=data_row["Pressure (kPa)"],
             phase=data_row["Phase"],
-            unit=property_header.split("(")[1].split(")")[0],
             value=data_row[property_header],
             std_error=data_row[property_header.replace("Value", "Uncertainty")],
             components=[
@@ -102,11 +102,15 @@ class DataSetEntry(BaseORM):
     def to_series(self) -> "pandas.Series":
 
         import pandas
+        from openff.evaluator import properties
 
-        value_header = f"{self.property_type} Value ({self.unit})"
-        std_error_header = f"{self.property_type} Uncertainty ({self.unit})"
+        pint_unit = getattr(properties, self.property_type).default_unit()
+
+        value_header = f"{self.property_type} Value ({pint_unit:~})"
+        std_error_header = f"{self.property_type} Uncertainty ({pint_unit:~})"
 
         data_row = {
+            "Id": self.id,
             "Temperature (K)": self.temperature,
             "Pressure (kPa)": self.pressure,
             "Phase": self.phase,
@@ -165,7 +169,7 @@ class DataSetEntry(BaseORM):
                 exact_amount = substances.ExactAmount(component.exact_amount)
                 substance.add_component(off_component, exact_amount)
 
-        pint_unit = unit.Unit(self.unit)
+        pint_unit = getattr(properties, self.property_type).default_unit()
 
         physical_property = property_class(
             thermodynamic_state=thermodynamic_state,
@@ -202,6 +206,23 @@ class DataSet(BaseREST):
         description: str,
         authors: List[Author],
     ):
+
+        from openff.evaluator import properties, unit
+
+        property_headers = [
+            header for header in data_frame if header.find(" Value ") >= 0
+        ]
+        property_units = {
+            header.split(" ")[0]: header.split("(")[1].split(")")[0]
+            for header in property_headers
+        }
+
+        assert all(hasattr(properties, x) for x in property_units.keys())
+        assert all(unit.Unit(x) is not None for x in property_units.values())
+
+        for property_type, property_unit in property_units.items():
+            property_class = getattr(properties, property_type)
+            assert f"{property_class.default_unit():~}" == f"{unit.Unit(property_unit):~}"
 
         data_set = cls(
             id=identifier,
