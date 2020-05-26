@@ -104,3 +104,16 @@ class BaseREST(BaseORM, abc.ABC):
         based on its unique identifier(s)
         """
         raise NotImplementedError()
+
+    def to_file(self, file_path: str):
+        """JSON serializes this object and saves the output to the specified
+        file path.
+
+        Parameters
+        ----------
+        file_path: str
+            The path to save the JSON serialized object to.
+        """
+
+        with open(file_path, "w") as file:
+            file.write(self.json())

@@ -39,8 +39,6 @@ class DataSetEntry(Base):
     pressure = Column(Float)
     phase = Column(String)
 
-    unit = Column(String)
-
     value = Column(Float)
     std_error = Column(Float)
 

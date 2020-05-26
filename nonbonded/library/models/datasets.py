@@ -77,8 +77,15 @@ class DataSetEntry(BaseORM):
 
         n_components = data_row["N Components"]
 
+        identifier = data_row.get("Id", None)
+
+        try:
+            identifier = int(identifier)
+        except ValueError:
+            identifier = None
+
         data_entry = cls(
-            id=data_row.get("Id", None),
+            id=identifier,
             property_type=property_header.split(" ")[0],
             temperature=data_row["Temperature (K)"],
             pressure=data_row["Pressure (kPa)"],
