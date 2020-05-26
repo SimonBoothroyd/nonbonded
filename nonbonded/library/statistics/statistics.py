@@ -18,7 +18,7 @@ def _compute_statistics(measured_values, estimated_values, statistics):
         The experimentally measured values with shape=(number of data points)
     estimated_values: numpy.ndarray
         The computationally estimated values with shape=(number of data points)
-    statistics: list of Statistics
+    statistics: list of StatisticType
         The statistics to compute. If `None`, all statistics will be computed
 
     Returns
@@ -86,7 +86,7 @@ def _compute_bootstrapped_statistics(
     estimated_stds: numpy.ndarray, optional
         The standard deviations in the computationally estimated values with
         shape=(number of data points)
-    statistics: list of Statistics
+    statistics: list of StatisticType
         The statistics to compute. If `None`, all statistics will be computed
     percentile: float
         The percentile of the confidence interval to calculate.
@@ -158,7 +158,12 @@ def _compute_bootstrapped_statistics(
 
 
 def compute_statistics(
-    measured_values, measured_std, estimated_values, estimated_std, bootstrap_iterations
+    measured_values,
+    measured_std,
+    estimated_values,
+    estimated_std,
+    bootstrap_iterations,
+    statistic_types,
 ):
     """Computes a set of statistics comparing deviations of a set
     of estimated properties from the corresponding measured properties
@@ -176,22 +181,17 @@ def compute_statistics(
     bootstrap_iterations: int
         The number of bootstrap intervals to perform when computing the
         standard error and confidence intervals.
+    statistic_types: list of StatisticType
 
     Returns
     -------
-    dict of Statistics and float
+    dict of StatisticType and float
         The value of each statistic.
-    dict of Statistics and float
+    dict of StatisticType and float
         The standard deviation of each statistic.
-    dict of Statistics and tuple of float and float
+    dict of StatisticType and tuple of float and float
         The 95% confidence intervals of each statistic.
     """
-
-    statistics = [
-        StatisticType.R2,
-        StatisticType.RMSE,
-        StatisticType.MSE,
-    ]
 
     (
         bootstrapped_statistics,
@@ -202,7 +202,7 @@ def compute_statistics(
         measured_std,
         estimated_values,
         estimated_std,
-        statistics=statistics,
+        statistics=statistic_types,
         bootstrap_iterations=bootstrap_iterations,
     )
 

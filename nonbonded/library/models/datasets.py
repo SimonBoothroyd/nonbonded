@@ -222,7 +222,9 @@ class DataSet(BaseREST):
 
         for property_type, property_unit in property_units.items():
             property_class = getattr(properties, property_type)
-            assert f"{property_class.default_unit():~}" == f"{unit.Unit(property_unit):~}"
+            assert (
+                f"{property_class.default_unit():~}" == f"{unit.Unit(property_unit):~}"
+            )
 
         data_set = cls(
             id=identifier,

@@ -8,7 +8,7 @@ from nonbonded.library.config import settings
 from nonbonded.library.models import BaseORM, BaseREST
 from nonbonded.library.models.datasets import Component, DataSet, DataSetEntry
 from nonbonded.library.models.forcefield import ForceField
-from nonbonded.library.statistics.statistics import compute_statistics
+from nonbonded.library.statistics.statistics import StatisticType, compute_statistics
 from nonbonded.library.utilities.checkmol import analyse_functional_groups
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 from nonbonded.library.utilities.exceptions import UnsupportedEndpointError
@@ -176,10 +176,10 @@ class AnalysedResult(BaseORM, abc.ABC):
         from openff.evaluator.datasets import PhysicalProperty
 
         reference_entries_by_id: Dict[str, DataSetEntry] = {
-            x.id: x for x in reference_data_set.entries
+            int(x.id): x for x in reference_data_set.entries
         }
         estimated_entries_by_id: Dict[str, PhysicalProperty] = {
-            x.id: x for x in estimated_data_set
+            int(x.id): x for x in estimated_data_set
         }
 
         results_entries = []
@@ -244,6 +244,7 @@ class AnalysedResult(BaseORM, abc.ABC):
         n_components: int,
         category: Optional[str],
         bootstrap_iterations: int,
+        statistic_types: List[StatisticType],
     ) -> List[StatisticsEntry]:
 
         bulk_statistics, _, bulk_statistics_ci = compute_statistics(
@@ -252,6 +253,7 @@ class AnalysedResult(BaseORM, abc.ABC):
             estimated_values=results_frame["Estimated Value"].values,
             estimated_std=results_frame["Estimated Std"].values,
             bootstrap_iterations=bootstrap_iterations,
+            statistic_types=statistic_types,
         )
 
         statistics_entries = []
@@ -277,18 +279,27 @@ class AnalysedResult(BaseORM, abc.ABC):
         estimated_data_set: "PhysicalPropertyDataSet",
         analysis_environments: List[ChemicalEnvironment],
         bootstrap_iterations: int = 1000,
+        statistic_types: List[StatisticType] = None,
     ) -> "AnalysedResult":
+
+        if statistic_types is None:
+
+            statistic_types = [StatisticType.RMSE, StatisticType.R2, StatisticType.MSE]
 
         results_entries, results_frame = cls._evaluator_to_results_entries(
             reference_data_set, estimated_data_set, analysis_environments
         )
 
-        property_types = results_frame["Property Type"].unique()
+        property_types = results_frame[
+            ["Property Type", "N Components"]
+        ].drop_duplicates()
+        property_types = list(property_types.to_records(index=False))
+
         categories = results_frame["Category"].unique()
 
         statistic_entries = []
 
-        for property_type, n_components in property_types:
+        for (property_type, n_components) in property_types:
 
             property_results_frame = results_frame[
                 (results_frame["Property Type"] == property_type)
@@ -303,6 +314,7 @@ class AnalysedResult(BaseORM, abc.ABC):
                     n_components,
                     None,
                     bootstrap_iterations,
+                    statistic_types,
                 )
             )
 
@@ -323,8 +335,13 @@ class AnalysedResult(BaseORM, abc.ABC):
                         n_components,
                         category,
                         bootstrap_iterations,
+                        statistic_types,
                     )
                 )
+
+        assert len(statistic_entries) <= len(property_types) * (len(categories) + 1) * len(
+            statistic_types
+        )
 
         analysed_result = AnalysedResult(
             statistic_entries=statistic_entries, results_entries=results_entries,

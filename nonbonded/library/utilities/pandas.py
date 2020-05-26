@@ -1,7 +1,3 @@
-import numpy
-import pandas
-
-
 def reorder_data_frame(data_frame):
     """ Re-order the substance columns of a data frame so that the individual
     components are alphabetically sorted.
@@ -16,6 +12,9 @@ def reorder_data_frame(data_frame):
     pandas.DataFrame
         The re-ordered data frame.
     """
+
+    import numpy
+    import pandas
 
     min_n_components = data_frame["N Components"].min()
     max_n_components = data_frame["N Components"].max()

@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Float, ForeignKey, Integer, String, Table
-from sqlalchemy.orm import relationship, Query
+from sqlalchemy.orm import Query, relationship
 from sqlalchemy_utils import auto_delete_orphans
 
 from nonbonded.backend.database.models import Base, UniqueMixin
@@ -138,7 +138,7 @@ class Optimization(Base):
         "InitialForceField",
         secondary=optimization_force_field_table,
         backref="optimizations",
-        uselist=False
+        uselist=False,
     )
 
     parameters_to_train = relationship(

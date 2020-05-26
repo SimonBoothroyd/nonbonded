@@ -8,7 +8,7 @@ from nonbonded.library.config import settings
 from nonbonded.library.models import BaseORM, BaseREST
 from nonbonded.library.models.authors import Author
 from nonbonded.library.models.forcebalance import ForceBalanceOptions
-from nonbonded.library.models.forcefield import Parameter, ForceField
+from nonbonded.library.models.forcefield import ForceField, Parameter
 from nonbonded.library.models.validators.collection import not_empty
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 

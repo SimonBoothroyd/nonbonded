@@ -8,6 +8,7 @@ from nonbonded.library.models.datasets import DataSet
 from nonbonded.library.models.forcefield import ForceField
 from nonbonded.library.models.projects import Optimization
 from nonbonded.library.models.results import AnalysedResult, OptimizationResult
+from nonbonded.library.statistics.statistics import StatisticType
 from nonbonded.library.utilities.exceptions import ForceFieldNotFound
 from nonbonded.library.utilities.logging import (
     get_log_levels,
@@ -46,9 +47,7 @@ def analyze(log_level):
     os.makedirs(output_directory, exist_ok=True)
 
     # Load in the refit force field (if it exists)
-    refit_force_field_path = os.path.join(
-        "result", "optimize", "force-field.offxml"
-    )
+    refit_force_field_path = os.path.join("result", "optimize", "force-field.offxml")
 
     if not os.path.isfile(refit_force_field_path):
 
@@ -116,6 +115,7 @@ def analyze(log_level):
             reference_data_set=reference_data_set,
             estimated_data_set=estimated_data_set,
             analysis_environments=optimization.analysis_environments,
+            statistic_types=[StatisticType.RMSE],
         )
         iteration_statistics[iteration] = analyzed_results.statistic_entries
 
