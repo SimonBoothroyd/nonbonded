@@ -26,7 +26,10 @@ class ProjectFactory:
         root_directory = project.id
         os.makedirs(root_directory, exist_ok=True)
 
-        with temporary_cd(root_directory):
+        studies_directory = os.path.join(root_directory, "studies")
+        os.makedirs(studies_directory, exist_ok=True)
+
+        with temporary_cd(studies_directory):
 
             for study in project.studies:
 

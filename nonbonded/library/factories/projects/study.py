@@ -30,9 +30,19 @@ class StudyFactory:
 
         port_counter = 8000
 
-        with temporary_cd(root_directory):
+        optimizations_directory = os.path.join(root_directory, "optimizations")
+        benchmarks_directory = os.path.join(root_directory, "benchmarks")
 
-            for child in [*study.optimizations, *study.benchmarks]:
+        for child in [*study.optimizations, *study.benchmarks]:
+
+            parent_directory = (
+                optimizations_directory
+                if isinstance(child, Optimization)
+                else benchmarks_directory
+            )
+            os.makedirs(parent_directory, exist_ok=True)
+
+            with temporary_cd(parent_directory):
 
                 logger.info(f"Generating {child.__class__.__name__.lower()}={child.id}")
 

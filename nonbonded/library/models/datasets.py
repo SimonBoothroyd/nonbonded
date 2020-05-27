@@ -186,6 +186,7 @@ class DataSetEntry(BaseORM):
             uncertainty=self.std_error * pint_unit,
             source=MeasurementSource(doi=self.doi),
         )
+        physical_property.id = self.id
 
         return physical_property
 
