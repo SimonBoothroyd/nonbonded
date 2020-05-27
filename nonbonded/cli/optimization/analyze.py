@@ -4,7 +4,7 @@ from glob import glob
 
 import click
 
-from nonbonded.library.models.datasets import DataSet
+from nonbonded.library.models.datasets import DataSetCollection
 from nonbonded.library.models.forcefield import ForceField
 from nonbonded.library.models.projects import Optimization
 from nonbonded.library.models.results import AnalysedResult, OptimizationResult
@@ -73,7 +73,7 @@ def analyze(reindex, log_level):
     refit_force_field = ForceField.from_openff(refit_force_field_off)
 
     # Load the reference data set
-    reference_data_set = DataSet.parse_file(
+    reference_data_sets = DataSetCollection.parse_file(
         os.path.join(
             "targets",
             optimization.force_balance_input.target_name,
@@ -120,13 +120,13 @@ def analyze(reindex, log_level):
         iteration_results = RequestResult.from_json(iteration_results_path)
 
         if reindex:
-            iteration_results = reindex_results(iteration_results, reference_data_set)
+            iteration_results = reindex_results(iteration_results, reference_data_sets)
 
         estimated_data_set = iteration_results.estimated_properties
 
         # Generate statistics about each iteration.
         analyzed_results = AnalysedResult.from_evaluator(
-            reference_data_set=reference_data_set,
+            reference_data_set=reference_data_sets,
             estimated_data_set=estimated_data_set,
             analysis_environments=optimization.analysis_environments,
             statistic_types=[StatisticType.RMSE],

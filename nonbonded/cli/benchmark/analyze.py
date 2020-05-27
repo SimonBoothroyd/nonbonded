@@ -3,7 +3,7 @@ import os
 
 import click
 
-from nonbonded.library.models.datasets import DataSet
+from nonbonded.library.models.datasets import DataSetCollection
 from nonbonded.library.models.projects import Benchmark
 from nonbonded.library.models.results import BenchmarkResult
 from nonbonded.library.utilities.logging import (
@@ -51,13 +51,13 @@ def analyze(reindex, log_level):
     os.makedirs(output_directory, exist_ok=True)
 
     # Load the reference data set
-    reference_data_set = DataSet.parse_file("test-set-collection.json")
+    reference_data_sets = DataSetCollection.parse_file("test-set-collection.json")
 
     # Load in the request results.
     request_results: RequestResult = RequestResult.from_json("results.json")
 
     if reindex:
-        request_results = reindex_results(request_results, reference_data_set)
+        request_results = reindex_results(request_results, reference_data_sets)
 
     if len(request_results.unsuccessful_properties) > 0:
 
@@ -75,7 +75,7 @@ def analyze(reindex, log_level):
         project_id=benchmark.project_id,
         study_id=benchmark.study_id,
         benchmark_id=benchmark.id,
-        reference_data_set=reference_data_set,
+        reference_data_set=reference_data_sets,
         estimated_data_set=estimated_data_set,
         analysis_environments=benchmark.analysis_environments,
     )

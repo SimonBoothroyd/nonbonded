@@ -182,14 +182,14 @@ class OptimizationResultCRUD:
             parent=db_optimization,
             objective_function=[
                 models.ObjectiveFunction(iteration=i, value=x)
-                for i, x in enumerate(optimization_result.objective_function)
+                for i, x in optimization_result.objective_function.items()
             ],
             refit_force_field=models.RefitForceField(
                 inner_xml=optimization_result.refit_force_field.inner_xml
             ),
             statistics=[
                 models.OptimizationStatisticsEntry(
-                    **{iteration: iteration, **statistic.dict()}
+                    **{"iteration": iteration, **statistic.dict()}
                 )
                 for iteration, statistics in optimization_result.statistics.items()
                 for statistic in statistics

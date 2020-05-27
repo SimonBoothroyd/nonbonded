@@ -1,6 +1,6 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
-from nonbonded.library.models.datasets import DataSet
+from nonbonded.library.models.datasets import DataSet, DataSetCollection
 from nonbonded.library.utilities.pandas import reorder_data_frame
 
 if TYPE_CHECKING:
@@ -9,7 +9,10 @@ if TYPE_CHECKING:
     from openff.evaluator.datasets import PhysicalPropertyDataSet
 
 
-def reindex_data_set(data_set: "PhysicalPropertyDataSet", reference_set: DataSet):
+def reindex_data_set(
+    data_set: "PhysicalPropertyDataSet",
+    reference_set: Union[DataSet, DataSetCollection],
+):
     """Attempts to change the unique id of estimated estimated data points to match
     the unique id of their corresponding reference data points based upon the state
     at which they were measured.
@@ -23,8 +26,8 @@ def reindex_data_set(data_set: "PhysicalPropertyDataSet", reference_set: DataSet
     ----------
     data_set: PhysicalPropertyDataSet
         The data set to re-index.
-    reference_set: DataSet
-        The data set whose ids should be matched.
+    reference_set: DataSet or DataSetCollection
+        The data set(s) whose ids should be matched.
     """
 
     import pandas
@@ -33,7 +36,20 @@ def reindex_data_set(data_set: "PhysicalPropertyDataSet", reference_set: DataSet
         return
 
     estimated_data_frame = reorder_data_frame(data_set.to_pandas())
-    reference_data_frame = reorder_data_frame(reference_set.to_pandas())
+
+    if isinstance(reference_set, DataSet):
+        reference_data_frame = reference_set.to_pandas()
+    elif isinstance(reference_set, DataSetCollection):
+
+        reference_data_frames = [x.to_pandas() for x in reference_set.data_sets]
+
+        reference_data_frame: pandas.DataFrame = pandas.concat(
+            reference_data_frames, ignore_index=True, sort=False
+        )
+    else:
+        raise NotImplementedError
+
+    reference_data_frame = reorder_data_frame(reference_data_frame)
 
     minimum_n_components = estimated_data_frame["N Components"].min()
     maximum_n_components = estimated_data_frame["N Components"].max()
@@ -99,7 +115,7 @@ def reindex_data_set(data_set: "PhysicalPropertyDataSet", reference_set: DataSet
                 suffixes=("_orig", "_new"),
             )
 
-            joined_frames.drop_duplicates(inplace=True)
+            joined_frames.drop_duplicates(subset=["Id_orig"], inplace=True)
 
             assert len(joined_frames) == len(estimated_component_data)
             id_mappings.append(joined_frames[["Id_orig", "Id_new"]])
@@ -112,7 +128,9 @@ def reindex_data_set(data_set: "PhysicalPropertyDataSet", reference_set: DataSet
         physical_property.id = f"{id_mappings[physical_property.id]}"
 
 
-def reindex_results(request_results: "RequestResult", reference_set: DataSet):
+def reindex_results(
+    request_results: "RequestResult", reference_set: Union[DataSet, DataSetCollection]
+):
 
     """Attempts to change the unique id of (un)estimated estimated data points to match
     the unique id of their corresponding reference data points based upon the state
@@ -127,8 +145,8 @@ def reindex_results(request_results: "RequestResult", reference_set: DataSet):
     ----------
     request_results: RequestResult
         The results to re-index.
-    reference_set: DataSet
-        The data set whose ids should be matched.
+    reference_set: DataSet or DataSetCollection
+        The data set(s) whose ids should be matched.
     """
 
     reindex_data_set(request_results.estimated_properties, reference_set)

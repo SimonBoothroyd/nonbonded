@@ -1,12 +1,17 @@
 import abc
 import logging
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 from pydantic import Field
 
 from nonbonded.library.config import settings
 from nonbonded.library.models import BaseORM, BaseREST
-from nonbonded.library.models.datasets import Component, DataSet, DataSetEntry
+from nonbonded.library.models.datasets import (
+    Component,
+    DataSet,
+    DataSetCollection,
+    DataSetEntry,
+)
 from nonbonded.library.models.forcefield import ForceField
 from nonbonded.library.statistics.statistics import StatisticType, compute_statistics
 from nonbonded.library.utilities.checkmol import analyse_functional_groups
@@ -167,7 +172,7 @@ class AnalysedResult(BaseORM, abc.ABC):
     @classmethod
     def _evaluator_to_results_entries(
         cls,
-        reference_data_set: DataSet,
+        reference_data_set: Union[DataSet, DataSetCollection],
         estimated_data_set: "PhysicalPropertyDataSet",
         analysis_environments: List[ChemicalEnvironment],
     ) -> Tuple[List[ResultsEntry], "pandas.DataFrame"]:
@@ -175,9 +180,17 @@ class AnalysedResult(BaseORM, abc.ABC):
         import pandas
         from openff.evaluator.datasets import PhysicalProperty
 
-        reference_entries_by_id: Dict[str, DataSetEntry] = {
-            int(x.id): x for x in reference_data_set.entries
-        }
+        if isinstance(reference_data_set, DataSet):
+            reference_entries_by_id: Dict[str, DataSetEntry] = {
+                int(x.id): x for x in reference_data_set.entries
+            }
+        elif isinstance(reference_data_set, DataSetCollection):
+            reference_entries_by_id: Dict[str, DataSetEntry] = {
+                int(y.id): y for x in reference_data_set.data_sets for y in x.entries
+            }
+        else:
+            raise NotImplementedError()
+
         estimated_entries_by_id: Dict[str, PhysicalProperty] = {
             int(x.id): x for x in estimated_data_set
         }
@@ -275,7 +288,7 @@ class AnalysedResult(BaseORM, abc.ABC):
     @classmethod
     def from_evaluator(
         cls,
-        reference_data_set: DataSet,
+        reference_data_set: Union[DataSet, DataSetCollection],
         estimated_data_set: "PhysicalPropertyDataSet",
         analysis_environments: List[ChemicalEnvironment],
         bootstrap_iterations: int = 1000,
@@ -425,7 +438,7 @@ class BenchmarkResult(BaseResult):
         project_id: str,
         study_id: str,
         benchmark_id: str,
-        reference_data_set: DataSet,
+        reference_data_set: Union[DataSet, DataSetCollection],
         estimated_data_set: "PhysicalPropertyDataSet",
         analysis_environments: List[ChemicalEnvironment],
         bootstrap_iterations: int = 1000,
