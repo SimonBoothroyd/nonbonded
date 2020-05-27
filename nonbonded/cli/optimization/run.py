@@ -39,9 +39,12 @@ def run(server_config, log_level):
 
     server_config = EvaluatorServerConfig.parse_file(server_config)
 
-    calculation_backend, evaluator_server = server_config.to_evaluator()
+    calculation_backend = server_config.to_backend()
 
     with calculation_backend:
+
+        evaluator_server = server_config.to_server(calculation_backend)
+
         with evaluator_server:
 
             with open("force_balance.log", "w") as file:

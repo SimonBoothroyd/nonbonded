@@ -136,11 +136,12 @@ class EvaluatorServerConfig(BaseModel):
         description="The directory in which to store any working files and directories",
     )
 
-    def to_evaluator(self):
+    def to_backend(self):
+        return self.backend_config.to_evaluator()
+
+    def to_server(self, evaluator_backend):
 
         from openff.evaluator import server
-
-        evaluator_backend = self.backend_config.to_evaluator()
 
         evaluator_server = server.EvaluatorServer(
             calculation_backend=evaluator_backend,
@@ -148,4 +149,4 @@ class EvaluatorServerConfig(BaseModel):
             port=self.port,
         )
 
-        return evaluator_backend, evaluator_server
+        return evaluator_server
