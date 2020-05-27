@@ -296,3 +296,15 @@ class DataSetCollection(BaseORM):
 
         data_sets = DataSetCollection.parse_raw(data_sets_request.text)
         return data_sets
+
+    def to_evaluator(self) -> "PhysicalPropertyDataSet":
+
+        from openff.evaluator.datasets import PhysicalPropertyDataSet
+
+        entries = [entry for data_set in self.data_sets for entry in data_set.entries]
+        physical_properties = [entry.to_evaluator() for entry in entries]
+
+        evaluator_set = PhysicalPropertyDataSet()
+        evaluator_set.add_properties(*physical_properties)
+
+        return evaluator_set

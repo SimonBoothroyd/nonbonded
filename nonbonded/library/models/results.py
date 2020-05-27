@@ -339,9 +339,9 @@ class AnalysedResult(BaseORM, abc.ABC):
                     )
                 )
 
-        assert len(statistic_entries) <= len(property_types) * (len(categories) + 1) * len(
-            statistic_types
-        )
+        assert len(statistic_entries) <= len(property_types) * (
+            len(categories) + 1
+        ) * len(statistic_types)
 
         analysed_result = AnalysedResult(
             statistic_entries=statistic_entries, results_entries=results_entries,

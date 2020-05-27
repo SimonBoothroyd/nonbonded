@@ -22,9 +22,9 @@ class Optimization(BaseREST):
     name: str = Field(..., description="The name of the optimization.")
     description: str = Field(..., description="A description of this optimization.")
 
-    training_set_id: Optional[str] = Field(
-        None,
-        description="The unique identifier of the data set to use as part of the "
+    training_set_ids: List[str] = Field(
+        ...,
+        description="The unique identifiers of the data sets to use as part of the "
         "optimization.",
     )
 
@@ -55,6 +55,10 @@ class Optimization(BaseREST):
         ...,
         description="The chemical environments to consider when analysing the results "
         "of the optimization.",
+    )
+
+    _validate_training_set_ids = validator("training_set_ids", allow_reuse=True)(
+        not_empty
     )
 
     def _post_endpoint(self):
@@ -136,9 +140,9 @@ class Benchmark(BaseREST):
     name: str = Field(..., description="The name of the benchmark.")
     description: str = Field(..., description="A description of this benchmark.")
 
-    test_set_id: Optional[str] = Field(
-        None,
-        description="The unique identifier of the data set to use as part of the "
+    test_set_ids: List[str] = Field(
+        ...,
+        description="The unique identifiers of the data sets to use as part of the "
         "benchmarking.",
     )
 
@@ -160,6 +164,8 @@ class Benchmark(BaseREST):
         description="The chemical environments to consider when analysing the results "
         "of the benchmark.",
     )
+
+    _validate_test_set_ids = validator("test_set_ids", allow_reuse=True)(not_empty)
 
     def _post_endpoint(self):
         return (

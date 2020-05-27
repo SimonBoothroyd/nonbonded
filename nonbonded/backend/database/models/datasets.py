@@ -57,6 +57,3 @@ class DataSet(Base):
     authors = relationship("Author", secondary=author_data_sets_table)
 
     entries = relationship("DataSetEntry", cascade="all, delete-orphan", lazy="joined")
-
-    optimizations = relationship("Optimization", back_populates="training_set")
-    benchmarks = relationship("Benchmark", back_populates="test_set")

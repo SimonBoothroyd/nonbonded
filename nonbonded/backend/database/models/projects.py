@@ -78,6 +78,42 @@ optimization_force_field_table = Table(
     ),
 )
 
+optimization_training_table = Table(
+    "optimization_training_sets",
+    Base.metadata,
+    Column(
+        "optimization_id",
+        Integer,
+        ForeignKey("optimizations.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "data_set_id",
+        String,
+        ForeignKey("data_sets.id", ondelete="CASCADE"),
+        primary_key=True,
+        nullable=False,
+    ),
+)
+
+benchmark_test_table = Table(
+    "benchmark_test_sets",
+    Base.metadata,
+    Column(
+        "benchmark_id",
+        Integer,
+        ForeignKey("benchmarks.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "data_set_id",
+        String,
+        ForeignKey("data_sets.id", ondelete="CASCADE"),
+        primary_key=True,
+        nullable=False,
+    ),
+)
+
 
 class Denominator(Base):
 
@@ -131,8 +167,9 @@ class Optimization(Base):
     name = Column(String)
     description = Column(String)
 
-    training_set_id = Column(String, ForeignKey("data_sets.id"), nullable=False)
-    training_set = relationship("DataSet", back_populates="optimizations")
+    training_sets = relationship(
+        "DataSet", secondary=optimization_training_table, backref="optimizations",
+    )
 
     initial_force_field = relationship(
         "InitialForceField",
@@ -172,8 +209,9 @@ class Benchmark(Base):
     name = Column(String)
     description = Column(String)
 
-    test_set_id = Column(String, ForeignKey("data_sets.id"), nullable=False)
-    test_set = relationship("DataSet", back_populates="benchmarks")
+    test_sets = relationship(
+        "DataSet", secondary=benchmark_test_table, backref="benchmarks",
+    )
 
     optimization_id = Column(Integer, ForeignKey("optimizations.id"))
     optimization = relationship("Optimization", backref="benchmarks")

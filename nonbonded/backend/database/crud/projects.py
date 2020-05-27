@@ -57,10 +57,21 @@ class OptimizationCRUD:
                 optimization.project_id, optimization.study_id, optimization.id
             )
 
-        training_set = DataSetCRUD.query(db, optimization.training_set_id)
+        training_sets = [
+            DataSetCRUD.query(db, x) for x in optimization.training_set_ids
+        ]
 
-        if not training_set:
-            raise DataSetNotFoundError(optimization.training_set_id)
+        if any(x is None for x in training_sets):
+
+            raise DataSetNotFoundError(
+                next(
+                    iter(
+                        x
+                        for x, y in zip(optimization.training_set_ids, training_sets)
+                        if y is None
+                    )
+                )
+            )
 
         if parent is None:
             parent = StudyCRUD.query(db, optimization.project_id, optimization.study_id)
@@ -74,7 +85,7 @@ class OptimizationCRUD:
             parent=parent,
             name=optimization.name,
             description=optimization.description,
-            training_set=training_set,
+            training_sets=training_sets,
             parameters_to_train=[
                 ParameterCRUD.create(db, x) for x in optimization.parameters_to_train
             ],
@@ -163,12 +174,22 @@ class OptimizationCRUD:
         db_optimization.name = optimization.name
         db_optimization.description = optimization.description
 
-        training_set = DataSetCRUD.query(db, optimization.training_set_id)
+        training_sets = [
+            DataSetCRUD.query(db, x) for x in optimization.training_set_ids
+        ]
 
-        if training_set is None:
-            raise DataSetNotFoundError(optimization.training_set_id)
+        if any(x is None for x in training_sets):
+            raise DataSetNotFoundError(
+                next(
+                    iter(
+                        x
+                        for x, y in zip(optimization.training_set_ids, training_sets)
+                        if y is None
+                    )
+                )
+            )
 
-        db_optimization.training_set = training_set
+        db_optimization.training_sets = training_sets
         db_optimization.initial_force_field = models.InitialForceField.as_unique(
             db, inner_xml=optimization.initial_force_field.inner_xml
         )
@@ -241,7 +262,7 @@ class OptimizationCRUD:
             project_id=db_parent_project.identifier,
             name=db_optimization.name,
             description=db_optimization.description,
-            training_set_id=db_optimization.training_set_id,
+            training_set_ids=[x.id for x in db_optimization.training_sets],
             parameters_to_train=db_optimization.parameters_to_train,
             force_balance_input=db_optimization.force_balance_input,
             initial_force_field=db_optimization.initial_force_field,
@@ -291,10 +312,19 @@ class BenchmarkCRUD:
                 benchmark.project_id, benchmark.study_id, benchmark.id
             )
 
-        test_set = DataSetCRUD.query(db, benchmark.test_set_id)
+        test_sets = [DataSetCRUD.query(db, x) for x in benchmark.test_set_ids]
 
-        if not test_set:
-            raise DataSetNotFoundError(benchmark.test_set_id)
+        if any(x is None for x in test_sets):
+
+            raise DataSetNotFoundError(
+                next(
+                    iter(
+                        x
+                        for x, y in zip(benchmark.test_set_ids, test_sets)
+                        if y is None
+                    )
+                )
+            )
 
         db_optimization = None
 
@@ -330,7 +360,7 @@ class BenchmarkCRUD:
             parent=parent,
             name=benchmark.name,
             description=benchmark.description,
-            test_set=test_set,
+            test_sets=test_sets,
             optimization=db_optimization,
             force_field_name=benchmark.force_field_name,
             analysis_environments=[
@@ -386,12 +416,21 @@ class BenchmarkCRUD:
         db_benchmark.name = benchmark.name
         db_benchmark.description = benchmark.description
 
-        test_set = DataSetCRUD.query(db, benchmark.test_set_id)
+        test_sets = [DataSetCRUD.query(db, x) for x in benchmark.test_set_ids]
 
-        if test_set is None:
-            raise DataSetNotFoundError(benchmark.test_set_id)
+        if any(x is None for x in test_sets):
 
-        db_benchmark.test_set = test_set
+            raise DataSetNotFoundError(
+                next(
+                    iter(
+                        x
+                        for x, y in zip(benchmark.test_set_ids, test_sets)
+                        if y is None
+                    )
+                )
+            )
+
+        db_benchmark.test_sets = test_sets
 
         db_benchmark.force_field_name = benchmark.force_field_name
 
@@ -447,7 +486,7 @@ class BenchmarkCRUD:
             project_id=db_parent_project.identifier,
             name=db_benchmark.name,
             description=db_benchmark.description,
-            test_set_id=db_benchmark.test_set_id,
+            test_set_ids=[x.id for x in db_benchmark.test_sets],
             optimization_id=optimization_id,
             force_field_name=db_benchmark.force_field_name,
             analysis_environments=[
@@ -534,9 +573,9 @@ class StudyCRUD:
         data_set_ids = set()
 
         for optimization in db_study.optimizations:
-            data_set_ids.add(optimization.training_set_id)
+            data_set_ids.update(optimization.training_set_ids)
         for benchmark in db_study.benchmarks:
-            data_set_ids.add(benchmark.test_set_id)
+            data_set_ids.update(benchmark.test_set_ids)
 
         data_sets = []
 
