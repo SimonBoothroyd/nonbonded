@@ -27,6 +27,7 @@ dependencies:
   - requests
   - rdkit
   - scipy
+  - seaborn
 
     # REST dependencies
   - alembic
