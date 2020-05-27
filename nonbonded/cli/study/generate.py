@@ -1,34 +1,34 @@
+import logging
+
 import click
 
-from nonbonded.library.factories.projects.benchmark import BenchmarkFactory
-from nonbonded.library.models.projects import Benchmark
+from nonbonded.library.factories.projects.study import StudyFactory
+from nonbonded.library.models.projects import Study
 from nonbonded.library.utilities.logging import (
     get_log_levels,
     setup_timestamp_logging,
     string_to_log_level,
 )
 
+logger = logging.getLogger(__name__)
 
-@click.command(help="Generates the input files for a specified benchmark.")
+
+@click.command(help="Generates the input files for a specified study.")
 @click.option(
     "--project-id",
     type=click.STRING,
-    help="The id of the project which the benchmark to is part of.",
+    help="The id of the project which the study to is part of.",
 )
 @click.option(
-    "--study-id",
-    type=click.STRING,
-    help="The id of the study which the benchmark is part of.",
-)
-@click.option(
-    "--benchmark-id", type=click.STRING, help="The id of the benchmark.",
+    "--study-id", type=click.STRING, help="The id of the study.",
 )
 @click.option(
     "--backend",
     "backend_name",
     default="lilac-dask",
     type=click.Choice(["lilac-dask", "lilac-local"], case_sensitive=True),
-    help="The name of the backend to perform the benchmark using.",
+    help="The name of the backend to perform the study's optimizations and benchmarks "
+    "using.",
     show_default=True,
 )
 @click.option(
@@ -37,13 +37,6 @@ from nonbonded.library.utilities.logging import (
     default="forcebalance",
     type=click.STRING,
     help="The name of the conda environment to run using.",
-    show_default=True,
-)
-@click.option(
-    "--port",
-    default=8000,
-    type=click.INT,
-    help="The port to run the evaluator server on.",
     show_default=True,
 )
 @click.option(
@@ -79,10 +72,8 @@ from nonbonded.library.utilities.logging import (
 def generate(
     project_id,
     study_id,
-    benchmark_id,
     backend_name,
     environment_name,
-    port,
     max_workers,
     max_wall_clock,
     max_memory,
@@ -95,15 +86,9 @@ def generate(
     if logging_level is not None:
         setup_timestamp_logging(logging_level)
 
-    # Retrieve the benchmark
-    benchmark: Benchmark = Benchmark.from_rest(project_id, study_id, benchmark_id)
+    # Retrieve the study
+    study: Study = Study.from_rest(project_id, study_id)
 
-    BenchmarkFactory.generate(
-        benchmark,
-        backend_name,
-        environment_name,
-        port,
-        max_workers,
-        max_wall_clock,
-        max_memory,
+    StudyFactory.generate(
+        study, backend_name, environment_name, max_workers, max_wall_clock, max_memory,
     )

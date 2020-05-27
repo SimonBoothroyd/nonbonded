@@ -1,12 +1,16 @@
+import logging
+
 import click
 
-from nonbonded.library.factories.projects.benchmark import BenchmarkFactory
-from nonbonded.library.models.projects import Benchmark
+from nonbonded.library.factories.projects.project import ProjectFactory
+from nonbonded.library.models.projects import Project
 from nonbonded.library.utilities.logging import (
     get_log_levels,
     setup_timestamp_logging,
     string_to_log_level,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @click.command(help="Generates the input files for a specified benchmark.")
@@ -14,14 +18,6 @@ from nonbonded.library.utilities.logging import (
     "--project-id",
     type=click.STRING,
     help="The id of the project which the benchmark to is part of.",
-)
-@click.option(
-    "--study-id",
-    type=click.STRING,
-    help="The id of the study which the benchmark is part of.",
-)
-@click.option(
-    "--benchmark-id", type=click.STRING, help="The id of the benchmark.",
 )
 @click.option(
     "--backend",
@@ -37,13 +33,6 @@ from nonbonded.library.utilities.logging import (
     default="forcebalance",
     type=click.STRING,
     help="The name of the conda environment to run using.",
-    show_default=True,
-)
-@click.option(
-    "--port",
-    default=8000,
-    type=click.INT,
-    help="The port to run the evaluator server on.",
     show_default=True,
 )
 @click.option(
@@ -78,11 +67,8 @@ from nonbonded.library.utilities.logging import (
 )
 def generate(
     project_id,
-    study_id,
-    benchmark_id,
     backend_name,
     environment_name,
-    port,
     max_workers,
     max_wall_clock,
     max_memory,
@@ -96,13 +82,12 @@ def generate(
         setup_timestamp_logging(logging_level)
 
     # Retrieve the benchmark
-    benchmark: Benchmark = Benchmark.from_rest(project_id, study_id, benchmark_id)
+    project: Project = Project.from_rest(project_id)
 
-    BenchmarkFactory.generate(
-        benchmark,
+    ProjectFactory.generate(
+        project,
         backend_name,
         environment_name,
-        port,
         max_workers,
         max_wall_clock,
         max_memory,

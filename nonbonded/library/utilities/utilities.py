@@ -1,6 +1,7 @@
 import os
 from contextlib import contextmanager
 from tempfile import TemporaryDirectory
+from typing import Optional
 
 
 def get_data_filename(relative_path):
@@ -30,14 +31,34 @@ def get_data_filename(relative_path):
 
 
 @contextmanager
-def cd_to_temporary_directory():
+def temporary_cd(directory_path: Optional[str] = None):
+    """Temporarily move the current working directory to the path
+    specified. If no path is given, a temporary directory will be
+    created, moved into, and then destroyed when the context manager
+    is closed.
+
+    Parameters
+    ----------
+    directory_path: str, optional
+
+    Returns
+    -------
+
+    """
 
     old_directory = os.getcwd()
 
     try:
 
-        with TemporaryDirectory() as new_directory:
-            os.chdir(new_directory)
+        if directory_path is None:
+
+            with TemporaryDirectory() as new_directory:
+                os.chdir(new_directory)
+                yield
+
+        else:
+
+            os.chdir(directory_path)
             yield
 
     finally:

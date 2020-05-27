@@ -1,6 +1,3 @@
-from nonbonded.library.utilities.utilities import (
-    cd_to_temporary_directory,
-    get_data_filename,
-)
+from nonbonded.library.utilities.utilities import get_data_filename, temporary_cd
 
-__all__ = [cd_to_temporary_directory, get_data_filename]
+__all__ = [temporary_cd, get_data_filename]

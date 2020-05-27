@@ -11,11 +11,21 @@ from nonbonded.library.utilities.logging import (
     setup_timestamp_logging,
     string_to_log_level,
 )
+from nonbonded.library.utilities.migration import reindex_results
 
 logger = logging.getLogger(__name__)
 
 
 @click.command(help="Analyzes the output of a benchmark.")
+@click.option(
+    "--reindex",
+    is_flag=True,
+    default=False,
+    help="Attempt to determine matching reference and estimated data points based on "
+    "the state at which the property was measured, rather than by its unique id. This "
+    "option is only to allow backwards compatibility with benchmarks ran not using "
+    "this framework, and should not be used in general.",
+)
 @click.option(
     "--log-level",
     default="info",
@@ -23,7 +33,7 @@ logger = logging.getLogger(__name__)
     help="The verbosity of the server logger.",
     show_default=True,
 )
-def analyze(log_level):
+def analyze(reindex, log_level):
 
     from openff.evaluator.client import RequestResult
 
@@ -41,10 +51,13 @@ def analyze(log_level):
     os.makedirs(output_directory, exist_ok=True)
 
     # Load the reference data set
-    reference_data_set = DataSet.parse_file("test-set-definition.json")
+    reference_data_set = DataSet.parse_file("test-set-collection.json")
 
     # Load in the request results.
     request_results: RequestResult = RequestResult.from_json("results.json")
+
+    if reindex:
+        request_results = reindex_results(request_results, reference_data_set)
 
     if len(request_results.unsuccessful_properties) > 0:
 

@@ -15,11 +15,21 @@ from nonbonded.library.utilities.logging import (
     setup_timestamp_logging,
     string_to_log_level,
 )
+from nonbonded.library.utilities.migration import reindex_results
 
 logger = logging.getLogger(__name__)
 
 
 @click.command(help="Analyzes the output of an optimization.")
+@click.option(
+    "--reindex",
+    is_flag=True,
+    default=False,
+    help="Attempt to determine matching reference and estimated data points based on "
+    "the state at which the property was measured, rather than by its unique id. This "
+    "option is only to allow backwards compatibility with optimizations ran not using "
+    "this framework, and should not be used in general.",
+)
 @click.option(
     "--log-level",
     default="info",
@@ -27,7 +37,7 @@ logger = logging.getLogger(__name__)
     help="The verbosity of the server logger.",
     show_default=True,
 )
-def analyze(log_level):
+def analyze(reindex, log_level):
 
     from forcebalance.nifty import lp_load
     from openff.evaluator.client import RequestResult
@@ -67,7 +77,7 @@ def analyze(log_level):
         os.path.join(
             "targets",
             optimization.force_balance_input.target_name,
-            "training-set-definition.json",
+            "training-set-collection.json",
         )
     )
 
@@ -108,6 +118,10 @@ def analyze(log_level):
             continue
 
         iteration_results = RequestResult.from_json(iteration_results_path)
+
+        if reindex:
+            iteration_results = reindex_results(iteration_results, reference_data_set)
+
         estimated_data_set = iteration_results.estimated_properties
 
         # Generate statistics about each iteration.

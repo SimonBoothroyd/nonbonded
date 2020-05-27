@@ -14,7 +14,7 @@ from pydantic import Field
 from typing_extensions import Literal
 
 from nonbonded.library.curation.components import Component, ComponentSchema
-from nonbonded.library.utilities import cd_to_temporary_directory
+from nonbonded.library.utilities import temporary_cd
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +96,7 @@ class ImportThermoMLData(Component):
             cached_data = pandas.read_csv(schema.cache_file_name)
             return cached_data
 
-        with cd_to_temporary_directory():
+        with temporary_cd():
 
             logger.debug("Downloading archive data")
 
