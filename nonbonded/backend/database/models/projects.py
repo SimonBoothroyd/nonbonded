@@ -142,7 +142,7 @@ class InitialForceField(UniqueMixin, Base):
     __tablename__ = "initial_force_fields"
 
     id = Column(Integer, primary_key=True, index=True)
-    inner_xml = Column(String, unique=True)
+    inner_xml = Column(String)
 
     @classmethod
     def unique_hash(cls, inner_xml):

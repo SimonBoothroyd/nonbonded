@@ -78,12 +78,12 @@ class RefitForceField(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    parent_id = Column(Integer, ForeignKey("optimization_results.id"))
+    parent_id = Column(Integer, ForeignKey("optimization_results.id"), nullable=False)
     parent = relationship(
         "OptimizationResult", back_populates="refit_force_field", uselist=False
     )
 
-    inner_xml = Column(String, index=True, unique=True)
+    inner_xml = Column(String)
 
 
 class OptimizationStatisticsEntry(BaseStatisticsEntry):
