@@ -243,6 +243,11 @@ def analyse_functional_groups(smiles):
 
     from openforcefield.topology import Molecule
 
+    if smiles == "O" or smiles == "[H]O[H]":
+        return {ChemicalEnvironment.Aqueous: 1}
+    if smiles == "N":
+        return {ChemicalEnvironment.Amine: 1}
+
     # Make sure the checkmol utility has been installed separately.
     if shutil.which("checkmol") is None:
 

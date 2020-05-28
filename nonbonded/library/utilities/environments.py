@@ -208,3 +208,4 @@ class ChemicalEnvironment(Enum):
     Heterocycle = "Heterocycle"
     AlphaAminoacid = "Alpha Aminoacid"
     AlphaHydroxyacid = "Alpha Hydroxyacid"
+    Aqueous = "Aqueous"
