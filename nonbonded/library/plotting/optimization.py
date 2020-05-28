@@ -189,8 +189,8 @@ def _plot_relative_rmse(
                 "Property Type": property_type,
                 "Property Title": property_title,
                 "Value": statistic.value - initial_value,
-                "Lower 95% CI": statistic.value - statistic.lower_95_ci,
-                "Upper 95% CI": statistic.upper_95_ci - statistic.value,
+                "Lower 95% CI": statistic.lower_95_ci - initial_value,
+                "Upper 95% CI": statistic.upper_95_ci - initial_value,
                 "Category": statistic.category,
             }
 

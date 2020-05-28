@@ -378,7 +378,7 @@ class ProjectCollection(BaseORM):
     def from_rest(cls) -> "ProjectCollection":
         import requests
 
-        projects_request = requests.get("{settings.API_URL}/projects/")
+        projects_request = requests.get(f"{settings.API_URL}/projects/")
         projects_request.raise_for_status()
 
         projects = ProjectCollection.parse_raw(projects_request.text)
