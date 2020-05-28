@@ -89,6 +89,9 @@ class BenchmarkResultCRUD:
         if not db_benchmark:
             raise BenchmarkNotFoundError(project_id, study_id, benchmark_id)
 
+        if not db_benchmark.results:
+            return None
+
         return BenchmarkResultCRUD.db_to_model(db_benchmark.results)
 
     @staticmethod
@@ -215,6 +218,9 @@ class OptimizationResultCRUD:
 
         if not db_optimization:
             raise OptimizationNotFoundError(project_id, study_id, optimization_id)
+
+        if not db_optimization.results:
+            return None
 
         return OptimizationResultCRUD.db_to_model(db_optimization.results)
 

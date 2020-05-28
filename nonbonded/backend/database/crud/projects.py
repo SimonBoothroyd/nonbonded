@@ -573,9 +573,9 @@ class StudyCRUD:
         data_set_ids = set()
 
         for optimization in db_study.optimizations:
-            data_set_ids.update(optimization.training_set_ids)
+            data_set_ids.update(x.id for x in optimization.training_sets)
         for benchmark in db_study.benchmarks:
-            data_set_ids.update(benchmark.test_set_ids)
+            data_set_ids.update(x.id for x in benchmark.test_sets)
 
         data_sets = []
 
