@@ -1,6 +1,3 @@
-import numpy
-from matplotlib import pyplot
-
 _property_abbreviations = {
     "Density": r"\rho",
     "DielectricConstant": r"$\epsilon$",
@@ -23,6 +20,9 @@ def property_type_to_title(property_type: str, n_components: int):
 
 
 def plot_categories_with_custom_ci(x, y, hue, lower_bound, upper_bound, **kwargs):
+
+    import numpy
+    from matplotlib import pyplot
 
     data = kwargs.pop("data")
 
@@ -47,6 +47,8 @@ def plot_categories_with_custom_ci(x, y, hue, lower_bound, upper_bound, **kwargs
 
 def plot_categories(x, y, hue, **kwargs):
 
+    from matplotlib import pyplot
+
     data = kwargs.pop("data")
 
     plot_data = data.pivot(index=x, columns=hue, values=y)
@@ -54,6 +56,9 @@ def plot_categories(x, y, hue, **kwargs):
 
 
 def plot_bar_with_custom_ci(x, y, lower_bound, upper_bound, **kwargs):
+
+    import numpy
+    from matplotlib import pyplot
 
     data = kwargs.pop("data")
     colors = kwargs.pop("color")
@@ -68,6 +73,8 @@ def plot_bar_with_custom_ci(x, y, lower_bound, upper_bound, **kwargs):
 
 
 def plot_scatter(x, y, x_err, y_err, hue, hue_order, **kwargs):
+
+    from matplotlib import pyplot
 
     data = kwargs.pop("data")
     colors = kwargs.pop("color")
@@ -95,6 +102,9 @@ def plot_scatter(x, y, x_err, y_err, hue, hue_order, **kwargs):
 
 
 def plot_gradient(x, y, hue, hue_order, **kwargs):
+
+    import numpy
+    from matplotlib import pyplot
 
     data = kwargs.pop("data")
     colors = kwargs.pop("color")

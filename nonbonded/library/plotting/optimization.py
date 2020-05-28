@@ -2,10 +2,6 @@ import os
 from collections import defaultdict
 from typing import List
 
-import pandas
-import seaborn
-from matplotlib import pyplot
-
 from nonbonded.library.models.projects import Optimization
 from nonbonded.library.models.results import OptimizationResult
 from nonbonded.library.plotting.utilities import (
@@ -20,6 +16,8 @@ def _plot_parameter_changes(
     optimization_results: List[OptimizationResult],
     output_directory: str,
 ):
+    import pandas
+    import seaborn
 
     from simtk import unit as simtk_unit
 
@@ -98,6 +96,9 @@ def _plot_objective_per_iteration(
     optimization_results: List[OptimizationResult],
     output_directory: str,
 ):
+    import pandas
+    import seaborn
+    from matplotlib import pyplot
 
     data_rows = []
 
@@ -133,6 +134,9 @@ def _plot_relative_rmse(
     output_directory: str,
     categorical: bool = True,
 ):
+    import pandas
+    import seaborn
+    from matplotlib import pyplot
 
     if not categorical:
         raise NotImplementedError()

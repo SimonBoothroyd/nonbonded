@@ -1,10 +1,6 @@
 import os
 from typing import Dict, List
 
-import pandas
-import seaborn
-from matplotlib import pyplot
-
 from nonbonded.library.models.datasets import DataSet, DataSetEntry
 from nonbonded.library.models.projects import Benchmark
 from nonbonded.library.models.results import BenchmarkResult
@@ -160,6 +156,9 @@ def plot_results(
     data_sets: List[DataSet],
     output_directory: str,
 ):
+    import pandas
+    import seaborn
+    from matplotlib import pyplot
 
     reference_data_points: Dict[int, DataSetEntry] = {
         entry.id: entry for data_set in data_sets for entry in data_set.entries
