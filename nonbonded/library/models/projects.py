@@ -125,7 +125,11 @@ class OptimizationCollection(BaseORM):
             f"{study_id}"
             f"/optimizations/"
         )
-        optimizations_request.raise_for_status()
+        try:
+            optimizations_request.raise_for_status()
+        except requests.exceptions.HTTPError as error:
+            print(error.response.text)
+            raise
 
         optimizations = OptimizationCollection.parse_raw(optimizations_request.text)
         return optimizations
@@ -231,7 +235,11 @@ class BenchmarkCollection(BaseORM):
             f"{study_id}"
             f"/benchmarks/"
         )
-        benchmarks_request.raise_for_status()
+        try:
+            benchmarks_request.raise_for_status()
+        except requests.exceptions.HTTPError as error:
+            print(error.response.text)
+            raise
 
         benchmarks = BenchmarkCollection.parse_raw(benchmarks_request.text)
         return benchmarks
@@ -311,7 +319,11 @@ class StudyCollection(BaseORM):
         studies_request = requests.get(
             f"{settings.API_URL}/projects/{project_id}/studies/"
         )
-        studies_request.raise_for_status()
+        try:
+            studies_request.raise_for_status()
+        except requests.exceptions.HTTPError as error:
+            print(error.response.text)
+            raise
 
         studies = StudyCollection.parse_raw(studies_request.text)
         return studies
@@ -379,7 +391,11 @@ class ProjectCollection(BaseORM):
         import requests
 
         projects_request = requests.get(f"{settings.API_URL}/projects/")
-        projects_request.raise_for_status()
+        try:
+            projects_request.raise_for_status()
+        except requests.exceptions.HTTPError as error:
+            print(error.response.text)
+            raise
 
         projects = ProjectCollection.parse_raw(projects_request.text)
         return projects

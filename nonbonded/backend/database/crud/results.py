@@ -64,10 +64,12 @@ class BenchmarkResultCRUD:
         db_benchmark_result = models.BenchmarkResult(
             parent=db_benchmark,
             statistic_entries=[
-                x for x in benchmark_result.analysed_result.statistic_entries
+                models.BenchmarkStatisticsEntry(**x.dict())
+                for x in benchmark_result.analysed_result.statistic_entries
             ],
             results_entries=[
-                x for x in benchmark_result.analysed_result.results_entries
+                models.BenchmarkResultsEntry(**x.dict())
+                for x in benchmark_result.analysed_result.results_entries
             ],
         )
 

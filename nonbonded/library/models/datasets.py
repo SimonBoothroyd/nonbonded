@@ -293,7 +293,11 @@ class DataSetCollection(BaseORM):
         import requests
 
         data_sets_request = requests.get(f"{settings.API_URL}/datasets/")
-        data_sets_request.raise_for_status()
+        try:
+            data_sets_request.raise_for_status()
+        except requests.exceptions.HTTPError as error:
+            print(error.response.text)
+            raise
 
         data_sets = DataSetCollection.parse_raw(data_sets_request.text)
         return data_sets

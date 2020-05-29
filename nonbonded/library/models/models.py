@@ -54,7 +54,12 @@ class BaseREST(BaseORM, abc.ABC):
             data=self.json(),
             headers={"access_token": settings.ACCESS_TOKEN},
         )
-        request.raise_for_status()
+
+        try:
+            request.raise_for_status()
+        except requests.exceptions.HTTPError as error:
+            print(error.response.text)
+            raise
 
         return_object = self.__class__.parse_raw(request.text)
         return return_object
@@ -72,7 +77,11 @@ class BaseREST(BaseORM, abc.ABC):
             data=self.json(),
             headers={"access_token": settings.ACCESS_TOKEN},
         )
-        request.raise_for_status()
+        try:
+            request.raise_for_status()
+        except requests.exceptions.HTTPError as error:
+            print(error.response.text)
+            raise
 
         return_object = self.__class__.parse_raw(request.text)
         return return_object
@@ -88,11 +97,19 @@ class BaseREST(BaseORM, abc.ABC):
         request = requests.delete(
             url=self._delete_endpoint(), headers={"access_token": settings.ACCESS_TOKEN}
         )
-        request.raise_for_status()
+        try:
+            request.raise_for_status()
+        except requests.exceptions.HTTPError as error:
+            print(error.response.text)
+            raise
 
     @classmethod
     def _from_rest(cls: Type[T], request: "requests.Response") -> T:
-        request.raise_for_status()
+        try:
+            request.raise_for_status()
+        except requests.exceptions.HTTPError as error:
+            print(error.response.text)
+            raise
 
         return_object = cls.parse_raw(request.text)
         return return_object

@@ -2,7 +2,7 @@ import secrets
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import AnyHttpUrl, AnyUrl, BaseSettings, PostgresDsn, validator
+from pydantic import AnyHttpUrl, BaseSettings, PostgresDsn, validator
 
 
 class DatabaseType(Enum):

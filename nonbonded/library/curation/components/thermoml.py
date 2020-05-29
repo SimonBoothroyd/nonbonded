@@ -50,9 +50,13 @@ class ImportThermoMLData(Component):
             )
 
             # Make sure the request went ok.
-            request.raise_for_status()
+            try:
+                request.raise_for_status()
+            except requests.exceptions.HTTPError as error:
+                print(error.response.text)
+                raise
 
-            # Unzip the files into a new 'ijt_files' directory.
+                # Unzip the files into a new 'ijt_files' directory.
             tar_file = tarfile.open(fileobj=io.BytesIO(request.content))
             tar_file.extractall()
 
