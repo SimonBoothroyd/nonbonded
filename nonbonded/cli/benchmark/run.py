@@ -48,7 +48,7 @@ def run(server_config, polling_interval, log_level):
         setup_timestamp_logging(logging_level)
 
     # Load in the force field.
-    force_field = ForceField("force-field.json")
+    force_field = ForceField("force-field.offxml")
 
     # Load in the data set.
     data_set = PhysicalPropertyDataSet.from_json("test-set.json")
