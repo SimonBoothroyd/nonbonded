@@ -1,3 +1,4 @@
+import logging
 from typing import TYPE_CHECKING, Union
 
 from nonbonded.library.models.datasets import DataSet, DataSetCollection
@@ -7,6 +8,8 @@ if TYPE_CHECKING:
 
     from openff.evaluator.client import RequestResult
     from openff.evaluator.datasets import PhysicalPropertyDataSet
+
+logger = logging.getLogger(__name__)
 
 
 def reindex_data_set(
@@ -117,7 +120,13 @@ def reindex_data_set(
 
             joined_frames.drop_duplicates(subset=["Id_orig"], inplace=True)
 
-            assert len(joined_frames) == len(estimated_component_data)
+            if len(joined_frames) != len(estimated_component_data):
+
+                logging.warning(
+                    f"{abs(len(joined_frames) - len(estimated_component_data))} "
+                    f"properties could not be re-indexed."
+                )
+
             id_mappings.append(joined_frames[["Id_orig", "Id_new"]])
 
     id_mappings_frame = pandas.concat(id_mappings, ignore_index=True, sort=False)
@@ -125,6 +134,11 @@ def reindex_data_set(
     id_mappings = {x["Id_orig"]: x["Id_new"] for _, x in id_mappings_frame.iterrows()}
 
     for physical_property in data_set:
+
+        if physical_property.id not in id_mappings:
+            logger.warning(f"{physical_property.id} could not be re-indexed.")
+            continue
+
         physical_property.id = f"{id_mappings[physical_property.id]}"
 
 

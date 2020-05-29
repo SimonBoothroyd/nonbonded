@@ -62,11 +62,15 @@ def analyze(reindex, log_level):
     if len(request_results.unsuccessful_properties) > 0:
 
         logger.warning(
-            f"{len(request_results.unsuccessful_properties)} could not be estimated."
+            f"{len(request_results.unsuccessful_properties)} properties could not be "
+            f"estimated."
         )
 
-        for exception in request_results.exceptions:
-            logger.warning(str(exception))
+        for unsuccessful_property in request_results.unsuccessful_properties:
+            logger.warning(f"{unsuccessful_property.id} could not be estimated.")
+
+        # for exception in request_results.exceptions:
+        #     logger.warning(str(exception))
 
     estimated_data_set = request_results.estimated_properties
 

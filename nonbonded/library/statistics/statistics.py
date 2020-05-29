@@ -39,7 +39,9 @@ def _compute_statistics(measured_values, estimated_values, statistics):
 
     if StatisticType.R2 in statistics:
 
-        (_, _, r, _, _) = scipy.stats.linregress(measured_values, estimated_values)
+        with numpy.errstate(divide='ignore', invalid='ignore'):
+            (_, _, r, _, _) = scipy.stats.linregress(measured_values, estimated_values)
+
         summary_statistics[StatisticType.R2] = r ** 2
 
     if StatisticType.RMSE in statistics:
