@@ -169,7 +169,7 @@ class OptimizationFactory:
             gpu=backend_name == "lilac-local",
             environment_name=environment_name,
             commands=[
-                "nonbonded optimization run --config server-config.json",
+                "nonbonded optimization run --config server-config.json --restart true",
                 "nonbonded optimization analyze",
             ],
         )

@@ -109,7 +109,7 @@ class BenchmarkFactory:
             gpu=backend_name == "lilac-local",
             environment_name=environment_name,
             commands=[
-                "nonbonded benchmark run --config server-config.json",
+                "nonbonded benchmark run --config server-config.json --restart true",
                 "nonbonded benchmark analyze",
             ],
         )
