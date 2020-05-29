@@ -79,10 +79,12 @@ class DataSetEntry(BaseORM):
 
         identifier = data_row.get("Id", None)
 
-        try:
-            identifier = int(identifier)
-        except ValueError:
-            identifier = None
+        if identifier is not None:
+
+            try:
+                identifier = int(identifier)
+            except ValueError:
+                identifier = None
 
         data_entry = cls(
             id=identifier,
