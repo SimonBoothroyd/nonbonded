@@ -54,10 +54,10 @@ class BenchmarkResult(Base):
     parent = relationship("Benchmark", back_populates="results")
 
     results_entries = relationship(
-        "BenchmarkResultsEntry", cascade="all, delete-orphan", lazy="joined"
+        "BenchmarkResultsEntry", cascade="all, delete-orphan"
     )
     statistic_entries = relationship(
-        "BenchmarkStatisticsEntry", cascade="all, delete-orphan", lazy="joined"
+        "BenchmarkStatisticsEntry", cascade="all, delete-orphan"
     )
 
 

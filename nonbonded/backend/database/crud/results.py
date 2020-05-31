@@ -1,4 +1,5 @@
 from collections import defaultdict
+from typing import List
 
 from sqlalchemy.orm import Session
 
@@ -76,14 +77,6 @@ class BenchmarkResultCRUD:
         return db_benchmark_result
 
     @staticmethod
-    def read_all(db: Session, skip: int = 0, limit: int = 100):
-
-        benchmark_results = (
-            db.query(models.BenchmarkResult).offset(skip).limit(limit).all()
-        )
-        return [BenchmarkResultCRUD.db_to_model(x) for x in benchmark_results]
-
-    @staticmethod
     def read(db: Session, project_id: str, study_id: str, benchmark_id: str):
 
         db_benchmark = BenchmarkCRUD.query(db, project_id, study_id, benchmark_id)
@@ -94,7 +87,20 @@ class BenchmarkResultCRUD:
         if not db_benchmark.results:
             return None
 
-        return BenchmarkResultCRUD.db_to_model(db_benchmark.results)
+        db_results_entries = (
+            db.query(models.BenchmarkResultsEntry)
+            .filter(models.BenchmarkResultsEntry.parent_id == db_benchmark.id)
+            .all()
+        )
+        db_statistic_entries = (
+            db.query(models.BenchmarkStatisticsEntry)
+            .filter(models.BenchmarkStatisticsEntry.parent_id == db_benchmark.id)
+            .all()
+        )
+
+        return BenchmarkResultCRUD.db_to_model(
+            db_benchmark, db_results_entries, db_statistic_entries
+        )
 
     @staticmethod
     def delete(db: Session, project_id: str, study_id: str, benchmark_id: str):
@@ -110,17 +116,19 @@ class BenchmarkResultCRUD:
 
     @staticmethod
     def db_to_model(
-        db_benchmark_result: models.BenchmarkResult,
+        db_benchmark: models.Benchmark,
+        db_results_entries: List[models.BenchmarkResultsEntry],
+        db_statistic_entries: List[models.BenchmarkStatisticsEntry]
     ) -> results.BenchmarkResult:
 
-        benchmark_id = db_benchmark_result.parent.identifier
-        study_id = db_benchmark_result.parent.parent.identifier
-        project_id = db_benchmark_result.parent.parent.parent.identifier
+        benchmark_id = db_benchmark.identifier
+        study_id = db_benchmark.parent.identifier
+        project_id = db_benchmark.parent.parent.identifier
 
         # noinspection PyTypeChecker
         analysed_result = results.AnalysedResult(
-            statistic_entries=[x for x in db_benchmark_result.statistic_entries],
-            results_entries=[x for x in db_benchmark_result.results_entries],
+            statistic_entries=[x for x in db_statistic_entries],
+            results_entries=[x for x in db_results_entries],
         )
 
         benchmark_result = results.BenchmarkResult(
