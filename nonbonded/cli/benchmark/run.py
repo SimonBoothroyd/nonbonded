@@ -115,7 +115,7 @@ def run(server_config, request_options, polling_interval: int, restart: bool, lo
     server_config = EvaluatorServerConfig.parse_file(server_config)
 
     # Load in the request options
-    request_options = RequestOptions.parse_json(request_options)
+    request_options = RequestOptions.from_json(request_options)
 
     calculation_backend = server_config.to_backend()
 
