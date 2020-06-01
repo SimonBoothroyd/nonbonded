@@ -123,4 +123,6 @@ class BenchmarkFactory:
         # Generate a set of request options
         request_options = RequestOptions()
         request_options.calculation_layers = ["SimulationLayer"]
-        request_options.json("estimation-options.json", format=True)
+        request_options.json(
+            os.path.join(root_directory, "estimation-options.json"), format=True
+        )
