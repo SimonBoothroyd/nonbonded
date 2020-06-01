@@ -27,6 +27,14 @@ logger = logging.getLogger(__name__)
     show_default=True,
 )
 @click.option(
+    "--options",
+    "request_options",
+    default="estimation-options.json",
+    type=click.Path(exists=True, dir_okay=False),
+    help="The path to the OpenFF Evaluator request options.",
+    show_default=True,
+)
+@click.option(
     "--polling-interval",
     default=600,
     type=click.INT,
@@ -48,9 +56,11 @@ logger = logging.getLogger(__name__)
     help="The verbosity of the server logger.",
     show_default=True,
 )
-def run(server_config, polling_interval: int, restart: bool, log_level):
+def run(server_config, request_options, polling_interval: int, restart: bool, log_level):
 
-    from openff.evaluator.client import ConnectionOptions, EvaluatorClient, RequestResult
+    from openff.evaluator.client import (
+        ConnectionOptions, EvaluatorClient, RequestOptions, RequestResult
+    )
     from openff.evaluator.datasets import PhysicalPropertyDataSet
 
     from openforcefield.typing.engines.smirnoff import ForceField
@@ -104,6 +114,9 @@ def run(server_config, polling_interval: int, restart: bool, log_level):
 
     server_config = EvaluatorServerConfig.parse_file(server_config)
 
+    # Load in the request options
+    request_options = RequestOptions.parse_json(request_options)
+
     calculation_backend = server_config.to_backend()
 
     with calculation_backend:
@@ -116,7 +129,9 @@ def run(server_config, polling_interval: int, restart: bool, log_level):
             client = EvaluatorClient(ConnectionOptions(server_port=server_config.port))
 
             request, error = client.request_estimate(
-                property_set=data_set, force_field_source=force_field,
+                property_set=data_set,
+                force_field_source=force_field,
+                options=request_options
             )
 
             if error is not None:

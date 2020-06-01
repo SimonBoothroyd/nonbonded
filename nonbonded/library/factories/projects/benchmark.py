@@ -31,6 +31,7 @@ class BenchmarkFactory:
         max_memory: int,
     ):
 
+        from openff.evaluator.client import RequestOptions
         from openforcefield.typing.engines.smirnoff import ForceField
 
         root_directory = benchmark.id
@@ -118,3 +119,8 @@ class BenchmarkFactory:
 
         with open(submission_path, "w") as file:
             file.write(submission_content)
+
+        # Generate a set of request options
+        request_options = RequestOptions()
+        request_options.calculation_layers = ["SimulationLayer"]
+        request_options.json("estimation-options.json", format=True)
