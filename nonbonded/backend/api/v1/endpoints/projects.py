@@ -428,7 +428,7 @@ async def post_benchmark_result(
     return BenchmarkResultCRUD.db_to_model(
         db_benchmark_result,
         db_benchmark_result.results_entries,
-        db_benchmark_result.statistic_entries
+        db_benchmark_result.statistic_entries,
     )
 
 

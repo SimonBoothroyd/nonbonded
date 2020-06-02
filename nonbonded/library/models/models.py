@@ -1,5 +1,5 @@
 import abc
-from typing import TYPE_CHECKING, Type, TypeVar, Callable
+from typing import TYPE_CHECKING, Callable, Type, TypeVar
 
 from pydantic.main import BaseModel
 
@@ -33,9 +33,7 @@ class BaseREST(BaseORM, abc.ABC):
         """The internal implementation of the upload and update methods.
         """
         request = request_function(
-            url=url,
-            data=self.json(),
-            headers={"access_token": settings.ACCESS_TOKEN},
+            url=url, data=self.json(), headers={"access_token": settings.ACCESS_TOKEN},
         )
 
         try:
