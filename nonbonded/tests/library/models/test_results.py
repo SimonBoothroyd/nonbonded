@@ -242,7 +242,7 @@ def test_analysed_result_from_evaluator():
     assert full_statistics.property_type == "Density"
     assert full_statistics.n_components == 1
     assert full_statistics.statistics_type == StatisticType.RMSE
-    assert numpy.isclose(full_statistics.value, expected_std, rtol=0.05)
+    assert numpy.isclose(full_statistics.value, expected_std, rtol=0.10)
 
 
 def test_benchmark_result_from_evaluator(estimated_reference_sets):
