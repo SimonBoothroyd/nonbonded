@@ -35,6 +35,16 @@ jobs:
           conda info
           conda list
 
+      - name: Install checkmol
+        shell: bash -l {0}
+        run: |
+          conda install --yes -c conda-forge perl
+
+          curl https://homepage.univie.ac.at/norbert.haider/download/chemistry/checkmol/checkmol.pas > checkmol.pas
+          fpc checkmol.pas -S2
+
+          echo "::add-path::."
+
       - name: Install Package
         shell: bash -l {0}
         run: |
