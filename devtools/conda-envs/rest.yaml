@@ -9,6 +9,7 @@ dependencies:
     # REST dependencies
   - alembic
   - fastapi
+  - email-validator
   - sqlalchemy
   - sqlalchemy-utils
   - psycopg2

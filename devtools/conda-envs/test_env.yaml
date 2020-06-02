@@ -29,6 +29,7 @@ dependencies:
     # REST dependencies
   - alembic
   - fastapi
+  - email_validator
   - sqlalchemy
   - sqlalchemy-utils
   - sqlite

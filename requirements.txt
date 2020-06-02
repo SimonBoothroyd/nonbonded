@@ -1,5 +1,6 @@
 alembic
 fastapi
+email_validator
 sqlalchemy
 sqlalchemy-utils
 typing-extensions
