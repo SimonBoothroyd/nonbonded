@@ -13,6 +13,7 @@ from nonbonded.library.models.datasets import (
     DataSetEntry,
 )
 from nonbonded.library.models.forcefield import ForceField
+from nonbonded.library.models.validators.string import NonEmptyStr
 from nonbonded.library.statistics.statistics import StatisticType, compute_statistics
 from nonbonded.library.utilities.checkmol import analyse_functional_groups
 from nonbonded.library.utilities.environments import ChemicalEnvironment
@@ -22,6 +23,11 @@ if TYPE_CHECKING:
 
     import pandas
     from openff.evaluator.datasets import PhysicalPropertyDataSet
+
+    PositiveInt = int
+else:
+    from pydantic import PositiveInt
+
 
 logger = logging.getLogger(__name__)
 
@@ -44,14 +50,14 @@ class ResultsEntry(BaseORM):
 
 class StatisticsEntry(BaseORM):
 
-    statistics_type: str = Field(
+    statistics_type: StatisticType = Field(
         ..., description="The type of statistic recorded by this entry."
     )
 
-    property_type: str = Field(
+    property_type: NonEmptyStr = Field(
         ..., description="The type of property which the statistic was calculated for."
     )
-    n_components: Optional[int] = Field(
+    n_components: Optional[PositiveInt] = Field(
         ...,
         description="The number of components in the systems which the statistic was "
         "calculated for (pure, binary, etc.).",
@@ -148,10 +154,10 @@ class AnalysedResult(BaseORM, abc.ABC):
 
             previous_environment = sorted_assigned_environments[index - 1]
 
-            previous_component = components[
+            previous_component = sorted_components[
                 assigned_environments.index(previous_environment)
             ]
-            current_component = components[
+            current_component = sorted_components[
                 assigned_environments.index(assigned_environment)
             ]
 
@@ -273,7 +279,7 @@ class AnalysedResult(BaseORM, abc.ABC):
 
         for statistic_type in bulk_statistics:
             statistics_entry = StatisticsEntry(
-                statistics_type=statistic_type.value,
+                statistics_type=statistic_type,
                 property_type=property_type,
                 n_components=n_components,
                 category=category,
@@ -365,13 +371,13 @@ class AnalysedResult(BaseORM, abc.ABC):
 
 class BaseResult(BaseREST, abc.ABC):
 
-    project_id: str = Field(
+    project_id: NonEmptyStr = Field(
         ..., description="The id of the project that these results were generated for."
     )
-    study_id: str = Field(
+    study_id: NonEmptyStr = Field(
         ..., description="The id of the study that these results were generated for."
     )
-    id: str = Field(
+    id: NonEmptyStr = Field(
         ...,
         description="The unique id assigned to these results. This should match the id "
         "of the benchmark / optimization which yielded this result.",

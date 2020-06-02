@@ -195,6 +195,11 @@ def compute_statistics(
         The 95% confidence intervals of each statistic.
     """
 
+    import numpy
+
+    measured_std[measured_std is None] = 0.0
+    measured_std = measured_std.astype(numpy.float64)
+
     (
         bootstrapped_statistics,
         bootstrapped_std,

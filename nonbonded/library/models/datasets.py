@@ -1,10 +1,11 @@
 from typing import TYPE_CHECKING, List, Optional, Type
 
-from pydantic import Field
+from pydantic import Field, conlist
 
 from nonbonded.library.config import settings
 from nonbonded.library.models import BaseORM, BaseREST
 from nonbonded.library.models.authors import Author
+from nonbonded.library.models.validators.string import NonEmptyStr
 from nonbonded.library.utilities.exceptions import UnrecognisedPropertyType
 
 if TYPE_CHECKING:
@@ -15,15 +16,22 @@ if TYPE_CHECKING:
 
     import pandas
 
+    PositiveFloat = float
+
+else:
+    from pydantic import PositiveFloat
+
 
 class Component(BaseORM):
 
-    smiles: str = Field(..., description="The smiles representation of the component.")
+    smiles: NonEmptyStr = Field(
+        ..., description="The smiles representation of the component."
+    )
     mole_fraction: float = Field(
         ..., description="The mole fraction of this component."
     )
     exact_amount: int = Field(0, description="The exact amount of this component.")
-    role: str = Field(
+    role: NonEmptyStr = Field(
         "Solvent",
         description="The role of this component in the system (e.g solvent, solute, "
         "ligand, etc.)",
@@ -34,19 +42,19 @@ class DataSetEntry(BaseORM):
 
     id: Optional[int] = Field(None, description="The unique id assigned to this entry")
 
-    property_type: str = Field(
+    property_type: NonEmptyStr = Field(
         ...,
         description="The type of property that this value corresponds to. This should "
         "correspond to an `openff.evaluator.properties` property class name.",
     )
 
-    temperature: float = Field(
+    temperature: PositiveFloat = Field(
         ..., description="The temperature (K) at which this value was measured."
     )
-    pressure: float = Field(
+    pressure: PositiveFloat = Field(
         ..., description="The pressure (kPa) at which this value was measured."
     )
-    phase: str = Field(
+    phase: NonEmptyStr = Field(
         "Liquid", description="The phase that the property was measured in."
     )
 
@@ -57,11 +65,11 @@ class DataSetEntry(BaseORM):
         ..., description="The std error in the default unit for the property.",
     )
 
-    doi: str = Field(
+    doi: NonEmptyStr = Field(
         ..., description="The DOI which encodes the source of the measurement."
     )
 
-    components: List[Component] = Field(
+    components: conlist(Component, min_items=1) = Field(
         ...,
         description="The components in the systems for which the measurement was made.",
     )

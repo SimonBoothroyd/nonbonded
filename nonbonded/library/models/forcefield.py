@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, List
 from pydantic import Field
 
 from nonbonded.library.models import BaseORM
+from nonbonded.library.models.validators.string import NonEmptyStr
 
 if TYPE_CHECKING:
     from openforcefield.typing.engines.smirnoff.forcefield import (
@@ -12,22 +13,24 @@ if TYPE_CHECKING:
 
 class Parameter(BaseORM):
 
-    handler_type: str = Field(
+    handler_type: NonEmptyStr = Field(
         ...,
         description="The type of the parameter handler associated with this "
         "parameter.",
     )
 
-    smirks: str = Field(..., description="The smirks identifier of the parameter.")
+    smirks: NonEmptyStr = Field(
+        ..., description="The smirks identifier of the parameter."
+    )
 
-    attribute_name: str = Field(
+    attribute_name: NonEmptyStr = Field(
         ..., description="The attribute name associated with the parameter."
     )
 
 
 class ForceField(BaseORM):
 
-    inner_xml: str = Field(
+    inner_xml: NonEmptyStr = Field(
         ...,
         description="The xml representation of a force field in the SMIRNOFF "
         "force field format",
