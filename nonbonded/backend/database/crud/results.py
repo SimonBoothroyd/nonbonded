@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import List
+from typing import List, Union
 
 from sqlalchemy.orm import Session
 
@@ -116,10 +116,13 @@ class BenchmarkResultCRUD:
 
     @staticmethod
     def db_to_model(
-        db_benchmark: models.Benchmark,
+        db_benchmark: Union[models.Benchmark, models.BenchmarkResult],
         db_results_entries: List[models.BenchmarkResultsEntry],
         db_statistic_entries: List[models.BenchmarkStatisticsEntry],
     ) -> results.BenchmarkResult:
+
+        if isinstance(db_benchmark, models.BenchmarkResult):
+            db_benchmark = db_benchmark.parent
 
         benchmark_id = db_benchmark.identifier
         study_id = db_benchmark.parent.identifier

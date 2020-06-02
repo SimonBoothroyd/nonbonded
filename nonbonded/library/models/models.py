@@ -1,5 +1,5 @@
 import abc
-from typing import TYPE_CHECKING, Type, TypeVar
+from typing import TYPE_CHECKING, Type, TypeVar, Callable
 
 from pydantic.main import BaseModel
 
@@ -29,6 +29,24 @@ class BaseREST(BaseORM, abc.ABC):
     def _delete_endpoint(self):
         raise NotImplementedError()
 
+    def _upload(self, request_function: Callable, url: str) -> T:
+        """The internal implementation of the upload and update methods.
+        """
+        request = request_function(
+            url=url,
+            data=self.json(),
+            headers={"access_token": settings.ACCESS_TOKEN},
+        )
+
+        try:
+            request.raise_for_status()
+        except requests.exceptions.HTTPError as error:
+            print(error.response.text)
+            raise
+
+        return_object = self.__class__.parse_raw(request.text)
+        return return_object
+
     def upload(self) -> T:
         """Attempt to upload this object to the RESTful API for the first time.
         This function should only be used for the initial upload. To update an
@@ -47,22 +65,7 @@ class BaseREST(BaseORM, abc.ABC):
         changed some of the ids. The returned object should **always** be used in
         place of the initial one.
         """
-        import requests
-
-        request = requests.post(
-            url=self._post_endpoint(),
-            data=self.json(),
-            headers={"access_token": settings.ACCESS_TOKEN},
-        )
-
-        try:
-            request.raise_for_status()
-        except requests.exceptions.HTTPError as error:
-            print(error.response.text)
-            raise
-
-        return_object = self.__class__.parse_raw(request.text)
-        return return_object
+        return self._upload(requests.post, self._post_endpoint())
 
     def update(self) -> T:
         """Attempt to update this object on the RESTful API. This function assumes
@@ -70,21 +73,7 @@ class BaseREST(BaseORM, abc.ABC):
 
         An exception will be raised if this object has not already been uploaded.
         """
-        import requests
-
-        request = requests.put(
-            url=self._put_endpoint(),
-            data=self.json(),
-            headers={"access_token": settings.ACCESS_TOKEN},
-        )
-        try:
-            request.raise_for_status()
-        except requests.exceptions.HTTPError as error:
-            print(error.response.text)
-            raise
-
-        return_object = self.__class__.parse_raw(request.text)
-        return return_object
+        return self._upload(requests.put, self._put_endpoint())
 
     def delete(self):
         """Attempt to delete this object on the RESTful API. This function assumes
@@ -92,8 +81,6 @@ class BaseREST(BaseORM, abc.ABC):
 
         An exception will be raised if this object has not already been uploaded.
         """
-        import requests
-
         request = requests.delete(
             url=self._delete_endpoint(), headers={"access_token": settings.ACCESS_TOKEN}
         )

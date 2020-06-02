@@ -92,15 +92,13 @@ async def delete_project(
 ):
 
     try:
-        db_project = ProjectCRUD.delete(db, project_id)
+        ProjectCRUD.delete(db, project_id)
         db.commit()
 
     except Exception as e:
 
         db.rollback()
         raise e
-
-    return db_project
 
 
 @router.get("/{project_id}/studies/", response_model=StudyCollection)
@@ -179,15 +177,13 @@ async def delete_study(
 ):
 
     try:
-        db_study = StudyCRUD.delete(db, project_id, study_id)
+        StudyCRUD.delete(db, project_id, study_id)
         db.commit()
 
     except Exception as e:
 
         db.rollback()
         raise e
-
-    return db_study
 
 
 @router.get(
@@ -428,7 +424,12 @@ async def post_benchmark_result(
         db.rollback()
         raise e
 
-    return BenchmarkResultCRUD.db_to_model(db_benchmark_result)
+    # noinspection PyTypeChecker
+    return BenchmarkResultCRUD.db_to_model(
+        db_benchmark_result,
+        db_benchmark_result.results_entries,
+        db_benchmark_result.statistic_entries
+    )
 
 
 @router.get("/{project_id}/studies/{study_id}/benchmarks/{benchmark_id}/results/")

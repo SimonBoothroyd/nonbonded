@@ -50,7 +50,6 @@ class DataSetInUseError(HTTPException):
     def __init__(self, data_set_id):
 
         self.data_set_id = data_set_id
-
         super(DataSetInUseError, self).__init__(
             status_code=400,
             detail=f"The data set with id={data_set_id} is still being used in a "
