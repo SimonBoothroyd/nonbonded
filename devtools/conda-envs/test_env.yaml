@@ -2,7 +2,6 @@ name: test
 channels:
   - conda-forge
   - omnia
-  - openeye
 dependencies:
     # Base depends
   - python
@@ -15,11 +14,9 @@ dependencies:
 
     # Core dependencies
   - click
-  - cmiles
   - forcebalance >=1.7.2
   - jinja2
   - numpy
-  - openeye-toolkits
   - openforcefield
   - openff-evaluator >=0.1.0
   - pandas
@@ -39,3 +36,4 @@ dependencies:
   - starlette
   - typing-extensions
   - uvicorn
+  - gunicorn

@@ -5,11 +5,13 @@ import urllib.parse
 @functools.lru_cache(1000)
 def smiles_to_image(smiles: str):
 
-    from cmiles.utils import load_molecule
-    from rdkit.Chem import rdDepictor
+    from rdkit.Chem import MolFromSmiles, rdDepictor, rdmolfiles
     from rdkit.Chem.Draw import rdMolDraw2D
 
-    rdkit_molecule = load_molecule(smiles, toolkit="rdkit")
+    smiles_parser = rdmolfiles.SmilesParserParams()
+    smiles_parser.removeHs = False
+
+    rdkit_molecule = MolFromSmiles(smiles, smiles_parser)
 
     if not rdkit_molecule.GetNumConformers():
         rdDepictor.Compute2DCoords(rdkit_molecule)

@@ -1,8 +1,6 @@
 name: test
 channels:
   - conda-forge
-  - omnia
-  - openeye
 dependencies:
     # Base depends
   - python
@@ -13,7 +11,10 @@ dependencies:
   - fastapi
   - sqlalchemy
   - sqlalchemy-utils
+  - psycopg2
+  - starlette
   - typing-extensions
+  - uvicorn
   - gunicorn
   - pydantic
 
@@ -21,6 +22,5 @@ dependencies:
   - click
   - requests
 
-   # API dependencies
+   # Molecule API dependencies
   - rdkit
-  - cmiles
