@@ -210,6 +210,11 @@ class OptimizationCRUD:
             for key, value in optimization.priors.items()
         ]
 
+        db_optimization.analysis_environments = [
+            models.ChemicalEnvironment.as_unique(db, id=x.value)
+            for x in optimization.analysis_environments
+        ]
+
         return OptimizationCRUD.db_to_model(db_optimization)
 
     @staticmethod
@@ -447,6 +452,11 @@ class BenchmarkCRUD:
                 )
 
             db_benchmark.optimization = db_optimization
+
+        db_benchmark.analysis_environments = [
+            models.ChemicalEnvironment.as_unique(db, id=x.value)
+            for x in benchmark.analysis_environments
+        ]
 
         return db_benchmark
 
