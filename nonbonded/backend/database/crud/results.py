@@ -118,7 +118,7 @@ class BenchmarkResultCRUD:
     def db_to_model(
         db_benchmark: models.Benchmark,
         db_results_entries: List[models.BenchmarkResultsEntry],
-        db_statistic_entries: List[models.BenchmarkStatisticsEntry]
+        db_statistic_entries: List[models.BenchmarkStatisticsEntry],
     ) -> results.BenchmarkResult:
 
         benchmark_id = db_benchmark.identifier

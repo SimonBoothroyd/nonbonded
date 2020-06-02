@@ -56,10 +56,15 @@ logger = logging.getLogger(__name__)
     help="The verbosity of the server logger.",
     show_default=True,
 )
-def run(server_config, request_options, polling_interval: int, restart: bool, log_level):
+def run(
+    server_config, request_options, polling_interval: int, restart: bool, log_level
+):
 
     from openff.evaluator.client import (
-        ConnectionOptions, EvaluatorClient, RequestOptions, RequestResult
+        ConnectionOptions,
+        EvaluatorClient,
+        RequestOptions,
+        RequestResult,
     )
     from openff.evaluator.datasets import PhysicalPropertyDataSet
 
@@ -131,7 +136,7 @@ def run(server_config, request_options, polling_interval: int, restart: bool, lo
             request, error = client.request_estimate(
                 property_set=data_set,
                 force_field_source=force_field,
-                options=request_options
+                options=request_options,
             )
 
             if error is not None:
