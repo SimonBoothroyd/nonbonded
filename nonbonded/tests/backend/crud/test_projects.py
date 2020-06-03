@@ -9,21 +9,25 @@ from nonbonded.backend.database import models
 from nonbonded.backend.database.crud.projects import ProjectCRUD, StudyCRUD
 from nonbonded.backend.database.utilities.exceptions import (
     ProjectExistsError,
-    ProjectNotFoundError, StudyExistsError, StudyNotFoundError,
+    ProjectNotFoundError,
+    StudyExistsError,
+    StudyNotFoundError,
 )
 from nonbonded.library.models.authors import Author
-from nonbonded.library.models.projects import Project, Study
+from nonbonded.library.models.projects import Optimization, Project, Study
 from nonbonded.tests.backend.crud.utilities import (
     compare_projects,
+    compare_studies,
+    create_and_compare_models,
     create_author,
     create_empty_project,
-    create_empty_study, compare_studies, create_and_compare_models, paginate_models,
+    create_empty_study,
+    paginate_models,
     update_and_compare_model,
 )
 
 
 class TestProjectCRUD:
-
     @staticmethod
     def create(db: Session) -> Project:
         """Creates a new project and commits it the current session.
@@ -220,6 +224,9 @@ class TestProjectCRUD:
         assert db.query(models.Study.id).count() == 0
 
     def test_pagination(self, db: Session):
+        """Test that the limit and skip options to read_all have been
+        implemented correctly.
+        """
 
         paginate_models(
             db=db,
@@ -258,7 +265,6 @@ class TestProjectCRUD:
 
 
 class TestStudyCRUD:
-
     @staticmethod
     def create(db: Session) -> Tuple[Project, Study]:
         """Commits a new project to the current session and appends an empty
@@ -300,12 +306,7 @@ class TestStudyCRUD:
         with pytest.raises(StudyExistsError):
 
             create_and_compare_models(
-                db,
-                study,
-                StudyCRUD.create,
-                None,
-                StudyCRUD.read,
-                compare_studies,
+                db, study, StudyCRUD.create, None, StudyCRUD.read, compare_studies,
             )
 
     def test_update_empty(self, db: Session):
@@ -339,12 +340,7 @@ class TestStudyCRUD:
         with pytest.raises(ProjectNotFoundError):
 
             create_and_compare_models(
-                db,
-                study,
-                StudyCRUD.create,
-                None,
-                StudyCRUD.read,
-                compare_studies,
+                db, study, StudyCRUD.create, None, StudyCRUD.read, compare_studies,
             )
 
     def test_delete_empty(self, db: Session):

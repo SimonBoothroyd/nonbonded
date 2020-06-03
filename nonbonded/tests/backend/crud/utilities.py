@@ -1,15 +1,14 @@
 from functools import partial
-from typing import Callable, Optional, TypeVar, Union, List
-from typing_extensions import Protocol
+from typing import Callable, List, Optional, TypeVar, Union
 
 import numpy
 from sqlalchemy.orm import Session
+from typing_extensions import Protocol
 
 from nonbonded.backend.database import models
 from nonbonded.library.models.authors import Author
 from nonbonded.library.models.datasets import Component, DataSet, DataSetEntry
-from nonbonded.library.models.projects import Project
-from nonbonded.library.models.projects import Study, Optimization, Benchmark
+from nonbonded.library.models.projects import Benchmark, Optimization, Project, Study
 
 S = TypeVar("S", bound="BaseORM")
 T = TypeVar("T", bound="Base")
@@ -21,9 +20,7 @@ class PaginationCallable(Protocol):
 
 
 ReadAllCallable = Union[
-    PaginationCallable,
-    Callable[[Session], List[S]],
-    partial,
+    PaginationCallable, Callable[[Session], List[S]], partial,
 ]
 
 
@@ -34,7 +31,7 @@ def create_and_compare_models(
     read_all_function: Optional[ReadAllCallable],
     read_function: Union[Callable[[Session], T], partial],
     compare_function: Callable[[Union[S, T], Union[S, T]], None],
-    n_expected_models: int = 1
+    n_expected_models: int = 1,
 ):
     """A generic utility for making sure that a particular
     set of CRUD functions, namely creating and then retrieving
@@ -376,12 +373,10 @@ def compare_projects(
     assert len(project_1.studies) == len(project_2.studies)
 
     studies_1 = {
-        x.id if isinstance(x, Study) else x.identifier: x
-        for x in project_1.studies
+        x.id if isinstance(x, Study) else x.identifier: x for x in project_1.studies
     }
     studies_2 = {
-        x.id if isinstance(x, Study) else x.identifier: x
-        for x in project_1.studies
+        x.id if isinstance(x, Study) else x.identifier: x for x in project_1.studies
     }
 
     assert {*studies_1} == {*studies_2}
