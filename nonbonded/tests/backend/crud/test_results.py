@@ -155,7 +155,6 @@ class TestOptimizationResultCRUD:
 
 
 class TestBenchmarkResultCRUD:
-    # TODO: Does fail when reference id does not exist?
 
     def test_create_read_target_force_field(self, db: Session):
         """Test that a set of benchmark results can be generated for
