@@ -11,6 +11,7 @@ from nonbonded.backend.database.utilities.exceptions import (
     OptimizationNotFoundError,
     OptimizationResultExistsError,
     OptimizationResultNotFoundError,
+    UnableToDeleteError,
 )
 from nonbonded.library.models import results
 
@@ -247,6 +248,25 @@ class OptimizationResultCRUD:
 
         if not db_optimization_result:
             raise OptimizationResultNotFoundError(project_id, study_id, optimization_id)
+
+        if (
+            db_optimization_result.parent.benchmarks is not None
+            and len(db_optimization_result.parent.benchmarks) > 0
+        ):
+
+            benchmark_ids = [
+                ", ".join(
+                    x.identifier for x in db_optimization_result.parent.benchmarks
+                )
+            ]
+
+            raise UnableToDeleteError(
+                f"The optimization (project_id={project_id}, "
+                f"study_id={study_id}, optimization_id={optimization_id}) to which "
+                f"this result belongs has benchmarks (with ids={benchmark_ids}) "
+                f"associated with it and so cannot be deleted. Delete the benchmarks "
+                f"first and then try again."
+            )
 
         db.delete(db_optimization_result)
 

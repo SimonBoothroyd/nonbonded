@@ -1,10 +1,10 @@
-from typing import List
+from typing import List, Optional
 
 from nonbonded.library.models.authors import Author
 from nonbonded.library.models.datasets import Component, DataSet, DataSetEntry
 from nonbonded.library.models.forcebalance import ForceBalanceOptions
 from nonbonded.library.models.forcefield import ForceField, Parameter
-from nonbonded.library.models.projects import Optimization, Project, Study
+from nonbonded.library.models.projects import Benchmark, Optimization, Project, Study
 from nonbonded.library.models.results import OptimizationResult, StatisticsEntry
 from nonbonded.library.statistics.statistics import StatisticType
 from nonbonded.library.utilities.environments import ChemicalEnvironment
@@ -123,7 +123,51 @@ def create_optimization(
         ],
         force_balance_input=ForceBalanceOptions(),
         denominators={"Density": "1 * kg * m**-3"},
-        priors={"vdW/Atom/epsilon": 0.1, "vdW/Atom/rmin_half": 1.0},
+        priors={"vdW/Atom/epsilon": 0.1},
+        analysis_environments=[ChemicalEnvironment.Alkane, ChemicalEnvironment.Alcohol],
+    )
+
+
+def create_benchmark(
+    project_id: str,
+    study_id: str,
+    benchmark_id: str,
+    data_set_ids: List[str],
+    optimization_id: Optional[str],
+    force_field_name: Optional[str],
+) -> Benchmark:
+
+    """Creates an benchmark with a specified id which target the specified
+    test sets.
+
+    Parameters
+    ----------
+    project_id
+        The id of the parent project.
+    study_id
+        The id of the parent study.
+    benchmark_id
+        The id to assign to the benchmark.
+    data_set_ids
+        The ids of the data sets which form the test set.
+    optimization_id
+        The id of the optimization being benchmarked.
+    force_field_name
+        The name of the OpenFF force field being benchmarked.
+    """
+
+    assert optimization_id is None or force_field_name is None
+    assert optimization_id is not None or force_field_name is not None
+
+    return Benchmark(
+        id=benchmark_id,
+        study_id=study_id,
+        project_id=project_id,
+        name=" ",
+        description=" ",
+        test_set_ids=data_set_ids,
+        optimization_id=optimization_id,
+        force_field_name=force_field_name,
         analysis_environments=[ChemicalEnvironment.Alkane, ChemicalEnvironment.Alcohol],
     )
 

@@ -16,7 +16,7 @@ from nonbonded.tests.backend.crud.utilities import (
 )
 from nonbonded.tests.backend.crud.utilities.commit import commit_data_set
 from nonbonded.tests.backend.crud.utilities.comparison import compare_data_sets
-from nonbonded.tests.backend.crud.utilities.creation import create_data_set
+from nonbonded.tests.backend.crud.utilities.create import create_data_set
 
 
 class TestDataSetCRUD:

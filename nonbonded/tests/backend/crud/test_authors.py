@@ -3,7 +3,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.database.crud.authors import AuthorCRUD
-from nonbonded.tests.backend.crud.utilities.creation import create_author
+from nonbonded.tests.backend.crud.utilities.create import create_author
 
 
 def test_simple_create_read(db: Session):

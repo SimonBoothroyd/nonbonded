@@ -1,16 +1,20 @@
-from typing import Tuple
+from typing import Optional, Tuple
 
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.database.crud.datasets import DataSetCRUD
-from nonbonded.backend.database.crud.projects import ProjectCRUD
+from nonbonded.backend.database.crud.projects import BenchmarkCRUD, ProjectCRUD
+from nonbonded.backend.database.crud.results import OptimizationResultCRUD
 from nonbonded.library.models.datasets import DataSet, DataSetCollection
-from nonbonded.library.models.projects import Optimization, Project, Study
-from nonbonded.tests.backend.crud.utilities.creation import (
+from nonbonded.library.models.projects import Benchmark, Optimization, Project, Study
+from nonbonded.library.models.results import OptimizationResult
+from nonbonded.tests.backend.crud.utilities.create import (
+    create_benchmark,
     create_data_set,
     create_empty_project,
     create_empty_study,
     create_optimization,
+    create_optimization_result,
 )
 
 
@@ -117,3 +121,103 @@ def commit_optimization(
 
     project = ProjectCRUD.db_to_model(db_project)
     return project, study, study.optimizations[0], training_set
+
+
+def commit_optimization_result(
+    db: Session,
+) -> Tuple[Project, Study, Optimization, DataSetCollection, OptimizationResult]:
+    """Creates a new optimization result and commits it the current session.
+
+    Parameters
+    ----------
+    db
+        The current data base session.
+    """
+
+    # Create the parent optimization
+    project, study, optimization, training_set = commit_optimization(db)
+
+    result = create_optimization_result(project.id, study.id, optimization.id)
+
+    db_result = OptimizationResultCRUD.create(db, result)
+    db.add(db_result)
+    db.commit()
+
+    result = OptimizationResultCRUD.db_to_model(db_result)
+    return project, study, optimization, training_set, result
+
+
+def commit_benchmark(
+    db: Session, with_optimization: bool, force_field_name: Optional[str],
+) -> Tuple[
+    Project,
+    Study,
+    Benchmark,
+    DataSetCollection,
+    Optional[Optimization],
+    Optional[OptimizationResult],
+]:
+    """Commits a new project and study to the current session and appends an
+    empty benchmark onto it. Additionally, this function commits two data sets
+    to the session to use as the training set.
+
+    Parameters
+    ----------
+    db
+        The current data base session.
+    with_optimization
+        Whether the benchmark should target an optimization. This will be
+        created along with a set of optimization results if true.
+    force_field_name
+        The name of the OpenFF force field being benchmarked.
+    """
+
+    if not with_optimization:
+
+        data_set = commit_data_set_collection(db)
+        data_set_ids = [x.id for x in data_set.data_sets]
+
+        optimization_id = None
+        optimization_result = None
+
+        project, study = commit_study(db)
+
+    else:
+
+        (
+            project,
+            study,
+            optimization,
+            data_set,
+            optimization_result,
+        ) = commit_optimization_result(db)
+        data_set_ids = [x.id for x in data_set.data_sets]
+
+        optimization_id = optimization.id
+
+    benchmark = create_benchmark(
+        project.id,
+        study.id,
+        "benchmark-1",
+        data_set_ids,
+        optimization_id,
+        force_field_name,
+    )
+
+    BenchmarkCRUD.create(db, benchmark)
+    db.commit()
+
+    project = ProjectCRUD.read(db, project.id)
+
+    optimization = (
+        None if optimization_id is None else project.studies[0].optimizations[0]
+    )
+
+    return (
+        project,
+        project.studies[0],
+        project.studies[0].benchmarks[0],
+        data_set,
+        optimization,
+        optimization_result,
+    )

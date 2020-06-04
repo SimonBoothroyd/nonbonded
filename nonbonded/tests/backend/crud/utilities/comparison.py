@@ -182,7 +182,6 @@ def compare_studies(
     for unique_id in optimizations_1:
         compare_optimizations(optimizations_1[unique_id], optimizations_2[unique_id])
 
-    # TODO: Compare benchmarks
     assert len(study_1.benchmarks) == len(study_2.benchmarks)
 
     benchmarks_1 = {
@@ -195,6 +194,9 @@ def compare_studies(
     }
 
     assert {*benchmarks_1} == {*benchmarks_2}
+
+    for unique_id in benchmarks_1:
+        compare_benchmarks(benchmarks_1[unique_id], benchmarks_2[unique_id])
 
 
 def compare_optimizations(
@@ -446,3 +448,84 @@ def compare_optimization_results(
         optimization_result_1.refit_force_field.inner_xml
         == optimization_result_2.refit_force_field.inner_xml
     )
+
+
+def compare_benchmarks(
+    benchmark_1: Union[Benchmark, models.Benchmark],
+    benchmark_2: Union[Benchmark, models.Benchmark],
+):
+    """Compare if two benchmark models are equivalent.
+
+    Parameters
+    ----------
+    benchmark_1
+        The first benchmark to compare.
+    benchmark_2
+        The second benchmark to compare.
+
+    Raises
+    ------
+    AssertionError
+    """
+
+    def _id(benchmark: Union[Benchmark, models.Benchmark]):
+        return (
+            benchmark.id if isinstance(benchmark, Benchmark) else benchmark.identifier
+        )
+
+    def _test_ids(benchmark: Union[Benchmark, models.Benchmark]):
+        if isinstance(benchmark, Benchmark):
+            test_ids = {*benchmark.test_set_ids}
+        else:
+            test_ids = {x.id for x in benchmark.test_sets}
+
+        return test_ids
+
+    id_1 = _id(benchmark_1)
+    id_2 = _id(benchmark_1)
+
+    assert id_1 == id_2
+
+    assert benchmark_1.name == benchmark_2.name
+    assert benchmark_1.description == benchmark_2.description
+
+    # Check that both benchmarks are targeting the same data sets.
+    test_ids_1 = _test_ids(benchmark_1)
+    test_ids_2 = _test_ids(benchmark_2)
+
+    assert {*test_ids_1} == {*test_ids_2}
+
+    # Make the benchmarks are against the same targets.
+    if (
+        isinstance(benchmark_1, models.Benchmark)
+        and benchmark_1.optimization is not None
+    ):
+        optimization_id_1 = benchmark_1.optimization.identifier
+    else:
+        optimization_id_1 = benchmark_1.optimization_id
+    if (
+        isinstance(benchmark_2, models.Benchmark)
+        and benchmark_2.optimization is not None
+    ):
+        optimization_id_2 = benchmark_2.optimization.identifier
+    else:
+        optimization_id_2 = benchmark_2.optimization_id
+
+    assert optimization_id_1 == optimization_id_2
+    assert benchmark_1.force_field_name == benchmark_2.force_field_name
+
+    # Make sure both benchmarks are analyzing the same environments
+    assert len(benchmark_1.analysis_environments) == len(
+        benchmark_2.analysis_environments
+    )
+
+    environments_1 = {
+        x if isinstance(x, ChemicalEnvironment) else ChemicalEnvironment(x.id)
+        for x in benchmark_1.analysis_environments
+    }
+    environments_2 = {
+        x if isinstance(x, ChemicalEnvironment) else ChemicalEnvironment(x.id)
+        for x in benchmark_2.analysis_environments
+    }
+
+    assert environments_1 == environments_2

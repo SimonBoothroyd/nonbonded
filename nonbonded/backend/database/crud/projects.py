@@ -146,15 +146,6 @@ class OptimizationCRUD:
                 optimization.project_id, optimization.study_id, optimization.id
             )
 
-        if db_optimization.results is not None:
-
-            raise UnableToUpdateError(
-                f"This optimization (project_id={optimization.project_id}, "
-                f"study_id={optimization.study_id}, optimization_id={optimization.id}) "
-                f"already has a set of results associated with it so cannot be "
-                f"updated. Delete the results first and then try again."
-            )
-
         if (
             db_optimization.benchmarks is not None
             and len(db_optimization.benchmarks) > 0
@@ -169,6 +160,15 @@ class OptimizationCRUD:
                 f"study_id={optimization.study_id}, optimization_id={optimization.id}) "
                 f"has benchmarks (with ids={benchmark_ids}) associated with it and so "
                 f"cannot be updated. Delete the benchmarks first and then try again."
+            )
+
+        if db_optimization.results is not None:
+
+            raise UnableToUpdateError(
+                f"This optimization (project_id={optimization.project_id}, "
+                f"study_id={optimization.study_id}, optimization_id={optimization.id}) "
+                f"already has a set of results associated with it so cannot be "
+                f"updated. Delete the results first and then try again."
             )
 
         db_optimization.name = optimization.name
@@ -227,15 +227,6 @@ class OptimizationCRUD:
         if not db_optimization:
             raise OptimizationNotFoundError(project_id, study_id, optimization_id)
 
-        if db_optimization.results is not None:
-
-            raise UnableToDeleteError(
-                f"This optimization (project_id={project_id}, "
-                f"study_id={study_id}, optimization_id={optimization_id}) "
-                f"already has a set of results associated with it so cannot be "
-                f"deleted. Delete the results first and then try again."
-            )
-
         if (
             db_optimization.benchmarks is not None
             and len(db_optimization.benchmarks) > 0
@@ -250,6 +241,15 @@ class OptimizationCRUD:
                 f"study_id={study_id}, optimization_id={optimization_id}) "
                 f"has benchmarks (with ids={benchmark_ids}) associated with it and so "
                 f"cannot be deleted. Delete the benchmarks first and then try again."
+            )
+
+        if db_optimization.results is not None:
+
+            raise UnableToDeleteError(
+                f"This optimization (project_id={project_id}, "
+                f"study_id={study_id}, optimization_id={optimization_id}) "
+                f"already has a set of results associated with it so cannot be "
+                f"deleted. Delete the results first and then try again."
             )
 
         db.delete(db_optimization)
@@ -452,6 +452,9 @@ class BenchmarkCRUD:
                 )
 
             db_benchmark.optimization = db_optimization
+
+        else:
+            db_benchmark.optimization_id = None
 
         db_benchmark.analysis_environments = [
             models.ChemicalEnvironment.as_unique(db, id=x.value)

@@ -124,13 +124,13 @@ class DataSetCRUD:
         if len(db_data_set.optimizations) > 0 or len(db_data_set.benchmarks) > 0:
 
             type_name = (
-                "optimization" if len(db_data_set.optimizations) > 0 else "benchmark"
+                "benchmark" if len(db_data_set.benchmarks) > 0 else "optimization"
             )
 
             raise UnableToDeleteError(
                 f"This data set (id={data_set_id}) is being referenced by at least "
                 f"one {type_name} and so cannot be deleted. Delete the referencing "
-                f"object first and then try again."
+                f"{type_name} first and then try again."
             )
 
         db.delete(db_data_set)

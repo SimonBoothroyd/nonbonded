@@ -10,37 +10,18 @@ from nonbonded.backend.database.utilities.exceptions import (
     OptimizationResultExistsError,
     OptimizationResultNotFoundError,
 )
-from nonbonded.library.models.results import OptimizationResult
 from nonbonded.tests.backend.crud.utilities import create_and_compare_models
-from nonbonded.tests.backend.crud.utilities.commit import commit_optimization
+from nonbonded.tests.backend.crud.utilities.commit import (
+    commit_optimization,
+    commit_optimization_result,
+)
 from nonbonded.tests.backend.crud.utilities.comparison import (
     compare_optimization_results,
 )
-from nonbonded.tests.backend.crud.utilities.creation import create_optimization_result
+from nonbonded.tests.backend.crud.utilities.create import create_optimization_result
 
 
 class TestOptimizationResultCRUD:
-    @staticmethod
-    def create(db: Session) -> OptimizationResult:
-        """Creates a new optimization result and commits it the current session.
-
-        Parameters
-        ----------
-        db
-            The current data base session.
-        """
-
-        # Create the parent optimization
-        project, study, optimization, training_set = commit_optimization(db)
-
-        result = create_optimization_result(project.id, study.id, optimization.id)
-
-        db_result = OptimizationResultCRUD.create(db, result)
-        db.add(db_result)
-        db.commit()
-
-        return OptimizationResultCRUD.db_to_model(db_result)
-
     def test_create_read(self, db: Session):
         """Test that an empty project (i.e. one without studies) can be created, and then
         read back out again while maintaining the integrity of the data.
@@ -107,7 +88,7 @@ class TestOptimizationResultCRUD:
         that it's children get successfully deleted.
         """
 
-        results = self.create(db)
+        _, _, _, _, results = commit_optimization_result(db)
 
         assert db.query(models.OptimizationResult.id).count() == 1
         assert db.query(models.ObjectiveFunction.id).count() == 3
