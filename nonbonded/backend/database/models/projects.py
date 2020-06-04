@@ -241,10 +241,10 @@ class Study(Base):
     description = Column(String)
 
     optimizations = relationship(
-        "Optimization", back_populates="parent", cascade="all, delete-orphan"
+        "Optimization", back_populates="parent"
     )
     benchmarks = relationship(
-        "Benchmark", back_populates="parent", cascade="all, delete-orphan"
+        "Benchmark", back_populates="parent"
     )
 
 
@@ -260,7 +260,7 @@ class Project(Base):
 
     authors = relationship("Author", secondary=author_projects_table)
     studies = relationship(
-        "Study", back_populates="parent", cascade="all, delete-orphan"
+        "Study", back_populates="parent"
     )
 
 

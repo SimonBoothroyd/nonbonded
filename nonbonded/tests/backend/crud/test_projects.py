@@ -45,7 +45,7 @@ from nonbonded.tests.backend.crud.utilities.commit import (
     commit_optimization,
     commit_optimization_result,
     commit_project,
-    commit_study,
+    commit_study, commit_data_set,
 )
 from nonbonded.tests.backend.crud.utilities.comparison import (
     compare_benchmarks,
@@ -60,7 +60,7 @@ from nonbonded.tests.backend.crud.utilities.create import (
     create_empty_project,
     create_empty_study,
     create_optimization,
-    create_optimization_result,
+    create_optimization_result, create_benchmark_result,
 )
 
 
@@ -331,6 +331,96 @@ class TestStudyCRUD:
             compare_studies,
         )
 
+    def test_update_with_children(self, db: Session):
+        """Test to make sure that the optimizations and benchmarks can be
+        added and deleted by study updates.
+        """
+
+        optimization_data_set = commit_data_set(db, "training_set")
+        benchmark_data_set = commit_data_set(db, "test_set")
+
+        project, study = commit_study(db)
+
+        read_function = functools.partial(
+            StudyCRUD.read, project_id=study.project_id, study_id=study.id
+        )
+
+        optimization = create_optimization(
+            project.id, study.id, "optimization-1", [optimization_data_set.id]
+        )
+        benchmark = create_benchmark(
+            project.id,
+            study.id,
+            "benchmark-1",
+            [benchmark_data_set.id],
+            None,
+            "openff-1.0.0"
+        )
+
+        assert db.query(models.Optimization.id).count() == 0
+        assert db.query(models.Benchmark.id).count() == 0
+
+        # Add the optimization and benchmark via an updates.
+        study.optimizations = [optimization]
+        study.benchmarks = [benchmark]
+
+        update_and_compare_model(
+            db, study, StudyCRUD.update, read_function, compare_studies
+        )
+
+        assert db.query(models.Optimization.id).count() == 1
+        assert db.query(models.Benchmark.id).count() == 1
+
+        # Add results to the optimization to ensure the study can no longer
+        # be updated.
+        optimization_result = create_optimization_result(
+            project.id, study.id, optimization.id
+        )
+
+        db.add(OptimizationResultCRUD.create(db, optimization_result))
+        db.commit()
+
+        with pytest.raises(UnableToUpdateError):
+            update_and_compare_model(
+                db, study, StudyCRUD.update, read_function, compare_studies
+            )
+
+        # Make sure the study is ok to update once the results have been removed.
+        OptimizationResultCRUD.delete(db, project.id, study.id, optimization.id)
+
+        update_and_compare_model(
+            db, study, StudyCRUD.update, read_function, compare_studies
+        )
+
+        # Now do likewise for benchmarks.
+        benchmark_result = create_benchmark_result(
+            project.id, study.id, benchmark.id, benchmark_data_set
+        )
+
+        db.add(BenchmarkResultCRUD.create(db, benchmark_result))
+        db.commit()
+
+        with pytest.raises(UnableToUpdateError):
+            update_and_compare_model(
+                db, study, StudyCRUD.update, read_function, compare_studies
+            )
+
+        BenchmarkResultCRUD.delete(db, project.id, study.id, benchmark.id)
+        update_and_compare_model(
+            db, study, StudyCRUD.update, read_function, compare_studies
+        )
+
+        # Finally, remove both the optimization and benchmark
+        study.benchmarks = []
+        study.optimizations = []
+
+        update_and_compare_model(
+            db, study, StudyCRUD.update, read_function, compare_studies
+        )
+
+        assert db.query(models.Optimization.id).count() == 0
+        assert db.query(models.Benchmark.id).count() == 0
+
     def test_missing_parent(self, db: Session):
         """Test that an exception is raised when a study is added but
         the parent project cannot be found.
@@ -369,6 +459,111 @@ class TestStudyCRUD:
 
         db_project = ProjectCRUD.query(db, project.id)
         assert len(db_project.studies) == 0
+
+    def test_delete_with_children(self, db: Session):
+        """Test to make sure that deleting studies with optimizations and
+        benchmarks works as expected.
+        """
+
+        optimization_data_set = commit_data_set(db, "training_set")
+        benchmark_data_set = commit_data_set(db, "test_set")
+
+        project, study = commit_study(db)
+        
+        read_function = functools.partial(
+            StudyCRUD.read, project_id=study.project_id, study_id=study.id
+        )
+
+        # Create an optimization and benchmark to delete.
+        optimization = create_optimization(
+            project.id, study.id, "optimization-1", [optimization_data_set.id]
+        )
+        benchmark = create_benchmark(
+            project.id, 
+            study.id, 
+            "benchmark-1", 
+            [benchmark_data_set.id], 
+            None,
+            "openff-1.0.0"
+        )
+
+        assert db.query(models.Optimization.id).count() == 0
+        assert db.query(models.Benchmark.id).count() == 0
+
+        study.optimizations = [optimization]
+        study.benchmarks = [benchmark]
+        
+        update_and_compare_model(
+            db, study, StudyCRUD.update, read_function, compare_studies
+        )
+
+        assert db.query(models.Optimization.id).count() == 1
+        assert db.query(models.Benchmark.id).count() == 1
+
+        compare_optimizations(
+            OptimizationCRUD.read(db, project.id, study.id, optimization.id),
+            optimization
+        )
+        compare_benchmarks(
+            BenchmarkCRUD.read(db, project.id, study.id, benchmark.id),
+            benchmark
+        )
+
+        # Delete the benchmark and ensure that the optimization and benchmark
+        # are also deleted.
+        StudyCRUD.delete(db, project.id, study.id)
+        db.commit()
+
+        assert db.query(models.Optimization.id).count() == 0
+        assert db.query(models.Benchmark.id).count() == 0
+
+    def test_delete_with_children_results(self, db: Session):
+        """Test to make sure that deleting studies with optimizations and
+        benchmarks which have results uploaded raises an exception.
+        """
+
+        optimization_data_set = commit_data_set(db, "training_set")
+        benchmark_data_set = commit_data_set(db, "test_set")
+
+        project = commit_project(db)
+
+        study = create_empty_study(project.id, "study-1")
+
+        # Create an optimization and benchmark to delete.
+        optimization = create_optimization(
+            project.id, study.id, "optimization-1", [optimization_data_set.id]
+        )
+        benchmark = create_benchmark(
+            project.id,
+            study.id,
+            "benchmark-1",
+            [benchmark_data_set.id],
+            None,
+            "openff-1.0.0"
+        )
+
+        study.optimizations = [optimization]
+        study.benchmarks = [benchmark]
+
+        db.add(StudyCRUD.create(db, study))
+        db.commit()
+
+        optimization_result = create_optimization_result(
+            project.id, study.id, optimization.id
+        )
+        benchmark_result = create_benchmark_result(
+            project.id, study.id, benchmark.id, benchmark_data_set
+        )
+
+        db.add(OptimizationResultCRUD.create(db, optimization_result))
+        db.add(BenchmarkResultCRUD.create(db, benchmark_result))
+        db.commit()
+
+        with pytest.raises(UnableToDeleteError):
+            StudyCRUD.delete(db, project.id, study.id)
+
+        assert db.query(models.Optimization.id).count() == 1
+        assert db.query(models.Benchmark.id).count() == 1
 
     def test_delete_not_found(self, db: Session):
 
@@ -786,7 +981,6 @@ class TestOptimizationCRUD:
 
 
 class TestBenchmarkCRUD:
-    # TODO - update / delete with results.
 
     def test_create_read_no_results(self, db: Session):
         """Test that a benchmark can be successfully created and then
