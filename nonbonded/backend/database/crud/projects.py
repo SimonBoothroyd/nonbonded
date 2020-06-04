@@ -621,9 +621,9 @@ class StudyCRUD:
         new_list
             The new list of items being updated / created on the data base.
         """
-        ids_to_remove = (
-            {x.identifier for x in db_existing_list} - {x.id for x in new_list}
-        )
+        ids_to_remove = {x.identifier for x in db_existing_list} - {
+            x.id for x in new_list
+        }
 
         for id_to_remove in ids_to_remove:
             crud_class.delete(db, study.project_id, study.id, id_to_remove)
@@ -779,9 +779,9 @@ class ProjectCRUD:
         db_studies = []
 
         # Remove any orphaned studies.
-        study_ids_to_remove = (
-            {x.identifier for x in db_project.studies} - {x.id for x in project.studies}
-        )
+        study_ids_to_remove = {x.identifier for x in db_project.studies} - {
+            x.id for x in project.studies
+        }
 
         for study_id in study_ids_to_remove:
             StudyCRUD.delete(db, project.id, study_id)

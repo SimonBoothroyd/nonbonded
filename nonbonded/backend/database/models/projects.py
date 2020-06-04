@@ -240,12 +240,8 @@ class Study(Base):
     name = Column(String)
     description = Column(String)
 
-    optimizations = relationship(
-        "Optimization", back_populates="parent"
-    )
-    benchmarks = relationship(
-        "Benchmark", back_populates="parent"
-    )
+    optimizations = relationship("Optimization", back_populates="parent")
+    benchmarks = relationship("Benchmark", back_populates="parent")
 
 
 class Project(Base):
@@ -259,9 +255,7 @@ class Project(Base):
     description = Column(String)
 
     authors = relationship("Author", secondary=author_projects_table)
-    studies = relationship(
-        "Study", back_populates="parent"
-    )
+    studies = relationship("Study", back_populates="parent")
 
 
 auto_delete_orphans(Optimization.initial_force_field)

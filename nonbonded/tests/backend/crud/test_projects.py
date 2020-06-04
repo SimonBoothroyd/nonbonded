@@ -41,11 +41,12 @@ from nonbonded.tests.backend.crud.utilities import (
 from nonbonded.tests.backend.crud.utilities.commit import (
     commit_benchmark,
     commit_benchmark_result,
+    commit_data_set,
     commit_data_set_collection,
     commit_optimization,
     commit_optimization_result,
     commit_project,
-    commit_study, commit_data_set,
+    commit_study,
 )
 from nonbonded.tests.backend.crud.utilities.comparison import (
     compare_benchmarks,
@@ -57,10 +58,11 @@ from nonbonded.tests.backend.crud.utilities.comparison import (
 from nonbonded.tests.backend.crud.utilities.create import (
     create_author,
     create_benchmark,
+    create_benchmark_result,
     create_empty_project,
     create_empty_study,
     create_optimization,
-    create_optimization_result, create_benchmark_result,
+    create_optimization_result,
 )
 
 
@@ -354,7 +356,7 @@ class TestStudyCRUD:
             "benchmark-1",
             [benchmark_data_set.id],
             None,
-            "openff-1.0.0"
+            "openff-1.0.0",
         )
 
         assert db.query(models.Optimization.id).count() == 0
@@ -469,7 +471,7 @@ class TestStudyCRUD:
         benchmark_data_set = commit_data_set(db, "test_set")
 
         project, study = commit_study(db)
-        
+
         read_function = functools.partial(
             StudyCRUD.read, project_id=study.project_id, study_id=study.id
         )
@@ -479,12 +481,12 @@ class TestStudyCRUD:
             project.id, study.id, "optimization-1", [optimization_data_set.id]
         )
         benchmark = create_benchmark(
-            project.id, 
-            study.id, 
-            "benchmark-1", 
-            [benchmark_data_set.id], 
+            project.id,
+            study.id,
+            "benchmark-1",
+            [benchmark_data_set.id],
             None,
-            "openff-1.0.0"
+            "openff-1.0.0",
         )
 
         assert db.query(models.Optimization.id).count() == 0
@@ -492,7 +494,7 @@ class TestStudyCRUD:
 
         study.optimizations = [optimization]
         study.benchmarks = [benchmark]
-        
+
         update_and_compare_model(
             db, study, StudyCRUD.update, read_function, compare_studies
         )
@@ -502,11 +504,10 @@ class TestStudyCRUD:
 
         compare_optimizations(
             OptimizationCRUD.read(db, project.id, study.id, optimization.id),
-            optimization
+            optimization,
         )
         compare_benchmarks(
-            BenchmarkCRUD.read(db, project.id, study.id, benchmark.id),
-            benchmark
+            BenchmarkCRUD.read(db, project.id, study.id, benchmark.id), benchmark
         )
 
         # Delete the benchmark and ensure that the optimization and benchmark
@@ -539,7 +540,7 @@ class TestStudyCRUD:
             "benchmark-1",
             [benchmark_data_set.id],
             None,
-            "openff-1.0.0"
+            "openff-1.0.0",
         )
 
         study.optimizations = [optimization]
@@ -981,7 +982,6 @@ class TestOptimizationCRUD:
 
 
 class TestBenchmarkCRUD:
-
     def test_create_read_no_results(self, db: Session):
         """Test that a benchmark can be successfully created and then
         retrieved out again while maintaining the integrity of the data.
