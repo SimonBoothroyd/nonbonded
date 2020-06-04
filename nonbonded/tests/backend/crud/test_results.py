@@ -4,16 +4,17 @@ import pytest
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.database import models
+from nonbonded.backend.database.crud.projects import BenchmarkCRUD
 from nonbonded.backend.database.crud.results import OptimizationResultCRUD
 from nonbonded.backend.database.utilities.exceptions import (
     OptimizationNotFoundError,
     OptimizationResultExistsError,
-    OptimizationResultNotFoundError,
+    OptimizationResultNotFoundError, UnableToDeleteError,
 )
 from nonbonded.tests.backend.crud.utilities import create_and_compare_models
 from nonbonded.tests.backend.crud.utilities.commit import (
     commit_optimization,
-    commit_optimization_result,
+    commit_optimization_result, commit_benchmark,
 )
 from nonbonded.tests.backend.crud.utilities.comparison import (
     compare_optimization_results,
@@ -110,3 +111,29 @@ class TestOptimizationResultCRUD:
 
         with pytest.raises(OptimizationResultNotFoundError):
             OptimizationResultCRUD.delete(db, " ", " ", " ")
+
+    def test_delete_with_benchmark(self, db: Session):
+        """Test that optimization results which are being targeted by a benchmark
+        can only be deleted once the benchmark has been deleted.
+        """
+
+        (
+            project,
+            study,
+            benchmark,
+            data_set,
+            optimization,
+            optimization_result,
+        ) = commit_benchmark(db, True, None)
+
+        with pytest.raises(UnableToDeleteError) as error_info:
+            OptimizationResultCRUD.delete(db, project.id, study.id, optimization.id)
+
+        assert "benchmark" in str(error_info.value)
+
+        # Delete the benchmark and results and try again.
+        BenchmarkCRUD.delete(db, project.id, study.id, benchmark.id)
+        db.commit()
+
+        OptimizationResultCRUD.delete(db, project.id, study.id, optimization.id)
+        db.commit()

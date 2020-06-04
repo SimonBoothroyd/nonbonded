@@ -41,6 +41,13 @@ class TestDataSetCRUD:
         with pytest.raises(DataSetExistsError):
             DataSetCRUD.create(db, data_set)
 
+    def test_not_found(self, db: Session):
+        """Make sure an exception is correctly raised when a data
+        set cannot be found."""
+
+        with pytest.raises(DataSetNotFoundError):
+            DataSetCRUD.read(db, " ")
+
     def test_pagination(self, db: Session):
         """Test that the limit and skip options to read_all have been
         implemented correctly.

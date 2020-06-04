@@ -47,7 +47,7 @@ from nonbonded.tests.backend.crud.utilities.comparison import (
     compare_benchmarks,
     compare_optimizations,
     compare_projects,
-    compare_studies,
+    compare_studies, compare_data_sets,
 )
 from nonbonded.tests.backend.crud.utilities.create import (
     create_author,
@@ -377,10 +377,40 @@ class TestStudyCRUD:
         with pytest.raises(StudyNotFoundError):
             StudyCRUD.delete(db, project.id, "study-id")
 
+    def test_read_data_set_study(self, db: Session):
+        """Test that an exception is raised when a optimization could
+        not be found be it's unique id.
+        """
+
+        _, study, _, expected_data_sets, _, _ = commit_benchmark(db, True, None)
+        expected_data_sets_by_id = {x.id: x for x in expected_data_sets.data_sets}
+
+        read_data_sets = StudyCRUD.read_all_data_sets(db, study.project_id, study.id)
+        read_data_sets_by_id = {x.id: x for x in read_data_sets.data_sets}
+
+        assert len(expected_data_sets.data_sets) == len(read_data_sets.data_sets)
+        assert {*expected_data_sets_by_id} == {*read_data_sets_by_id}
+
+        for data_set_id in expected_data_sets_by_id:
+
+            compare_data_sets(
+                expected_data_sets_by_id[data_set_id], read_data_sets_by_id[data_set_id]
+            )
+
+        with pytest.raises(StudyNotFoundError):
+            StudyCRUD.read_all_data_sets(db, " ", " ")
+
+    def test_read_data_set_study_not_found(self, db: Session):
+        """Test that an exception is raised when a study could
+        not be found while attepting to read its associated data
+        sets.
+        """
+
+        with pytest.raises(StudyNotFoundError):
+            StudyCRUD.read_all_data_sets(db, " ", " ")
+
 
 class TestOptimizationCRUD:
-    # TODO: delete (+ benchmark checks).
-    # TODO: update (+ benchmark checks).
 
     def test_create_read_no_results(self, db: Session):
         """Test that a optimization can be successfully created and then
@@ -445,8 +475,12 @@ class TestOptimizationCRUD:
 
     def test_missing_parent(self, db: Session):
         """Test that an exception is raised when a optimization is added but
-        the parent project or study cannot be found.
+        the parent project or study cannot be found, or trying to read all
+        optimizations of a non-existent study.
         """
+
+        with pytest.raises(StudyNotFoundError):
+            OptimizationCRUD.read_all(db, " ", " ")
 
         training_set_ids = [x.id for x in commit_data_set_collection(db).data_sets]
 
@@ -701,6 +735,8 @@ class TestOptimizationCRUD:
         OptimizationCRUD.update(db, optimization)
         OptimizationCRUD.delete(db, project.id, study.id, optimization.id)
 
+        db.commit()
+
     def test_update_delete_with_benchmark(self, db: Session):
         """Test that an optimization which is being targeted by a benchmark can
         only be updated
@@ -735,6 +771,8 @@ class TestOptimizationCRUD:
         OptimizationCRUD.update(db, optimization)
         OptimizationCRUD.delete(db, project.id, study.id, optimization.id)
 
+        db.commit()
+
     def test_update_not_found(self, db: Session):
 
         optimization = create_optimization(" ", " ", " ", [" "])
@@ -744,6 +782,8 @@ class TestOptimizationCRUD:
 
 
 class TestBenchmarkCRUD:
+    # TODO - update / delete with results.
+
     def test_create_read_no_results(self, db: Session):
         """Test that a benchmark can be successfully created and then
         retrieved out again while maintaining the integrity of the data.
@@ -879,8 +919,12 @@ class TestBenchmarkCRUD:
 
     def test_missing_parent(self, db: Session):
         """Test that an exception is raised when a benchmark is added but
-        the parent project or study cannot be found.
+        the parent project or study cannot be found, or trying to read all
+        benchmarks of a non-existent study.
         """
+
+        with pytest.raises(StudyNotFoundError):
+            BenchmarkCRUD.read_all(db, " ", " ")
 
         test_set_ids = [x.id for x in commit_data_set_collection(db).data_sets]
 
@@ -1114,6 +1158,21 @@ class TestBenchmarkCRUD:
             )
             == 1
         )
+
+        # Make sure that the correct exception is raised if a benchmark is updated
+        # to target a non-existent optimization
+        with pytest.raises(OptimizationNotFoundError):
+
+            updated_benchmark.force_field_name = None
+            updated_benchmark.optimization_id = " "
+
+            update_and_compare_model(
+                db,
+                updated_benchmark,
+                BenchmarkCRUD.update,
+                read_function,
+                compare_benchmarks,
+            )
 
     def test_update_missing_data_set(self, db: Session):
         """Test that an exception is raised when a benchmark is updated to
