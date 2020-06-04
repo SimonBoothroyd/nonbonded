@@ -6,7 +6,12 @@ from nonbonded.backend.database import models
 from nonbonded.library.models.authors import Author
 from nonbonded.library.models.datasets import DataSet
 from nonbonded.library.models.projects import Benchmark, Optimization, Project, Study
-from nonbonded.library.models.results import OptimizationResult, StatisticsEntry
+from nonbonded.library.models.results import (
+    BenchmarkResult,
+    OptimizationResult,
+    ResultsEntry,
+    StatisticsEntry,
+)
 from nonbonded.library.statistics.statistics import StatisticType
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 
@@ -529,3 +534,170 @@ def compare_benchmarks(
     }
 
     assert environments_1 == environments_2
+
+
+def compare_statistic_entries(
+    statistic_1: Union[
+        StatisticsEntry,
+        models.OptimizationStatisticsEntry,
+        models.BenchmarkStatisticsEntry,
+    ],
+    statistic_2: Union[
+        StatisticsEntry,
+        models.OptimizationStatisticsEntry,
+        models.BenchmarkStatisticsEntry,
+    ],
+):
+    """Compare if two statistic entry models are equivalent.
+
+    Parameters
+    ----------
+    statistic_1
+        The first statistic entry to compare.
+    statistic_2
+        The second statistic entry to compare.
+
+    Raises
+    ------
+    AssertionError
+    """
+
+    expected_attributes = StatisticsEntry.__fields__
+
+    for expected_attribute in expected_attributes:
+
+        field_1 = getattr(statistic_1, expected_attribute)
+        field_2 = getattr(statistic_2, expected_attribute)
+
+        if isinstance(field_1, float):
+
+            assert numpy.isclose(field_1, field_2)
+            continue
+
+        elif expected_attribute == "statistics_type":
+
+            field_1 = StatisticType(field_1)
+            field_2 = StatisticType(field_2)
+
+        assert field_1 == field_2
+
+
+def compare_result_entries(
+    result_1: Union[ResultsEntry, models.BenchmarkResultsEntry],
+    result_2: Union[ResultsEntry, models.BenchmarkResultsEntry],
+):
+    """Compare if two result entry models are equivalent.
+
+    Parameters
+    ----------
+    result_1
+        The first results entry to compare.
+    result_2
+        The second results entry to compare.
+
+    Raises
+    ------
+    AssertionError
+    """
+
+    expected_attributes = ResultsEntry.__fields__
+
+    for expected_attribute in expected_attributes:
+
+        field_1 = getattr(result_1, expected_attribute)
+        field_2 = getattr(result_2, expected_attribute)
+
+        if isinstance(field_1, float):
+
+            assert numpy.isclose(field_1, field_2)
+            continue
+
+        assert field_1 == field_2
+
+
+def compare_benchmark_results(
+    benchmark_result_1: Union[BenchmarkResult, models.BenchmarkResult],
+    benchmark_result_2: Union[BenchmarkResult, models.BenchmarkResult],
+):
+    """Compare if two benchmark result models are equivalent.
+
+    Parameters
+    ----------
+    benchmark_result_1
+        The first benchmark result to compare.
+    benchmark_result_2
+        The second benchmark result to compare.
+
+    Raises
+    ------
+    AssertionError
+    """
+
+    def _ids(
+        benchmark_result: Union[BenchmarkResult, models.BenchmarkResult]
+    ) -> Tuple[str, str, str]:
+
+        if isinstance(benchmark_result, BenchmarkResult):
+
+            return (
+                benchmark_result.project_id,
+                benchmark_result.study_id,
+                benchmark_result.id,
+            )
+
+        benchmark = benchmark_result.parent
+        study = benchmark.parent
+        project = study.parent
+
+        return project.identifier, study.identifier, benchmark.identifier
+
+    def _results(
+        benchmark_result: Union[BenchmarkResult, models.BenchmarkResult]
+    ) -> Dict[int, ResultsEntry]:
+
+        if isinstance(benchmark_result, BenchmarkResult):
+            results_entries = benchmark_result.analysed_result.results_entries
+        else:
+            results_entries = benchmark_result.results_entries
+
+        return {x.reference_id: x for x in results_entries}
+
+    def _statistics(
+        benchmark_result: Union[BenchmarkResult, models.BenchmarkResult]
+    ) -> Dict[Tuple[StatisticType, str, int], StatisticsEntry]:
+
+        if isinstance(benchmark_result, BenchmarkResult):
+            statistic_entries = benchmark_result.analysed_result.statistic_entries
+        else:
+            statistic_entries = benchmark_result.statistic_entries
+
+        return {
+            (StatisticType(x.statistics_type), x.property_type, x.n_components): x
+            for x in statistic_entries
+        }
+
+    ids_1 = _ids(benchmark_result_1)
+    ids_2 = _ids(benchmark_result_2)
+
+    assert ids_1 == ids_2
+
+    statistics_1 = _statistics(benchmark_result_1)
+    statistics_2 = _statistics(benchmark_result_2)
+
+    assert len(statistics_1) == len(statistics_2)
+    assert {*statistics_1} == {*statistics_2}
+
+    for statistic_key in statistics_1:
+
+        compare_statistic_entries(
+            statistics_1[statistic_key], statistics_2[statistic_key]
+        )
+
+    results_1 = _results(benchmark_result_1)
+    results_2 = _results(benchmark_result_2)
+
+    assert len(results_1) == len(results_2)
+    assert {*results_1} == {*results_2}
+
+    for result_key in results_1:
+        compare_result_entries(results_1[result_key], results_2[result_key])

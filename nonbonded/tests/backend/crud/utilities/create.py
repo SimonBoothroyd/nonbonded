@@ -1,11 +1,22 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from nonbonded.library.models.authors import Author
-from nonbonded.library.models.datasets import Component, DataSet, DataSetEntry
+from nonbonded.library.models.datasets import (
+    Component,
+    DataSet,
+    DataSetCollection,
+    DataSetEntry,
+)
 from nonbonded.library.models.forcebalance import ForceBalanceOptions
 from nonbonded.library.models.forcefield import ForceField, Parameter
 from nonbonded.library.models.projects import Benchmark, Optimization, Project, Study
-from nonbonded.library.models.results import OptimizationResult, StatisticsEntry
+from nonbonded.library.models.results import (
+    AnalysedResult,
+    BenchmarkResult,
+    OptimizationResult,
+    ResultsEntry,
+    StatisticsEntry,
+)
 from nonbonded.library.statistics.statistics import StatisticType
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 
@@ -172,13 +183,13 @@ def create_benchmark(
     )
 
 
-def create_statistic_entry():
+def create_statistic_entry(category: Optional[str] = "None"):
 
     return StatisticsEntry(
         statistics_type=StatisticType.RMSE,
         property_type="Density",
         n_components=2,
-        category="None",
+        category=category,
         value=1.0,
         lower_95_ci=0.95,
         upper_95_ci=1.05,
@@ -210,4 +221,71 @@ def create_optimization_result(
             2: [create_statistic_entry()],
         },
         refit_force_field=ForceField(inner_xml="<root/>"),
+    )
+
+
+def results_entries_from_data_sets(
+    data_sets: Union[DataSet, List[DataSet], DataSetCollection]
+) -> List[ResultsEntry]:
+
+    if isinstance(data_sets, DataSetCollection):
+        data_sets = data_sets.data_sets
+    elif isinstance(data_sets, DataSet):
+        data_sets = [data_sets]
+
+    data_entries = [
+        data_entry for data_set in data_sets for data_entry in data_set.entries
+    ]
+
+    results_entries = [
+        ResultsEntry(
+            reference_id=data_entry.id,
+            estimated_value=data_entry.value,
+            estimated_std_error=data_entry.std_error,
+            category="Category",
+        )
+        for data_entry in data_entries
+    ]
+
+    return results_entries
+
+
+def statistics_from_result_entries(
+    result_entries: List[ResultsEntry],
+) -> List[StatisticsEntry]:
+
+    categories = list({None, *(x.category for x in result_entries)})
+    return [create_statistic_entry(x) for x in categories]
+
+
+def create_benchmark_result(
+    project_id: str,
+    study_id: str,
+    benchmark_id: str,
+    data_sets: Union[DataSet, List[DataSet], DataSetCollection],
+) -> BenchmarkResult:
+    """Creates a benchmark result.
+
+    Parameters
+    ----------
+    project_id
+        The id of the parent project.
+    study_id
+        The id of the parent study.
+    benchmark_id
+        The id of the benchmark which the result belongs to.
+    data_sets
+        The data sets the benchmark is targeting.
+    """
+
+    results_entries = results_entries_from_data_sets(data_sets)
+    statistics_entries = statistics_from_result_entries(results_entries)
+
+    return BenchmarkResult(
+        id=benchmark_id,
+        study_id=study_id,
+        project_id=project_id,
+        analysed_result=AnalysedResult(
+            statistic_entries=statistics_entries, results_entries=results_entries
+        ),
     )

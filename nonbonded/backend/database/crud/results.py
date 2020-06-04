@@ -8,6 +8,8 @@ from nonbonded.backend.database.crud.projects import BenchmarkCRUD, Optimization
 from nonbonded.backend.database.utilities.exceptions import (
     BenchmarkNotFoundError,
     BenchmarkResultExistsError,
+    BenchmarkResultNotFoundError,
+    DataSetEntryNotFound,
     OptimizationNotFoundError,
     OptimizationResultExistsError,
     OptimizationResultNotFoundError,
@@ -67,14 +69,39 @@ class BenchmarkResultCRUD:
         db_benchmark_result = models.BenchmarkResult(
             parent=db_benchmark,
             statistic_entries=[
-                models.BenchmarkStatisticsEntry(**x.dict())
-                for x in benchmark_result.analysed_result.statistic_entries
+                models.BenchmarkStatisticsEntry(
+                    **{
+                        **statistic.dict(),
+                        "statistics_type": statistic.dict()["statistics_type"].value,
+                    },
+                )
+                for statistic in benchmark_result.analysed_result.statistic_entries
             ],
             results_entries=[
                 models.BenchmarkResultsEntry(**x.dict())
                 for x in benchmark_result.analysed_result.results_entries
             ],
         )
+
+        # noinspection PyTypeChecker
+        reference_ids = [x.reference_id for x in db_benchmark_result.results_entries]
+
+        found_ids = (
+            db.query(models.DataSetEntry.id)
+            .filter(models.DataSetEntry.id.in_(reference_ids))
+            .all()
+        )
+
+        missing_ids = {*reference_ids} - {x for (x,) in found_ids}
+
+        if len(missing_ids) > 0:
+
+            missing_ids_string = ", ".join(map(str, missing_ids))
+
+            raise DataSetEntryNotFound(
+                f"The benchmark results contains results entries which reference "
+                f"non-existent data set entries: {missing_ids_string}."
+            )
 
         return db_benchmark_result
 
@@ -112,7 +139,7 @@ class BenchmarkResultCRUD:
         )
 
         if not db_benchmark_result:
-            raise BenchmarkResultExistsError(project_id, study_id, benchmark_id)
+            raise BenchmarkResultNotFoundError(project_id, study_id, benchmark_id)
 
         db.delete(db_benchmark_result)
 

@@ -57,6 +57,11 @@ class DataSetInUseError(HTTPException):
         )
 
 
+class DataSetEntryNotFound(ItemNotFound):
+    def __init__(self, detail: str):
+        super(DataSetEntryNotFound, self).__init__(detail=detail)
+
+
 class BenchmarkExistsError(ItemExistsError):
     def __init__(self, project_id, study_id, benchmark_id):
 

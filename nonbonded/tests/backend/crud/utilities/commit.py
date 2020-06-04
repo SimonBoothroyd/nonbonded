@@ -4,12 +4,16 @@ from sqlalchemy.orm import Session
 
 from nonbonded.backend.database.crud.datasets import DataSetCRUD
 from nonbonded.backend.database.crud.projects import BenchmarkCRUD, ProjectCRUD
-from nonbonded.backend.database.crud.results import OptimizationResultCRUD
+from nonbonded.backend.database.crud.results import (
+    BenchmarkResultCRUD,
+    OptimizationResultCRUD,
+)
 from nonbonded.library.models.datasets import DataSet, DataSetCollection
 from nonbonded.library.models.projects import Benchmark, Optimization, Project, Study
-from nonbonded.library.models.results import OptimizationResult
+from nonbonded.library.models.results import BenchmarkResult, OptimizationResult
 from nonbonded.tests.backend.crud.utilities.create import (
     create_benchmark,
+    create_benchmark_result,
     create_data_set,
     create_empty_project,
     create_empty_study,
@@ -148,7 +152,7 @@ def commit_optimization_result(
 
 
 def commit_benchmark(
-    db: Session, with_optimization: bool, force_field_name: Optional[str],
+    db: Session, target_optimization: bool
 ) -> Tuple[
     Project,
     Study,
@@ -165,20 +169,22 @@ def commit_benchmark(
     ----------
     db
         The current data base session.
-    with_optimization
+    target_optimization
         Whether the benchmark should target an optimization. This will be
         created along with a set of optimization results if true.
-    force_field_name
-        The name of the OpenFF force field being benchmarked.
     """
 
-    if not with_optimization:
+    optimization_id = None
+    optimization_result = None
+
+    force_field_name = None
+
+    if not target_optimization:
 
         data_set = commit_data_set_collection(db)
         data_set_ids = [x.id for x in data_set.data_sets]
 
-        optimization_id = None
-        optimization_result = None
+        force_field_name = "openff-1.0.0.offxml"
 
         project, study = commit_study(db)
 
@@ -204,7 +210,8 @@ def commit_benchmark(
         force_field_name,
     )
 
-    BenchmarkCRUD.create(db, benchmark)
+    db_benchmark = BenchmarkCRUD.create(db, benchmark)
+    db.add(db_benchmark)
     db.commit()
 
     project = ProjectCRUD.read(db, project.id)
@@ -218,6 +225,63 @@ def commit_benchmark(
         project.studies[0],
         project.studies[0].benchmarks[0],
         data_set,
+        optimization,
+        optimization_result,
+    )
+
+
+def commit_benchmark_result(
+    db: Session, for_optimization: bool
+) -> Tuple[
+    Project,
+    Study,
+    Benchmark,
+    BenchmarkResult,
+    DataSetCollection,
+    Optional[Optimization],
+    Optional[OptimizationResult],
+]:
+    """Creates a new benchmark result (and all of the required parents such as
+    a parent project, study etc.).
+
+    Parameters
+    ----------
+    db
+        The current data base session.
+    for_optimization
+        Whether the results should be generated for a benchmark against an
+        optimization.
+    """
+
+    # Create the parent optimization
+    (
+        project,
+        study,
+        benchmark,
+        data_sets,
+        optimization,
+        optimization_result,
+    ) = commit_benchmark(db, for_optimization)
+
+    result = create_benchmark_result(project.id, study.id, benchmark.id, data_sets)
+
+    db_benchmark = BenchmarkCRUD.query(db, project.id, study.id, benchmark.id)
+
+    db_result = BenchmarkResultCRUD.create(db, result)
+    db.add(db_result)
+    db.commit()
+
+    # noinspection PyTypeChecker
+    result = BenchmarkResultCRUD.db_to_model(
+        db_benchmark, db_result.results_entries, db_result.statistic_entries
+    )
+
+    return (
+        project,
+        study,
+        benchmark,
+        result,
+        data_sets,
         optimization,
         optimization_result,
     )

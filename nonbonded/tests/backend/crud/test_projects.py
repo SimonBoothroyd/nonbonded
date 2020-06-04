@@ -12,7 +12,10 @@ from nonbonded.backend.database.crud.projects import (
     ProjectCRUD,
     StudyCRUD,
 )
-from nonbonded.backend.database.crud.results import OptimizationResultCRUD
+from nonbonded.backend.database.crud.results import (
+    BenchmarkResultCRUD,
+    OptimizationResultCRUD,
+)
 from nonbonded.backend.database.utilities.exceptions import (
     BenchmarkExistsError,
     BenchmarkNotFoundError,
@@ -37,6 +40,7 @@ from nonbonded.tests.backend.crud.utilities import (
 )
 from nonbonded.tests.backend.crud.utilities.commit import (
     commit_benchmark,
+    commit_benchmark_result,
     commit_data_set_collection,
     commit_optimization,
     commit_optimization_result,
@@ -45,9 +49,10 @@ from nonbonded.tests.backend.crud.utilities.commit import (
 )
 from nonbonded.tests.backend.crud.utilities.comparison import (
     compare_benchmarks,
+    compare_data_sets,
     compare_optimizations,
     compare_projects,
-    compare_studies, compare_data_sets,
+    compare_studies,
 )
 from nonbonded.tests.backend.crud.utilities.create import (
     create_author,
@@ -382,7 +387,7 @@ class TestStudyCRUD:
         not be found be it's unique id.
         """
 
-        _, study, _, expected_data_sets, _, _ = commit_benchmark(db, True, None)
+        _, study, _, expected_data_sets, _, _ = commit_benchmark(db, True)
         expected_data_sets_by_id = {x.id: x for x in expected_data_sets.data_sets}
 
         read_data_sets = StudyCRUD.read_all_data_sets(db, study.project_id, study.id)
@@ -411,7 +416,6 @@ class TestStudyCRUD:
 
 
 class TestOptimizationCRUD:
-
     def test_create_read_no_results(self, db: Session):
         """Test that a optimization can be successfully created and then
         retrieved out again while maintaining the integrity of the data.
@@ -750,7 +754,7 @@ class TestOptimizationCRUD:
             data_set,
             optimization,
             optimization_result,
-        ) = commit_benchmark(db, True, None)
+        ) = commit_benchmark(db, True)
 
         with pytest.raises(UnableToDeleteError) as error_info:
             OptimizationCRUD.delete(db, project.id, study.id, optimization.id)
@@ -951,12 +955,12 @@ class TestBenchmarkCRUD:
         with pytest.raises(BenchmarkNotFoundError):
             BenchmarkCRUD.read(db, " ", " ", " ")
 
-    def test_data_set_no_results(self, db: Session):
+    def test_data_set_delete(self, db: Session):
         """Tests that trying to delete a data set which is referenced by a
         benchmark yields to an integrity error.
         """
 
-        _, _, benchmark, data_set_collection, _, _ = commit_benchmark(db, False, " ")
+        _, _, benchmark, data_set_collection, _, _ = commit_benchmark(db, False)
 
         with pytest.raises(UnableToDeleteError) as error_info:
             DataSetCRUD.delete(db, data_set_collection.data_sets[0].id)
@@ -979,7 +983,7 @@ class TestBenchmarkCRUD:
         """
         from nonbonded.backend.database.models.projects import benchmark_test_table
 
-        project, study, benchmark, _, optimization, _ = commit_benchmark(db, True, None)
+        project, study, benchmark, _, optimization, _ = commit_benchmark(db, True)
 
         assert db.query(models.Benchmark.id).count() == 1
         assert db.query(models.DataSet.id).count() == 2
@@ -1017,27 +1021,6 @@ class TestBenchmarkCRUD:
             optimization.analysis_environments
         )
 
-    # def test_delete_with_results(self, db: Session):
-    #     """Test that a benchmark which has results uploaded can only be
-    #     deleted once the results have been deleted.
-    #     """
-    #
-    #     project, study, optimization, _ = commit_benchmark(db, False, " ")
-    #
-    #     db.add(
-    #         OptimizationResultCRUD.create(
-    #             db, create_optimization_result(project.id, study.id, optimization.id)
-    #         )
-    #     )
-    #     db.commit()
-    #
-    #     with pytest.raises(UnableToDeleteError):
-    #         OptimizationCRUD.delete(db, project.id, study.id, optimization.id)
-    #
-    #     # Delete the results and try again.
-    #     OptimizationResultCRUD.delete(db, project.id, study.id, optimization.id)
-    #     OptimizationCRUD.delete(db, project.id, study.id, optimization.id)
-
     def test_delete_not_found(self, db: Session):
 
         with pytest.raises(BenchmarkNotFoundError):
@@ -1049,7 +1032,7 @@ class TestBenchmarkCRUD:
         """
         from nonbonded.backend.database.models.projects import benchmark_test_table
 
-        _, _, benchmark, _, optimization, _ = commit_benchmark(db, True, None)
+        _, _, benchmark, _, optimization, _ = commit_benchmark(db, True)
 
         # Test simple text updates
         read_function = functools.partial(
@@ -1179,7 +1162,7 @@ class TestBenchmarkCRUD:
         target a non-existent data set.
         """
 
-        _, _, benchmark, _, _, _ = commit_benchmark(db, False, " ")
+        _, _, benchmark, _, _, _ = commit_benchmark(db, False)
         benchmark.test_set_ids = [" "]
 
         with pytest.raises(DataSetNotFoundError):
@@ -1197,30 +1180,41 @@ class TestBenchmarkCRUD:
                 compare_benchmarks,
             )
 
-    # def test_update_with_results(self, db: Session):
-    #     """Test that a benchmark which has results uploaded can only be
-    #     updated once the results have been deleted.
-    #     """
-    #
-    #     project, study, optimization, _ = commit_optimization(db)
-    #
-    #     db.add(
-    #         OptimizationResultCRUD.create(
-    #             db, create_optimization_result(project.id, study.id, optimization.id)
-    #         )
-    #     )
-    #     db.commit()
-    #
-    #     with pytest.raises(UnableToUpdateError):
-    #         OptimizationCRUD.update(db, optimization)
-    #
-    #     # Delete the results and try again.
-    #     OptimizationResultCRUD.delete(db, project.id, study.id, optimization.id)
-    #     OptimizationCRUD.update(db, optimization)
-
     def test_update_not_found(self, db: Session):
 
         benchmark = create_benchmark(" ", " ", " ", [" "], None, " ")
 
         with pytest.raises(BenchmarkNotFoundError):
             BenchmarkCRUD.update(db, benchmark)
+
+    def test_delete_with_results(self, db: Session):
+        """Test that a benchmark which has results uploaded can only be
+        deleted once the results have been deleted.
+        """
+
+        project, study, benchmark, _, _, _, _ = commit_benchmark_result(db, False)
+
+        with pytest.raises(UnableToDeleteError):
+            BenchmarkCRUD.delete(db, project.id, study.id, benchmark.id)
+
+        # Delete the results and try again.
+        BenchmarkResultCRUD.delete(db, project.id, study.id, benchmark.id)
+        BenchmarkCRUD.delete(db, project.id, study.id, benchmark.id)
+
+        db.commit()
+
+    def test_update_with_results(self, db: Session):
+        """Test that a benchmark which has results uploaded can only be
+        updated once the results have been deleted.
+        """
+
+        project, study, benchmark, _, _, _, _ = commit_benchmark_result(db, False)
+
+        with pytest.raises(UnableToUpdateError):
+            BenchmarkCRUD.update(db, benchmark)
+
+        # Delete the results and try again.
+        BenchmarkResultCRUD.delete(db, project.id, study.id, benchmark.id)
+        BenchmarkCRUD.update(db, benchmark)
+
+        db.commit()

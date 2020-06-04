@@ -31,6 +31,7 @@ class BenchmarkResultsEntry(Base):
     parent_id = Column(Integer, ForeignKey("benchmark_results.id"), nullable=False)
 
     reference_id = Column(Integer, ForeignKey("data_set_entries.id"), nullable=False)
+    reference = relationship("DataSetEntry", uselist=False)
 
     estimated_value = Column(Float)
     estimated_std_error = Column(Float)
