@@ -46,15 +46,9 @@ class DataSetNotFoundError(ItemNotFound):
         )
 
 
-class DataSetInUseError(HTTPException):
-    def __init__(self, data_set_id):
-
-        self.data_set_id = data_set_id
-        super(DataSetInUseError, self).__init__(
-            status_code=400,
-            detail=f"The data set with id={data_set_id} is still being used in a "
-            f"project and so cannot be deleted.",
-        )
+class DataSetEntryNotFound(ItemNotFound):
+    def __init__(self, detail: str):
+        super(DataSetEntryNotFound, self).__init__(detail=detail)
 
 
 class BenchmarkExistsError(ItemExistsError):
@@ -206,32 +200,4 @@ class ProjectNotFoundError(ItemNotFound):
 
         super(ProjectNotFoundError, self).__init__(
             f"The data base does not contain a project with id={project_id}."
-        )
-
-
-class RefitForceFieldExistsError(ItemExistsError):
-    def __init__(self, project_id, study_id, optimization_id):
-
-        self.project_id = project_id
-        self.study_id = study_id
-        self.optimization_id = optimization_id
-
-        super(RefitForceFieldExistsError, self).__init__(
-            f"The optimization with id={optimization_id} which is part of a study with "
-            f"id={study_id} and project with id={project_id} already has a registered "
-            f"refit force field."
-        )
-
-
-class RefitForceFieldNotFoundError(ItemNotFound):
-    def __init__(self, project_id, study_id, optimization_id):
-
-        self.project_id = project_id
-        self.study_id = study_id
-        self.optimization_id = optimization_id
-
-        super(RefitForceFieldNotFoundError, self).__init__(
-            f"The data base does not contain an a force which was refit as part of the "
-            f"optimization with id={optimization_id} which is part of a study with "
-            f"id={study_id} and project with id={project_id}."
         )

@@ -8,8 +8,12 @@ from nonbonded.backend.database.crud.projects import BenchmarkCRUD, Optimization
 from nonbonded.backend.database.utilities.exceptions import (
     BenchmarkNotFoundError,
     BenchmarkResultExistsError,
+    BenchmarkResultNotFoundError,
+    DataSetEntryNotFound,
     OptimizationNotFoundError,
     OptimizationResultExistsError,
+    OptimizationResultNotFoundError,
+    UnableToDeleteError,
 )
 from nonbonded.library.models import results
 
@@ -65,14 +69,39 @@ class BenchmarkResultCRUD:
         db_benchmark_result = models.BenchmarkResult(
             parent=db_benchmark,
             statistic_entries=[
-                models.BenchmarkStatisticsEntry(**x.dict())
-                for x in benchmark_result.analysed_result.statistic_entries
+                models.BenchmarkStatisticsEntry(
+                    **{
+                        **statistic.dict(),
+                        "statistics_type": statistic.dict()["statistics_type"].value,
+                    },
+                )
+                for statistic in benchmark_result.analysed_result.statistic_entries
             ],
             results_entries=[
                 models.BenchmarkResultsEntry(**x.dict())
                 for x in benchmark_result.analysed_result.results_entries
             ],
         )
+
+        # noinspection PyTypeChecker
+        reference_ids = [x.reference_id for x in db_benchmark_result.results_entries]
+
+        found_ids = (
+            db.query(models.DataSetEntry.id)
+            .filter(models.DataSetEntry.id.in_(reference_ids))
+            .all()
+        )
+
+        missing_ids = {*reference_ids} - {x for (x,) in found_ids}
+
+        if len(missing_ids) > 0:
+
+            missing_ids_string = ", ".join(map(str, missing_ids))
+
+            raise DataSetEntryNotFound(
+                f"The benchmark results contains results entries which reference "
+                f"non-existent data set entries: {missing_ids_string}."
+            )
 
         return db_benchmark_result
 
@@ -110,7 +139,7 @@ class BenchmarkResultCRUD:
         )
 
         if not db_benchmark_result:
-            raise BenchmarkResultExistsError(project_id, study_id, benchmark_id)
+            raise BenchmarkResultNotFoundError(project_id, study_id, benchmark_id)
 
         db.delete(db_benchmark_result)
 
@@ -205,7 +234,15 @@ class OptimizationResultCRUD:
             ),
             statistics=[
                 models.OptimizationStatisticsEntry(
-                    **{"iteration": iteration, **statistic.dict()}
+                    **{
+                        "iteration": iteration,
+                        **{
+                            **statistic.dict(),
+                            "statistics_type": statistic.dict()[
+                                "statistics_type"
+                            ].value,
+                        },
+                    }
                 )
                 for iteration, statistics in optimization_result.statistics.items()
                 for statistic in statistics
@@ -213,14 +250,6 @@ class OptimizationResultCRUD:
         )
 
         return db_optimization_result
-
-    @staticmethod
-    def read_all(db: Session, skip: int = 0, limit: int = 100):
-
-        optimization_results = (
-            db.query(models.OptimizationResult).offset(skip).limit(limit).all()
-        )
-        return [OptimizationResultCRUD.db_to_model(x) for x in optimization_results]
 
     @staticmethod
     def read(db: Session, project_id: str, study_id: str, optimization_id: str):
@@ -245,7 +274,26 @@ class OptimizationResultCRUD:
         )
 
         if not db_optimization_result:
-            raise OptimizationResultExistsError(project_id, study_id, optimization_id)
+            raise OptimizationResultNotFoundError(project_id, study_id, optimization_id)
+
+        if (
+            db_optimization_result.parent.benchmarks is not None
+            and len(db_optimization_result.parent.benchmarks) > 0
+        ):
+
+            benchmark_ids = [
+                ", ".join(
+                    x.identifier for x in db_optimization_result.parent.benchmarks
+                )
+            ]
+
+            raise UnableToDeleteError(
+                f"The optimization (project_id={project_id}, "
+                f"study_id={study_id}, optimization_id={optimization_id}) to which "
+                f"this result belongs has benchmarks (with ids={benchmark_ids}) "
+                f"associated with it and so cannot be deleted. Delete the benchmarks "
+                f"first and then try again."
+            )
 
         db.delete(db_optimization_result)
 

@@ -20,6 +20,7 @@ from nonbonded.backend.database.utilities.exceptions import (
 )
 from nonbonded.library.models import projects
 from nonbonded.library.models.datasets import DataSetCollection
+from nonbonded.library.models.projects import Study
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 
 
@@ -146,15 +147,6 @@ class OptimizationCRUD:
                 optimization.project_id, optimization.study_id, optimization.id
             )
 
-        if db_optimization.results is not None:
-
-            raise UnableToUpdateError(
-                f"This optimization (project_id={optimization.project_id}, "
-                f"study_id={optimization.study_id}, optimization_id={optimization.id}) "
-                f"already has a set of results associated with it so cannot be "
-                f"updated. Delete the results first and then try again."
-            )
-
         if (
             db_optimization.benchmarks is not None
             and len(db_optimization.benchmarks) > 0
@@ -169,6 +161,15 @@ class OptimizationCRUD:
                 f"study_id={optimization.study_id}, optimization_id={optimization.id}) "
                 f"has benchmarks (with ids={benchmark_ids}) associated with it and so "
                 f"cannot be updated. Delete the benchmarks first and then try again."
+            )
+
+        if db_optimization.results is not None:
+
+            raise UnableToUpdateError(
+                f"This optimization (project_id={optimization.project_id}, "
+                f"study_id={optimization.study_id}, optimization_id={optimization.id}) "
+                f"already has a set of results associated with it so cannot be "
+                f"updated. Delete the results first and then try again."
             )
 
         db_optimization.name = optimization.name
@@ -215,7 +216,7 @@ class OptimizationCRUD:
             for x in optimization.analysis_environments
         ]
 
-        return OptimizationCRUD.db_to_model(db_optimization)
+        return db_optimization
 
     @staticmethod
     def delete(db: Session, project_id: str, study_id: str, optimization_id: str):
@@ -226,15 +227,6 @@ class OptimizationCRUD:
 
         if not db_optimization:
             raise OptimizationNotFoundError(project_id, study_id, optimization_id)
-
-        if db_optimization.results is not None:
-
-            raise UnableToDeleteError(
-                f"This optimization (project_id={project_id}, "
-                f"study_id={study_id}, optimization_id={optimization_id}) "
-                f"already has a set of results associated with it so cannot be "
-                f"deleted. Delete the results first and then try again."
-            )
 
         if (
             db_optimization.benchmarks is not None
@@ -250,6 +242,15 @@ class OptimizationCRUD:
                 f"study_id={study_id}, optimization_id={optimization_id}) "
                 f"has benchmarks (with ids={benchmark_ids}) associated with it and so "
                 f"cannot be deleted. Delete the benchmarks first and then try again."
+            )
+
+        if db_optimization.results is not None:
+
+            raise UnableToDeleteError(
+                f"This optimization (project_id={project_id}, "
+                f"study_id={study_id}, optimization_id={optimization_id}) "
+                f"already has a set of results associated with it so cannot be "
+                f"deleted. Delete the results first and then try again."
             )
 
         db.delete(db_optimization)
@@ -453,6 +454,9 @@ class BenchmarkCRUD:
 
             db_benchmark.optimization = db_optimization
 
+        else:
+            db_benchmark.optimization_id = None
+
         db_benchmark.analysis_environments = [
             models.ChemicalEnvironment.as_unique(db, id=x.value)
             for x in benchmark.analysis_environments
@@ -597,6 +601,34 @@ class StudyCRUD:
         return DataSetCollection(data_sets=data_sets)
 
     @staticmethod
+    def _delete_orphaned(
+        db: Session, study: Study, crud_class, db_existing_list, new_list
+    ):
+        """Attempts to delete any orphaned children (namely optimizations and
+        benchmarks) when a study is being updated.
+
+        Parameters
+        ----------
+        db
+            The current data base session.
+        crud_class
+            The associated CRUD class of the class of orphaned items.
+        study
+            The study being updated.
+        db_existing_list
+            A list of the possibly orphaned items which currently exist on the
+            data base.
+        new_list
+            The new list of items being updated / created on the data base.
+        """
+        ids_to_remove = {x.identifier for x in db_existing_list} - {
+            x.id for x in new_list
+        }
+
+        for id_to_remove in ids_to_remove:
+            crud_class.delete(db, study.project_id, study.id, id_to_remove)
+
+    @staticmethod
     def update(db: Session, study: projects.Study) -> models.Study:
 
         db_study = StudyCRUD.query(db, study.project_id, study.id)
@@ -609,6 +641,14 @@ class StudyCRUD:
 
         db_optimizations = []
         db_benchmarks = []
+
+        # Remove any orphaned optimizations and benchmarks.
+        StudyCRUD._delete_orphaned(
+            db, study, OptimizationCRUD, db_study.optimizations, study.optimizations
+        )
+        StudyCRUD._delete_orphaned(
+            db, study, BenchmarkCRUD, db_study.benchmarks, study.benchmarks
+        )
 
         for optimization in study.optimizations:
 
@@ -738,6 +778,15 @@ class ProjectCRUD:
 
         db_studies = []
 
+        # Remove any orphaned studies.
+        study_ids_to_remove = {x.identifier for x in db_project.studies} - {
+            x.id for x in project.studies
+        }
+
+        for study_id in study_ids_to_remove:
+            StudyCRUD.delete(db, project.id, study_id)
+
+        # Update any existing / create any new studies.
         for study in project.studies:
 
             db_study = StudyCRUD.query(db, project.id, study.id)
