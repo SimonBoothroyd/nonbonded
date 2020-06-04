@@ -206,7 +206,15 @@ class OptimizationResultCRUD:
             ),
             statistics=[
                 models.OptimizationStatisticsEntry(
-                    **{"iteration": iteration, **statistic.dict()}
+                    **{
+                        "iteration": iteration,
+                        **{
+                            **statistic.dict(),
+                            "statistics_type": statistic.dict()[
+                                "statistics_type"
+                            ].value,
+                        },
+                    }
                 )
                 for iteration, statistics in optimization_result.statistics.items()
                 for statistic in statistics
@@ -238,7 +246,7 @@ class OptimizationResultCRUD:
         )
 
         if not db_optimization_result:
-            raise OptimizationResultExistsError(project_id, study_id, optimization_id)
+            raise OptimizationResultNotFoundError(project_id, study_id, optimization_id)
 
         db.delete(db_optimization_result)
 
