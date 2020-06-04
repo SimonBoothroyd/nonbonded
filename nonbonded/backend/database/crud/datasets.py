@@ -5,6 +5,7 @@ from nonbonded.backend.database.crud.authors import AuthorCRUD
 from nonbonded.backend.database.utilities.exceptions import (
     DataSetExistsError,
     DataSetNotFoundError,
+    UnableToDeleteError,
 )
 from nonbonded.library.models import datasets
 

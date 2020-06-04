@@ -10,32 +10,16 @@ from nonbonded.backend.database.utilities.exceptions import (
     DataSetExistsError,
     DataSetNotFoundError,
 )
-from nonbonded.library.models.datasets import DataSet
 from nonbonded.tests.backend.crud.utilities import (
-    compare_data_sets,
     create_and_compare_models,
-    create_data_set,
     paginate_models,
 )
+from nonbonded.tests.backend.crud.utilities.commit import commit_data_set
+from nonbonded.tests.backend.crud.utilities.comparison import compare_data_sets
+from nonbonded.tests.backend.crud.utilities.creation import create_data_set
 
 
 class TestDataSetCRUD:
-    @staticmethod
-    def create(db: Session) -> DataSet:
-        """Creates a new data set and commits it the current session.
-
-        Parameters
-        ----------
-        db
-            The current data base session.
-        """
-        db_data_set = DataSetCRUD.create(db, create_data_set("data_set-1"))
-
-        db.add(db_data_set)
-        db.commit()
-
-        return DataSetCRUD.db_to_model(db_data_set)
-
     def test_create_read(self, db: Session):
         """Test that data sets can be successfully created, and then
         read back out again while maintaining the integrity of the data.
@@ -58,7 +42,7 @@ class TestDataSetCRUD:
             DataSetCRUD.create(db, data_set)
 
     def test_pagination(self, db: Session):
-        """Test that the limit and skip options to read_all have been 
+        """Test that the limit and skip options to read_all have been
         implemented correctly.
         """
 
@@ -95,7 +79,7 @@ class TestDataSetCRUD:
         from nonbonded.backend.database.models.datasets import author_data_sets_table
 
         # Test adding duplicates in the same commit.
-        data_set = self.create(db)
+        data_set = commit_data_set(db)
 
         assert db.query(models.Component.id).count() == 2
         assert db.query(models.DataSetEntry.id).count() == 1

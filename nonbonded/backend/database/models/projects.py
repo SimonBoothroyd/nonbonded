@@ -86,6 +86,7 @@ optimization_training_table = Table(
         Integer,
         ForeignKey("optimizations.id", ondelete="CASCADE"),
         primary_key=True,
+        nullable=False,
     ),
     Column(
         "data_set_id",

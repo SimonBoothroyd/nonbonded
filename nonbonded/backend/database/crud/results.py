@@ -10,6 +10,7 @@ from nonbonded.backend.database.utilities.exceptions import (
     BenchmarkResultExistsError,
     OptimizationNotFoundError,
     OptimizationResultExistsError,
+    OptimizationResultNotFoundError,
 )
 from nonbonded.library.models import results
 
@@ -213,14 +214,6 @@ class OptimizationResultCRUD:
         )
 
         return db_optimization_result
-
-    @staticmethod
-    def read_all(db: Session, skip: int = 0, limit: int = 100):
-
-        optimization_results = (
-            db.query(models.OptimizationResult).offset(skip).limit(limit).all()
-        )
-        return [OptimizationResultCRUD.db_to_model(x) for x in optimization_results]
 
     @staticmethod
     def read(db: Session, project_id: str, study_id: str, optimization_id: str):
