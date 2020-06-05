@@ -1,12 +1,16 @@
 from typing import TYPE_CHECKING, List, Optional, Type
 
+import requests
 from pydantic import Field, conlist
 
 from nonbonded.library.config import settings
 from nonbonded.library.models import BaseORM, BaseREST
 from nonbonded.library.models.authors import Author
 from nonbonded.library.models.validators.string import NonEmptyStr
-from nonbonded.library.utilities.exceptions import UnrecognisedPropertyType
+from nonbonded.library.utilities.exceptions import (
+    UnrecognisedPropertyType,
+    UnsupportedEndpointError,
+)
 
 if TYPE_CHECKING:
     from openff.evaluator.datasets import (
@@ -273,22 +277,25 @@ class DataSet(BaseREST):
 
         return evaluator_set
 
+    @classmethod
+    def _get_endpoint(cls, *, data_set_id: str):
+        return f"{settings.API_URL}/datasets/{data_set_id}"
+
     def _post_endpoint(self):
         return f"{settings.API_URL}/datasets/"
 
     def _put_endpoint(self):
-        raise NotImplementedError()
+        raise UnsupportedEndpointError()
 
     def _delete_endpoint(self):
         return f"{settings.API_URL}/datasets/{self.id}"
 
     @classmethod
-    def from_rest(cls, data_set_id: str):
-
-        import requests
-
-        request = requests.get(f"{settings.API_URL}/datasets/{data_set_id}")
-        return cls._from_rest(request)
+    def from_rest(cls, *, data_set_id: str, requests_class=requests) -> "DataSet":
+        # noinspection PyTypeChecker
+        return super(DataSet, cls).from_rest(
+            data_set_id=data_set_id, requests_class=requests_class
+        )
 
 
 class DataSetCollection(BaseORM):
@@ -298,11 +305,9 @@ class DataSetCollection(BaseORM):
     )
 
     @classmethod
-    def from_rest(cls) -> "DataSetCollection":
+    def from_rest(cls, requests_class=requests) -> "DataSetCollection":
 
-        import requests
-
-        data_sets_request = requests.get(f"{settings.API_URL}/datasets/")
+        data_sets_request = requests_class.get(f"{settings.API_URL}/datasets/")
         try:
             data_sets_request.raise_for_status()
         except requests.exceptions.HTTPError as error:

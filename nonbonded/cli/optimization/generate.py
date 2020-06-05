@@ -97,7 +97,7 @@ def generate(
 
     # Retrieve the optimization
     optimization: Optimization = Optimization.from_rest(
-        project_id, study_id, optimization_id
+        project_id=project_id, study_id=study_id, optimization_id=optimization_id
     )
 
     OptimizationFactory.generate(

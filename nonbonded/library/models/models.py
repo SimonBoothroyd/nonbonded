@@ -1,14 +1,12 @@
 import abc
-from typing import TYPE_CHECKING, Callable, Type, TypeVar
+from typing import Callable, Type, TypeVar
 
+import requests
 from pydantic.main import BaseModel
 
 from nonbonded.library.config import settings
 
 T = TypeVar("T", bound="BaseREST")
-
-if TYPE_CHECKING:
-    import requests
 
 
 class BaseORM(BaseModel, abc.ABC):
@@ -17,6 +15,11 @@ class BaseORM(BaseModel, abc.ABC):
 
 
 class BaseREST(BaseORM, abc.ABC):
+    @classmethod
+    @abc.abstractmethod
+    def _get_endpoint(cls, **kwargs):
+        raise NotImplementedError()
+
     @abc.abstractmethod
     def _post_endpoint(self):
         raise NotImplementedError()
@@ -41,11 +44,13 @@ class BaseREST(BaseORM, abc.ABC):
         except requests.exceptions.HTTPError as error:
             print(error.response.text)
             raise
+        except Exception:
+            raise
 
         return_object = self.__class__.parse_raw(request.text)
         return return_object
 
-    def upload(self) -> T:
+    def upload(self, requests_class=requests) -> T:
         """Attempt to upload this object to the RESTful API for the first time.
         This function should only be used for the initial upload. To update an
         existing instance, used the ``update`` function instead.
@@ -63,23 +68,24 @@ class BaseREST(BaseORM, abc.ABC):
         changed some of the ids. The returned object should **always** be used in
         place of the initial one.
         """
-        return self._upload(requests.post, self._post_endpoint())
+        return self._upload(requests_class.post, self._post_endpoint())
 
-    def update(self) -> T:
+    def update(self, requests_class=requests) -> T:
         """Attempt to update this object on the RESTful API. This function assumes
         that this object has already been uploaded using the ``upload`` function.
 
         An exception will be raised if this object has not already been uploaded.
         """
-        return self._upload(requests.put, self._put_endpoint())
+        return self._upload(requests_class.put, self._put_endpoint())
 
-    def delete(self):
+    def delete(self, requests_class=requests):
         """Attempt to delete this object on the RESTful API. This function assumes
         that this object has already been uploaded using the ``upload`` function.
 
         An exception will be raised if this object has not already been uploaded.
         """
-        request = requests.delete(
+
+        request = requests_class.delete(
             url=self._delete_endpoint(), headers={"access_token": settings.ACCESS_TOKEN}
         )
         try:
@@ -87,25 +93,26 @@ class BaseREST(BaseORM, abc.ABC):
         except requests.exceptions.HTTPError as error:
             print(error.response.text)
             raise
+        except Exception:
+            raise
 
     @classmethod
-    def _from_rest(cls: Type[T], request: "requests.Response") -> T:
+    def from_rest(cls: Type[T], **kwargs) -> T:
+        """Attempts to retrieve an instance of this object from the RESTful API
+        based on its unique identifier(s)
+        """
+        requests_class = kwargs.pop("requests_class", requests)
+        request = requests_class.get(cls._get_endpoint(**kwargs))
+
         try:
             request.raise_for_status()
         except requests.exceptions.HTTPError as error:
             print(error.response.text)
             raise
+        except Exception:
+            raise
 
-        return_object = cls.parse_raw(request.text)
-        return return_object
-
-    @classmethod
-    @abc.abstractmethod
-    def from_rest(cls: Type[T], *args, **kwargs) -> T:
-        """Attempts to retrieve an instance of this object from the RESTful API
-        based on its unique identifier(s)
-        """
-        raise NotImplementedError()
+        return cls.parse_raw(request.text)
 
     def to_file(self, file_path: str):
         """JSON serializes this object and saves the output to the specified

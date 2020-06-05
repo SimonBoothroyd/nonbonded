@@ -2,6 +2,7 @@
 """
 from typing import TYPE_CHECKING, Dict, List, Optional
 
+import requests
 from pydantic import Field, conlist, root_validator
 
 from nonbonded.library.config import settings
@@ -67,6 +68,17 @@ class Optimization(BaseREST):
         "of the optimization.",
     )
 
+    @classmethod
+    def _get_endpoint(cls, *, project_id: str, study_id: str, optimization_id: str):
+        return (
+            f"{settings.API_URL}/projects/"
+            f"{project_id}"
+            f"/studies/"
+            f"{study_id}"
+            f"/optimizations/"
+            f"{optimization_id}"
+        )
+
     def _post_endpoint(self):
         return (
             f"{settings.API_URL}/projects/"
@@ -97,48 +109,21 @@ class Optimization(BaseREST):
         )
 
     @classmethod
-    def from_rest(cls, project_id: str, study_id: str, optimization_id: str):
-
-        import requests
-
-        request = requests.get(
-            f"{settings.API_URL}/projects/"
-            f"{project_id}"
-            f"/studies/"
-            f"{study_id}"
-            f"/optimizations/"
-            f"{optimization_id}"
+    def from_rest(
+        cls,
+        *,
+        project_id: str,
+        study_id: str,
+        optimization_id: str,
+        requests_class=requests,
+    ) -> "Optimization":
+        # noinspection PyTypeChecker
+        return super(Optimization, cls).from_rest(
+            project_id=project_id,
+            study_id=study_id,
+            optimization_id=optimization_id,
+            requests_class=requests_class,
         )
-
-        return cls._from_rest(request)
-
-
-class OptimizationCollection(BaseORM):
-
-    optimizations: List[Optimization] = Field(
-        default_factory=list, description="A collection of optimizations.",
-    )
-
-    @classmethod
-    def from_rest(cls, project_id: str, study_id: str) -> "OptimizationCollection":
-
-        import requests
-
-        optimizations_request = requests.get(
-            f"{settings.API_URL}/projects/"
-            f"{project_id}"
-            f"/studies/"
-            f"{study_id}"
-            f"/optimizations/"
-        )
-        try:
-            optimizations_request.raise_for_status()
-        except requests.exceptions.HTTPError as error:
-            print(error.response.text)
-            raise
-
-        optimizations = OptimizationCollection.parse_raw(optimizations_request.text)
-        return optimizations
 
 
 class Benchmark(BaseREST):
@@ -192,6 +177,17 @@ class Benchmark(BaseREST):
 
         return values
 
+    @classmethod
+    def _get_endpoint(cls, *, project_id: str, study_id: str, benchmark_id: str):
+        return (
+            f"{settings.API_URL}/projects/"
+            f"{project_id}"
+            f"/studies/"
+            f"{study_id}"
+            f"/benchmarks/"
+            f"{benchmark_id}"
+        )
+
     def _post_endpoint(self):
         return (
             f"{settings.API_URL}/projects/"
@@ -222,48 +218,21 @@ class Benchmark(BaseREST):
         )
 
     @classmethod
-    def from_rest(cls, project_id: str, study_id: str, benchmark_id: str):
-
-        import requests
-
-        request = requests.get(
-            f"{settings.API_URL}/projects/"
-            f"{project_id}"
-            f"/studies/"
-            f"{study_id}"
-            f"/benchmarks/"
-            f"{benchmark_id}"
+    def from_rest(
+        cls,
+        *,
+        project_id: str,
+        study_id: str,
+        benchmark_id: str,
+        requests_class=requests,
+    ) -> "Benchmark":
+        # noinspection PyTypeChecker
+        return super(Benchmark, cls).from_rest(
+            project_id=project_id,
+            study_id=study_id,
+            benchmark_id=benchmark_id,
+            requests_class=requests_class,
         )
-
-        return cls._from_rest(request)
-
-
-class BenchmarkCollection(BaseORM):
-
-    benchmarks: List[Benchmark] = Field(
-        default_factory=list, description="A collection of benchmarks.",
-    )
-
-    @classmethod
-    def from_rest(cls, project_id: str, study_id: str) -> "BenchmarkCollection":
-
-        import requests
-
-        benchmarks_request = requests.get(
-            f"{settings.API_URL}/projects/"
-            f"{project_id}"
-            f"/studies/"
-            f"{study_id}"
-            f"/benchmarks/"
-        )
-        try:
-            benchmarks_request.raise_for_status()
-        except requests.exceptions.HTTPError as error:
-            print(error.response.text)
-            raise
-
-        benchmarks = BenchmarkCollection.parse_raw(benchmarks_request.text)
-        return benchmarks
 
 
 class Study(BaseREST):
@@ -307,6 +276,10 @@ class Study(BaseREST):
 
         return values
 
+    @classmethod
+    def _get_endpoint(cls, *, project_id: str, study_id: str):
+        return f"{settings.API_URL}/projects/{project_id}/studies/{study_id}"
+
     def _post_endpoint(self):
         return f"{settings.API_URL}/projects/{self.project_id}/studies/"
 
@@ -323,15 +296,14 @@ class Study(BaseREST):
         )
 
     @classmethod
-    def from_rest(cls, project_id: str, study_id: str):
+    def from_rest(
+        cls, *, project_id: str, study_id: str, requests_class=requests
+    ) -> "Study":
 
-        import requests
-
-        request = requests.get(
-            f"{settings.API_URL}/projects/{project_id}/studies/{study_id}"
+        # noinspection PyTypeChecker
+        return super(Study, cls).from_rest(
+            project_id=project_id, study_id=study_id, requests_class=requests_class
         )
-
-        return cls._from_rest(request)
 
 
 class StudyCollection(BaseORM):
@@ -341,11 +313,9 @@ class StudyCollection(BaseORM):
     )
 
     @classmethod
-    def from_rest(cls, project_id: str) -> "StudyCollection":
+    def from_rest(cls, project_id: str, requests_class=requests) -> "StudyCollection":
 
-        import requests
-
-        studies_request = requests.get(
+        studies_request = requests_class.get(
             f"{settings.API_URL}/projects/{project_id}/studies/"
         )
         try:
@@ -392,6 +362,10 @@ class Project(BaseREST):
 
         return values
 
+    @classmethod
+    def _get_endpoint(cls, *, project_id: str):
+        return f"{settings.API_URL}/projects/{project_id}"
+
     def _post_endpoint(self):
         return f"{settings.API_URL}/projects/"
 
@@ -402,11 +376,11 @@ class Project(BaseREST):
         return f"{settings.API_URL}/projects/{self.id}"
 
     @classmethod
-    def from_rest(cls, project_id: str):
-        import requests
-
-        request = requests.get(f"{settings.API_URL}/projects/{project_id}")
-        return cls._from_rest(request)
+    def from_rest(cls, *, project_id: str, requests_class=requests) -> "Project":
+        # noinspection PyTypeChecker
+        return super(Project, cls).from_rest(
+            project_id=project_id, requests_class=requests_class
+        )
 
 
 class ProjectCollection(BaseORM):
@@ -416,10 +390,9 @@ class ProjectCollection(BaseORM):
     )
 
     @classmethod
-    def from_rest(cls) -> "ProjectCollection":
-        import requests
+    def from_rest(cls, requests_class=requests) -> "ProjectCollection":
 
-        projects_request = requests.get(f"{settings.API_URL}/projects/")
+        projects_request = requests_class.get(f"{settings.API_URL}/projects/")
         try:
             projects_request.raise_for_status()
         except requests.exceptions.HTTPError as error:

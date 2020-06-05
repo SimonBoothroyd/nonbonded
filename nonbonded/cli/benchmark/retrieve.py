@@ -43,7 +43,9 @@ def retrieve(project_id, study_id, benchmark_id, output, log_level):
     if logging_level is not None:
         setup_timestamp_logging(logging_level)
 
-    benchmark = Benchmark.from_rest(project_id, study_id, benchmark_id)
+    benchmark = Benchmark.from_rest(
+        project_id=project_id, study_id=study_id, benchmark_id=benchmark_id
+    )
     benchmark_json = benchmark.json()
 
     if output is None:

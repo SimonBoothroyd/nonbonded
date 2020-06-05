@@ -50,7 +50,7 @@ class BenchmarkFactory:
             optimization_results: OptimizationResult = OptimizationResult.from_rest(
                 project_id=benchmark.project_id,
                 study_id=benchmark.study_id,
-                id=benchmark.optimization_id,
+                model_id=benchmark.optimization_id,
             )
             force_field = optimization_results.refit_force_field.to_openff()
 
@@ -60,7 +60,7 @@ class BenchmarkFactory:
 
         # Retrieve the data set.
         test_sets: List[DataSet] = [
-            DataSet.from_rest(x) for x in benchmark.test_set_ids
+            DataSet.from_rest(data_set_id=x) for x in benchmark.test_set_ids
         ]
         test_set_collection = DataSetCollection(data_sets=test_sets)
 

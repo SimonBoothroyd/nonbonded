@@ -100,7 +100,7 @@ class OptimizationFactory:
 
         # Store the data set in the targets directory
         training_sets: List[DataSet] = [
-            DataSet.from_rest(x) for x in optimization.training_set_ids
+            DataSet.from_rest(data_set_id=x) for x in optimization.training_set_ids
         ]
         training_set_collection = DataSetCollection(data_sets=training_sets)
 

@@ -2,6 +2,7 @@ import abc
 import logging
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
+import requests
 from pydantic import Field
 
 from nonbonded.library.config import settings
@@ -387,6 +388,18 @@ class BaseResult(BaseREST, abc.ABC):
     def _url_name(cls):
         return cls.__name__.replace("Result", "").lower() + "s"
 
+    @classmethod
+    def _get_endpoint(cls, *, project_id: str, study_id: str, model_id: str):
+        return (
+            f"{settings.API_URL}/projects/"
+            f"{project_id}"
+            f"/studies/"
+            f"{study_id}"
+            f"/{cls._url_name()}/"
+            f"{model_id}"
+            f"/results/"
+        )
+
     def _post_endpoint(self):
 
         return (
@@ -416,20 +429,16 @@ class BaseResult(BaseREST, abc.ABC):
         )
 
     @classmethod
-    def from_rest(cls, project_id: str, study_id: str, id: str):
-        import requests
-
-        request = requests.get(
-            f"{settings.API_URL}/projects/"
-            f"{project_id}"
-            f"/studies/"
-            f"{study_id}"
-            f"/{cls._url_name()}/"
-            f"{id}"
-            f"/results/"
+    def from_rest(
+        cls, *, project_id: str, study_id: str, model_id: str, requests_class=requests,
+    ):
+        # noinspection PyTypeChecker
+        return super(BaseResult, cls).from_rest(
+            project_id=project_id,
+            study_id=study_id,
+            model_id=model_id,
+            requests_class=requests_class,
         )
-
-        return cls._from_rest(request)
 
 
 class BenchmarkResult(BaseResult):

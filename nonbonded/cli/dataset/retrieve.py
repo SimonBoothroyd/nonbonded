@@ -28,7 +28,7 @@ from nonbonded.library.models.datasets import DataSet
 )
 def retrieve(data_set_id, return_pandas, output_path):
 
-    data_set = DataSet.from_rest(data_set_id)
+    data_set = DataSet.from_rest(data_set_id=data_set_id)
 
     if return_pandas:
         data_set = data_set.to_pandas()
