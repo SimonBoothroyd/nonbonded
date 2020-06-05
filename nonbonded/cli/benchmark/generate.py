@@ -96,7 +96,9 @@ def generate(
         setup_timestamp_logging(logging_level)
 
     # Retrieve the benchmark
-    benchmark: Benchmark = Benchmark.from_rest(project_id, study_id, benchmark_id)
+    benchmark: Benchmark = Benchmark.from_rest(
+        project_id=project_id, study_id=study_id, benchmark_id=benchmark_id
+    )
 
     BenchmarkFactory.generate(
         benchmark,

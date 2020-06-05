@@ -45,7 +45,9 @@ def retrieve(project_id, study_id, optimization_id, output, log_level):
     if logging_level is not None:
         setup_timestamp_logging(logging_level)
 
-    optimization = Optimization.from_rest(project_id, study_id, optimization_id)
+    optimization = Optimization.from_rest(
+        project_id=project_id, study_id=study_id, optimization_id=optimization_id
+    )
     optimization_json = optimization.json()
 
     if output is None:

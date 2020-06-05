@@ -304,8 +304,6 @@ class DataSetCollection(BaseORM):
     @classmethod
     def from_rest(cls) -> "DataSetCollection":
 
-        import requests
-
         data_sets_request = requests.get(f"{settings.API_URL}/datasets/")
         try:
             data_sets_request.raise_for_status()

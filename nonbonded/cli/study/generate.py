@@ -87,7 +87,7 @@ def generate(
         setup_timestamp_logging(logging_level)
 
     # Retrieve the study
-    study: Study = Study.from_rest(project_id, study_id)
+    study: Study = Study.from_rest(project_id=project_id, study_id=study_id)
 
     StudyFactory.generate(
         study, backend_name, environment_name, max_workers, max_wall_clock, max_memory,

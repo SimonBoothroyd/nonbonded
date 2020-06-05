@@ -329,8 +329,6 @@ class StudyCollection(BaseORM):
     @classmethod
     def from_rest(cls, project_id: str) -> "StudyCollection":
 
-        import requests
-
         studies_request = requests.get(
             f"{settings.API_URL}/projects/{project_id}/studies/"
         )
@@ -407,7 +405,6 @@ class ProjectCollection(BaseORM):
 
     @classmethod
     def from_rest(cls) -> "ProjectCollection":
-        import requests
 
         projects_request = requests.get(f"{settings.API_URL}/projects/")
         try:

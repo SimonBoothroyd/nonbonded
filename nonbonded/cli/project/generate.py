@@ -82,7 +82,7 @@ def generate(
         setup_timestamp_logging(logging_level)
 
     # Retrieve the benchmark
-    project: Project = Project.from_rest(project_id)
+    project: Project = Project.from_rest(project_id=project_id)
 
     ProjectFactory.generate(
         project,
