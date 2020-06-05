@@ -1,24 +1,26 @@
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.database import models
-from nonbonded.library.models.projects import Benchmark, Project, Study, Optimization
-from nonbonded.library.models.results import OptimizationResult
+from nonbonded.library.models.projects import Benchmark, Optimization, Project, Study
 from nonbonded.tests.backend.api.utilities import BaseTestEndpoints
 from nonbonded.tests.backend.crud.utilities.commit import (
     commit_benchmark,
     commit_data_set,
+    commit_optimization,
     commit_project,
-    commit_study, commit_optimization,
+    commit_study,
 )
 from nonbonded.tests.backend.crud.utilities.comparison import (
     compare_benchmarks,
+    compare_optimizations,
     compare_projects,
-    compare_studies, compare_optimizations,
+    compare_studies,
 )
 from nonbonded.tests.backend.crud.utilities.create import (
     create_benchmark,
     create_empty_project,
-    create_empty_study, create_optimization,
+    create_empty_study,
+    create_optimization,
 )
 
 
@@ -176,10 +178,7 @@ class TestOptimizationEndpoints(BaseTestEndpoints):
             data_set_ids = [data_set.id]
 
         optimization = create_optimization(
-            project_id,
-            study_id,
-            "optimization-1",
-            data_set_ids,
+            project_id, study_id, "optimization-1", data_set_ids,
         )
 
         return (

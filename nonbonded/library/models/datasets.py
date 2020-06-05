@@ -7,8 +7,10 @@ from nonbonded.library.config import settings
 from nonbonded.library.models import BaseORM, BaseREST
 from nonbonded.library.models.authors import Author
 from nonbonded.library.models.validators.string import NonEmptyStr
-from nonbonded.library.utilities.exceptions import UnrecognisedPropertyType, \
-    UnsupportedEndpointError
+from nonbonded.library.utilities.exceptions import (
+    UnrecognisedPropertyType,
+    UnsupportedEndpointError,
+)
 
 if TYPE_CHECKING:
     from openff.evaluator.datasets import (

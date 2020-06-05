@@ -1,17 +1,22 @@
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.database import models
-from nonbonded.library.models.results import OptimizationResult, BenchmarkResult
+from nonbonded.library.models.results import BenchmarkResult, OptimizationResult
 from nonbonded.tests.backend.api.utilities import BaseTestEndpoints
 from nonbonded.tests.backend.crud.utilities.commit import (
-    commit_optimization, commit_optimization_result, commit_benchmark,
+    commit_benchmark,
     commit_benchmark_result,
+    commit_optimization,
+    commit_optimization_result,
 )
 from nonbonded.tests.backend.crud.utilities.comparison import (
-    compare_optimization_results, compare_benchmark_results,
+    compare_benchmark_results,
+    compare_optimization_results,
 )
 from nonbonded.tests.backend.crud.utilities.create import (
-    create_optimization_result, create_benchmark_result, create_data_set,
+    create_benchmark_result,
+    create_data_set,
+    create_optimization_result,
 )
 
 
@@ -36,9 +41,7 @@ class TestOptimizationResultEndpoints(BaseTestEndpoints):
             optimization_id = optimization.id
 
         optimization_result = create_optimization_result(
-            project_id,
-            study_id,
-            optimization_id
+            project_id, study_id, optimization_id
         )
 
         return (
@@ -56,7 +59,13 @@ class TestOptimizationResultEndpoints(BaseTestEndpoints):
 
     @classmethod
     def _commit_model(cls, db):
-        project, study, optimization, _, optimization_result = commit_optimization_result(db)
+        (
+            project,
+            study,
+            optimization,
+            _,
+            optimization_result,
+        ) = commit_optimization_result(db)
 
         return (
             optimization_result,
@@ -104,19 +113,12 @@ class TestBenchmarkResultEndpoints(BaseTestEndpoints):
             data_sets = data_set
 
         benchmark_result = create_benchmark_result(
-            project_id,
-            study_id,
-            benchmark_id,
-            data_sets,
+            project_id, study_id, benchmark_id, data_sets,
         )
 
         return (
             benchmark_result,
-            {
-                "project_id": project_id,
-                "study_id": study_id,
-                "model_id": benchmark_id,
-            },
+            {"project_id": project_id, "study_id": study_id, "model_id": benchmark_id},
         )
 
     @classmethod
@@ -125,15 +127,13 @@ class TestBenchmarkResultEndpoints(BaseTestEndpoints):
 
     @classmethod
     def _commit_model(cls, db):
-        project, study, benchmark, benchmark_result, _, _, _ = commit_benchmark_result(db, False)
+        project, study, benchmark, benchmark_result, _, _, _ = commit_benchmark_result(
+            db, False
+        )
 
         return (
             benchmark_result,
-            {
-                "project_id": project.id,
-                "study_id": study.id,
-                "model_id": benchmark.id,
-            },
+            {"project_id": project.id, "study_id": study.id, "model_id": benchmark.id},
         )
 
     @classmethod

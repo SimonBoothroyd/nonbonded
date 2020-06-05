@@ -3,9 +3,7 @@ from sqlalchemy.orm import Session
 from nonbonded.backend.database import models
 from nonbonded.library.models.datasets import DataSet
 from nonbonded.tests.backend.api.utilities import BaseTestEndpoints
-from nonbonded.tests.backend.crud.utilities.commit import (
-    commit_data_set,
-)
+from nonbonded.tests.backend.crud.utilities.commit import commit_data_set
 from nonbonded.tests.backend.crud.utilities.comparison import compare_data_sets
 from nonbonded.tests.backend.crud.utilities.create import create_data_set
 
