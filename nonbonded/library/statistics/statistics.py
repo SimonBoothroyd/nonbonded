@@ -197,8 +197,8 @@ def compute_statistics(
 
     import numpy
 
-    measured_std[measured_std is None] = 0.0
     measured_std = measured_std.astype(numpy.float64)
+    measured_std[numpy.isnan(measured_std)] = 0.0
 
     (
         bootstrapped_statistics,
