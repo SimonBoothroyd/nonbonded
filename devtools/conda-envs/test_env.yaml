@@ -35,6 +35,14 @@ dependencies:
   - sqlite
   - psycopg2
   - starlette
-  - typing-extensions
   - uvicorn
   - gunicorn
+
+    # Python < 3.7 backwards compatibility.
+  - async_generator
+    # Python < 3.8 backwards compatibility.
+  - typing-extensions
+
+  - pip:
+      # Python < 3.7 backwards compatibility.
+    - async_exit_stack

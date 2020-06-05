@@ -14,10 +14,12 @@ dependencies:
   - sqlalchemy-utils
   - psycopg2
   - starlette
-  - typing-extensions
   - uvicorn
   - gunicorn
   - pydantic
+
+    # Python < 3.8 backwards compatibility.
+  - typing-extensions
 
     # Core dependencies
   - click
