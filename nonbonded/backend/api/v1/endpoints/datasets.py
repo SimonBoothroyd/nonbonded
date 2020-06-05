@@ -5,7 +5,7 @@ from fastapi.openapi.models import APIKey
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.api import depends
-from nonbonded.backend.api.v1.endpoints import BaseCRUDEndpoint
+from nonbonded.backend.api.base import BaseCRUDEndpoint
 from nonbonded.backend.core.security import check_access_token
 from nonbonded.backend.database.crud.datasets import DataSetCRUD
 from nonbonded.library.models.datasets import DataSet, DataSetCollection

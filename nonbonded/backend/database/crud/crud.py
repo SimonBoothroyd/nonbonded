@@ -32,5 +32,5 @@ class CRUDInterface(abc.ABC):
         ...
 
     @classmethod
-    def db_to_model(cls, db_data_set: T) -> S:
+    def db_to_model(cls, db_data_set: T, *args) -> S:
         ...

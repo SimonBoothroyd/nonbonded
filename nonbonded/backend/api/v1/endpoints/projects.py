@@ -3,8 +3,9 @@ from fastapi.openapi.models import APIKey
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.api import depends
-from nonbonded.backend.api.v1.endpoints import BaseCRUDEndpoint
+from nonbonded.backend.api.base import BaseCRUDEndpoint
 from nonbonded.backend.core.security import check_access_token
+from nonbonded.backend.database import models
 from nonbonded.backend.database.crud.projects import (
     BenchmarkCRUD,
     OptimizationCRUD,
@@ -317,6 +318,13 @@ class BenchmarkResultEndpoints(BaseCRUDEndpoint):
     @classmethod
     def _crud_class(cls):
         return BenchmarkResultCRUD
+
+    @classmethod
+    def _db_to_model(cls, db_model: models.BenchmarkResult) -> BenchmarkResult:
+
+        return cls._crud_class().db_to_model(
+            db_model, db_model.results_entries, db_model.statistic_entries
+        )
 
     @staticmethod
     @router.get("/{project_id}/studies/{study_id}/benchmarks/{benchmark_id}/results/")

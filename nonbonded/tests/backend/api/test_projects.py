@@ -1,120 +1,217 @@
-import pytest
-from fastapi.testclient import TestClient
-from requests import HTTPError
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.database import models
-from nonbonded.library.models.projects import Project, Study
-from nonbonded.tests.backend.crud.utilities.commit import commit_project, commit_study
+from nonbonded.library.models.projects import Benchmark, Project, Study, Optimization
+from nonbonded.library.models.results import OptimizationResult
+from nonbonded.tests.backend.api.utilities import BaseTestEndpoints
+from nonbonded.tests.backend.crud.utilities.commit import (
+    commit_benchmark,
+    commit_data_set,
+    commit_project,
+    commit_study, commit_optimization,
+)
 from nonbonded.tests.backend.crud.utilities.comparison import (
+    compare_benchmarks,
     compare_projects,
-    compare_studies,
+    compare_studies, compare_optimizations,
 )
 from nonbonded.tests.backend.crud.utilities.create import (
+    create_benchmark,
     create_empty_project,
-    create_empty_study,
+    create_empty_study, create_optimization,
 )
 
 
-class TestProjectEndpoints:
-    def test_get(self, rest_client: TestClient, rest_db: Session):
+class TestProjectEndpoints(BaseTestEndpoints):
+    @classmethod
+    def _rest_class(cls):
+        return Project
 
-        project = commit_project(rest_db)
-        rest_project = Project.from_rest(
-            project_id=project.id, requests_class=rest_client
+    @classmethod
+    def _create_model(cls, db, create_dependencies=True):
+        project = create_empty_project("project-1")
+        return project, {"project_id": project.id}
+
+    @classmethod
+    def _perturb_model(cls, model):
+        model.name = "Updated"
+
+    @classmethod
+    def _commit_model(cls, db):
+        project = commit_project(db)
+        return project, {"project_id": project.id}
+
+    @classmethod
+    def _comparison_function(cls):
+        return compare_projects
+
+    @classmethod
+    def _n_db_models(cls, db: Session) -> int:
+        return db.query(models.Project.id).count()
+
+
+class TestStudyEndpoints(BaseTestEndpoints):
+    @classmethod
+    def _rest_class(cls):
+        return Study
+
+    @classmethod
+    def _create_model(cls, db, create_dependencies=True):
+
+        project_id = "project-1"
+
+        if create_dependencies:
+            project = commit_project(db)
+            project_id = project.id
+
+        study = create_empty_study(project_id, "study-1")
+
+        return study, {"project_id": project_id, "study_id": study.id}
+
+    @classmethod
+    def _perturb_model(cls, model):
+        model.name = "Updated"
+
+    @classmethod
+    def _commit_model(cls, db):
+        project, study = commit_study(db)
+        return study, {"project_id": project.id, "study_id": study.id}
+
+    @classmethod
+    def _comparison_function(cls):
+        return compare_studies
+
+    @classmethod
+    def _n_db_models(cls, db: Session) -> int:
+        return db.query(models.Study.id).count()
+
+
+class TestBenchmarkEndpoints(BaseTestEndpoints):
+    @classmethod
+    def _rest_class(cls):
+        return Benchmark
+
+    @classmethod
+    def _create_model(cls, db, create_dependencies=True):
+
+        project_id = "project-1"
+        study_id = "study-1"
+
+        data_set_ids = ["data-set-1"]
+
+        if create_dependencies:
+
+            project, study = commit_study(db)
+
+            project_id = project.id
+            study_id = study.id
+
+            data_set = commit_data_set(db)
+            data_set_ids = [data_set.id]
+
+        benchmark = create_benchmark(
+            project_id,
+            study_id,
+            "benchmark-1",
+            data_set_ids,
+            None,
+            "openff-1.0.0.offxml",
         )
 
-        compare_projects(project, rest_project)
-
-    def test_post(self, rest_client: TestClient):
-
-        project = create_empty_project("project-1")
-        rest_project = Project.upload(project, rest_client)
-
-        compare_projects(project, rest_project)
-
-    def test_put(self, rest_client: TestClient, rest_db: Session):
-
-        original_project = commit_project(rest_db)
-
-        updated_project = original_project.copy()
-        updated_project.name = "Updated"
-
-        rest_project = Project.update(updated_project, rest_client)
-
-        compare_projects(updated_project, rest_project)
-
-    def test_delete(self, rest_client: TestClient, rest_db: Session):
-
-        project = commit_project(rest_db)
-        assert rest_db.query(models.Project.id).count() == 1
-
-        project.delete(rest_client)
-        assert rest_db.query(models.Project.id).count() == 0
-
-    def test_not_found(self, rest_client: TestClient):
-
-        project = create_empty_project("project-1")
-
-        with pytest.raises(HTTPError) as error_info:
-            project.delete(rest_client)
-
-        assert error_info.value.response.status_code == 404
-
-        with pytest.raises(HTTPError) as error_info:
-            project.update(rest_client)
-
-        assert error_info.value.response.status_code == 404
-
-
-class TestStudyEndpoints:
-    def test_get(self, rest_client: TestClient, rest_db: Session):
-
-        _, study = commit_study(rest_db)
-        rest_study = Study.from_rest(
-            project_id=study.project_id, study_id=study.id, requests_class=rest_client
+        return (
+            benchmark,
+            {
+                "project_id": project_id,
+                "study_id": study_id,
+                "benchmark_id": benchmark.id,
+            },
         )
 
-        compare_studies(study, rest_study)
+    @classmethod
+    def _perturb_model(cls, model):
+        model.name = "Updated"
 
-    def test_post(self, rest_client: TestClient, rest_db: Session):
+    @classmethod
+    def _commit_model(cls, db):
+        project, study, benchmark, _, _, _ = commit_benchmark(db, False)
+        return (
+            benchmark,
+            {
+                "project_id": project.id,
+                "study_id": study.id,
+                "benchmark_id": benchmark.id,
+            },
+        )
 
-        project = commit_project(rest_db)
-        study = create_empty_study(project.id, "study-1")
+    @classmethod
+    def _comparison_function(cls):
+        return compare_benchmarks
 
-        rest_study = Study.upload(study, rest_client)
+    @classmethod
+    def _n_db_models(cls, db: Session) -> int:
+        return db.query(models.Benchmark.id).count()
 
-        compare_studies(study, rest_study)
 
-    def test_put(self, rest_client: TestClient, rest_db: Session):
+class TestOptimizationEndpoints(BaseTestEndpoints):
+    @classmethod
+    def _rest_class(cls):
+        return Optimization
 
-        _, original_study = commit_study(rest_db)
+    @classmethod
+    def _create_model(cls, db, create_dependencies=True):
 
-        updated_study = original_study.copy()
-        updated_study.name = "Updated"
+        project_id = "project-1"
+        study_id = "study-1"
 
-        rest_study = Study.update(updated_study, rest_client)
+        data_set_ids = ["data-set-1"]
 
-        compare_studies(updated_study, rest_study)
+        if create_dependencies:
 
-    def test_delete(self, rest_client: TestClient, rest_db: Session):
+            project, study = commit_study(db)
 
-        _, study = commit_study(rest_db)
-        assert rest_db.query(models.Study.id).count() == 1
+            project_id = project.id
+            study_id = study.id
 
-        study.delete(rest_client)
-        assert rest_db.query(models.Study.id).count() == 0
+            data_set = commit_data_set(db)
+            data_set_ids = [data_set.id]
 
-    def test_not_found(self, rest_client: TestClient):
+        optimization = create_optimization(
+            project_id,
+            study_id,
+            "optimization-1",
+            data_set_ids,
+        )
 
-        study = create_empty_study("project-1", "study-1")
+        return (
+            optimization,
+            {
+                "project_id": project_id,
+                "study_id": study_id,
+                "optimization_id": optimization.id,
+            },
+        )
 
-        with pytest.raises(HTTPError) as error_info:
-            study.delete(rest_client)
+    @classmethod
+    def _perturb_model(cls, model):
+        model.name = "Updated"
 
-        assert error_info.value.response.status_code == 404
+    @classmethod
+    def _commit_model(cls, db):
+        project, study, optimization, _ = commit_optimization(db)
 
-        with pytest.raises(HTTPError) as error_info:
-            study.update(rest_client)
+        return (
+            optimization,
+            {
+                "project_id": project.id,
+                "study_id": study.id,
+                "optimization_id": optimization.id,
+            },
+        )
 
-        assert error_info.value.response.status_code == 404
+    @classmethod
+    def _comparison_function(cls):
+        return compare_optimizations
+
+    @classmethod
+    def _n_db_models(cls, db: Session) -> int:
+        return db.query(models.Optimization.id).count()

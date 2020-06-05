@@ -7,7 +7,8 @@ from nonbonded.library.config import settings
 from nonbonded.library.models import BaseORM, BaseREST
 from nonbonded.library.models.authors import Author
 from nonbonded.library.models.validators.string import NonEmptyStr
-from nonbonded.library.utilities.exceptions import UnrecognisedPropertyType
+from nonbonded.library.utilities.exceptions import UnrecognisedPropertyType, \
+    UnsupportedEndpointError
 
 if TYPE_CHECKING:
     from openff.evaluator.datasets import (
@@ -282,7 +283,7 @@ class DataSet(BaseREST):
         return f"{settings.API_URL}/datasets/"
 
     def _put_endpoint(self):
-        raise NotImplementedError()
+        raise UnsupportedEndpointError()
 
     def _delete_endpoint(self):
         return f"{settings.API_URL}/datasets/{self.id}"
@@ -291,7 +292,7 @@ class DataSet(BaseREST):
     def from_rest(cls, *, data_set_id: str, requests_class=requests) -> "DataSet":
         # noinspection PyTypeChecker
         return super(DataSet, cls).from_rest(
-            project_id=data_set_id, requests_class=requests_class
+            data_set_id=data_set_id, requests_class=requests_class
         )
 
 
