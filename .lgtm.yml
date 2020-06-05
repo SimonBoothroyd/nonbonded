@@ -10,3 +10,4 @@ path_classifiers:
     - devtools/*
   generated:
     - nonbonded/_version.py
+    - nonbonded/backend/alembic/*
