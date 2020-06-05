@@ -126,13 +126,6 @@ class Optimization(BaseREST):
         )
 
 
-class OptimizationCollection(BaseORM):
-
-    optimizations: List[Optimization] = Field(
-        default_factory=list, description="A collection of optimizations.",
-    )
-
-
 class Benchmark(BaseREST):
 
     id: NonEmptyStr = Field(
@@ -242,13 +235,6 @@ class Benchmark(BaseREST):
         )
 
 
-class BenchmarkCollection(BaseORM):
-
-    benchmarks: List[Benchmark] = Field(
-        default_factory=list, description="A collection of benchmarks.",
-    )
-
-
 class Study(BaseREST):
 
     id: NonEmptyStr = Field(..., description="The unique id assigned to this study.")
@@ -327,9 +313,9 @@ class StudyCollection(BaseORM):
     )
 
     @classmethod
-    def from_rest(cls, project_id: str) -> "StudyCollection":
+    def from_rest(cls, project_id: str, requests_class=requests) -> "StudyCollection":
 
-        studies_request = requests.get(
+        studies_request = requests_class.get(
             f"{settings.API_URL}/projects/{project_id}/studies/"
         )
         try:
@@ -404,9 +390,9 @@ class ProjectCollection(BaseORM):
     )
 
     @classmethod
-    def from_rest(cls) -> "ProjectCollection":
+    def from_rest(cls, requests_class=requests) -> "ProjectCollection":
 
-        projects_request = requests.get(f"{settings.API_URL}/projects/")
+        projects_request = requests_class.get(f"{settings.API_URL}/projects/")
         try:
             projects_request.raise_for_status()
         except requests.exceptions.HTTPError as error:

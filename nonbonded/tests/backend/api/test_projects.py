@@ -1,7 +1,17 @@
+from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.database import models
-from nonbonded.library.models.projects import Benchmark, Optimization, Project, Study
+from nonbonded.library.config import settings
+from nonbonded.library.models.datasets import DataSetCollection
+from nonbonded.library.models.projects import (
+    Benchmark,
+    Optimization,
+    Project,
+    ProjectCollection,
+    Study,
+    StudyCollection,
+)
 from nonbonded.tests.backend.api.utilities import BaseTestEndpoints
 from nonbonded.tests.backend.crud.utilities.commit import (
     commit_benchmark,
@@ -51,6 +61,16 @@ class TestProjectEndpoints(BaseTestEndpoints):
     def _n_db_models(cls, db: Session) -> int:
         return db.query(models.Project.id).count()
 
+    def test_get_all(self, rest_client: TestClient, rest_db: Session):
+
+        project = commit_project(rest_db)
+        rest_collection = ProjectCollection.from_rest(rest_client)
+
+        assert rest_collection is not None
+        assert len(rest_collection.projects) == 1
+
+        compare_projects(project, rest_collection.projects[0])
+
 
 class TestStudyEndpoints(BaseTestEndpoints):
     @classmethod
@@ -86,6 +106,32 @@ class TestStudyEndpoints(BaseTestEndpoints):
     @classmethod
     def _n_db_models(cls, db: Session) -> int:
         return db.query(models.Study.id).count()
+
+    def test_get_all(self, rest_client: TestClient, rest_db: Session):
+
+        project, study = commit_study(rest_db)
+        rest_collection = StudyCollection.from_rest(
+            project_id=project.id, requests_class=rest_client
+        )
+
+        assert rest_collection is not None
+        assert len(rest_collection.studies) == 1
+
+        compare_studies(study, rest_collection.studies[0])
+
+    def test_get_all_data_sets(self, rest_client: TestClient, rest_db: Session):
+
+        project, study, optimization, data_set = commit_optimization(rest_db)
+
+        data_sets_request = rest_client.get(
+            f"{settings.API_URL}/projects/{project.id}/studies/{study.id}/datasets"
+        )
+        data_sets_request.raise_for_status()
+
+        rest_data_sets = DataSetCollection.parse_raw(data_sets_request.text)
+
+        assert rest_data_sets is not None
+        assert len(rest_data_sets.data_sets) == 2
 
 
 class TestBenchmarkEndpoints(BaseTestEndpoints):

@@ -1,7 +1,8 @@
+from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.database import models
-from nonbonded.library.models.datasets import DataSet
+from nonbonded.library.models.datasets import DataSet, DataSetCollection
 from nonbonded.tests.backend.api.utilities import BaseTestEndpoints
 from nonbonded.tests.backend.crud.utilities.commit import commit_data_set
 from nonbonded.tests.backend.crud.utilities.comparison import compare_data_sets
@@ -34,3 +35,13 @@ class TestDataSetEndpoints(BaseTestEndpoints):
     @classmethod
     def _n_db_models(cls, db: Session) -> int:
         return db.query(models.DataSet.id).count()
+
+    def test_get_all(self, rest_client: TestClient, rest_db: Session):
+
+        data_set = commit_data_set(rest_db)
+        rest_data_collection = DataSetCollection.from_rest(rest_client)
+
+        assert rest_data_collection is not None
+        assert len(rest_data_collection.data_sets) == 1
+
+        compare_data_sets(data_set, rest_data_collection.data_sets[0])

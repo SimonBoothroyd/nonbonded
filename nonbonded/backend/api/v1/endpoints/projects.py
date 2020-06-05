@@ -19,9 +19,7 @@ from nonbonded.backend.database.crud.results import (
 from nonbonded.library.models.datasets import DataSetCollection
 from nonbonded.library.models.projects import (
     Benchmark,
-    BenchmarkCollection,
     Optimization,
-    OptimizationCollection,
     Project,
     ProjectCollection,
     Study,
@@ -144,19 +142,6 @@ class OptimizationEndpoints(BaseCRUDEndpoint):
         return OptimizationCRUD
 
     @staticmethod
-    @router.get(
-        "/{project_id}/studies/{study_id}/optimizations/",
-        response_model=OptimizationCollection,
-    )
-    async def get_all(project_id, study_id, db: Session = Depends(depends.get_db)):
-
-        db_optimizations = OptimizationCRUD.read_all(
-            db, project_id=project_id, study_id=study_id
-        )
-
-        return {"optimizations": db_optimizations}
-
-    @staticmethod
     @router.get("/{project_id}/studies/{study_id}/optimizations/{optimization_id}")
     async def get(
         project_id, study_id, optimization_id, db: Session = Depends(depends.get_db),
@@ -259,19 +244,6 @@ class BenchmarkEndpoints(BaseCRUDEndpoint):
     @classmethod
     def _crud_class(cls):
         return BenchmarkCRUD
-
-    @staticmethod
-    @router.get(
-        "/{project_id}/studies/{study_id}/benchmarks/",
-        response_model=BenchmarkCollection,
-    )
-    async def get_all(project_id, study_id, db: Session = Depends(depends.get_db)):
-
-        db_benchmarks = BenchmarkCRUD.read_all(
-            db, project_id=project_id, study_id=study_id
-        )
-
-        return {"benchmarks": db_benchmarks}
 
     @staticmethod
     @router.get("/{project_id}/studies/{study_id}/benchmarks/{benchmark_id}")

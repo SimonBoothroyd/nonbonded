@@ -305,9 +305,9 @@ class DataSetCollection(BaseORM):
     )
 
     @classmethod
-    def from_rest(cls) -> "DataSetCollection":
+    def from_rest(cls, requests_class=requests) -> "DataSetCollection":
 
-        data_sets_request = requests.get(f"{settings.API_URL}/datasets/")
+        data_sets_request = requests_class.get(f"{settings.API_URL}/datasets/")
         try:
             data_sets_request.raise_for_status()
         except requests.exceptions.HTTPError as error:
