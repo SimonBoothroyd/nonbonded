@@ -1,16 +1,15 @@
-import abc
 import glob
 import io
 import logging
 import os
 import tarfile
 from multiprocessing import Pool
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 import pandas
 import requests
 from openff.evaluator.datasets.thermoml import ThermoMLDataSet
-from pydantic import Field
+from pydantic import Field, HttpUrl
 from typing_extensions import Literal
 
 from nonbonded.library.curation.components import Component, ComponentSchema
@@ -19,7 +18,11 @@ from nonbonded.library.utilities import temporary_cd
 logger = logging.getLogger(__name__)
 
 
-class ImportThermoMLDataSchema(ComponentSchema, abc.ABC):
+def _default_journals():
+    return ["JCED", "JCT", "FPE", "TCA", "IJT"]
+
+
+class ImportThermoMLDataSchema(ComponentSchema):
 
     type: Literal["ImportThermoMLData"] = "ImportThermoMLData"
 
@@ -35,18 +38,25 @@ class ImportThermoMLDataSchema(ComponentSchema, abc.ABC):
         "into, and to restore the output of this component from.",
     )
 
+    journal_names: List[Literal["JCED", "JCT", "FPE", "TCA", "IJT"]] = Field(
+        default_factory=_default_journals,
+        description="The abbreviated names of the journals to import data from.",
+    )
+    root_archive_url: HttpUrl = Field(
+        default="https://trc.nist.gov/ThermoML",
+        description="The root url where the ThermoML archives can be downloaded from.",
+    )
+
 
 class ImportThermoMLData(Component):
     @classmethod
-    def _download_data(cls):
+    def _download_data(cls, schema: ImportThermoMLDataSchema):
 
-        journals = ["JCED", "JCT", "FPE", "TCA", "IJT"]
-
-        for journal in journals:
+        for journal in schema.journal_names:
 
             # Download the archive of all properties from the journal.
             request = requests.get(
-                f"https://trc.nist.gov/ThermoML/{journal}.tgz", stream=True
+                f"{schema.root_archive_url}/{journal}.tgz", stream=True
             )
 
             # Make sure the request went ok.
@@ -56,7 +66,7 @@ class ImportThermoMLData(Component):
                 print(error.response.text)
                 raise
 
-                # Unzip the files into a new 'ijt_files' directory.
+                # Unzip the files into the temporary directory.
             tar_file = tarfile.open(fileobj=io.BytesIO(request.content))
             tar_file.extractall()
 
@@ -104,7 +114,7 @@ class ImportThermoMLData(Component):
 
             logger.debug("Downloading archive data")
 
-            cls._download_data()
+            cls._download_data(schema)
 
             # Get the names of the extracted files
             file_names = glob.glob("*.xml")
@@ -113,6 +123,8 @@ class ImportThermoMLData(Component):
 
             with Pool(processes=n_processes) as pool:
                 data_frames = [*pool.imap(cls._process_archive, file_names)]
+
+            pool.join()
 
         logger.debug("Joining archives")
 
