@@ -1,14 +1,18 @@
 import logging
 
 from openff.evaluator import unit
-from openff.evaluator.datasets import PropertyPhase, PhysicalPropertyDataSet
+from openff.evaluator.datasets import PhysicalPropertyDataSet, PropertyPhase
 from openff.evaluator.properties import Density
 from openff.evaluator.substances import Substance
 from openff.evaluator.thermodynamics import ThermodynamicState
 
 from nonbonded.library.models.authors import Author
-from nonbonded.library.models.datasets import DataSet, DataSetEntry, Component, \
-    DataSetCollection
+from nonbonded.library.models.datasets import (
+    Component,
+    DataSet,
+    DataSetCollection,
+    DataSetEntry,
+)
 from nonbonded.library.utilities.logging import setup_timestamp_logging
 from nonbonded.library.utilities.migration import reindex_data_set
 
@@ -47,7 +51,7 @@ def test_reindex_data_set():
             substance=Substance.from_components("C", "O"),
             value=1.0 * Density.default_unit(),
             uncertainty=1.0 * Density.default_unit(),
-        )
+        ),
     )
 
     data_set = DataSet(
@@ -66,7 +70,7 @@ def test_reindex_data_set():
                 components=[
                     Component(smiles="O", mole_fraction=0.5),
                     Component(smiles="C", mole_fraction=0.5),
-                ]
+                ],
             ),
             DataSetEntry(
                 id=2,
@@ -76,9 +80,9 @@ def test_reindex_data_set():
                 value=1.0,
                 std_error=1.0,
                 doi=" ",
-                components=[Component(smiles="O", mole_fraction=1.0)]
-            )
-        ]
+                components=[Component(smiles="O", mole_fraction=1.0)],
+            ),
+        ],
     )
 
     un_indexed_id = evaluator_data_set.properties[2].id
@@ -107,9 +111,9 @@ def test_reindex_data_set():
                         components=[
                             Component(smiles="O", mole_fraction=0.5),
                             Component(smiles="C", mole_fraction=0.5),
-                        ]
+                        ],
                     )
-                ]
+                ],
             ),
             DataSet(
                 id="1",
@@ -124,10 +128,10 @@ def test_reindex_data_set():
                         value=1.0,
                         std_error=1.0,
                         doi=" ",
-                        components=[Component(smiles="O", mole_fraction=1.0)]
+                        components=[Component(smiles="O", mole_fraction=1.0)],
                     )
-                ]
-            )
+                ],
+            ),
         ]
     )
 
