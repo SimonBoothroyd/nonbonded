@@ -1,22 +1,32 @@
+import functools
 import logging
-from typing import Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 import numpy
 import pandas
 from openforcefield.topology import Molecule
 from openforcefield.utils import UndefinedStereochemistryError
-from pydantic import Field, PositiveInt, root_validator, validator
+from pydantic import Field, root_validator, validator
 from scipy.optimize import linear_sum_assignment
 from typing_extensions import Literal
 
 from nonbonded.library.curation.components import Component, ComponentSchema
+from nonbonded.library.models.validators.string import NonEmptyStr
 from nonbonded.library.utilities.checkmol import analyse_functional_groups
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 from nonbonded.library.utilities.molecules import find_smirks_matches
 from nonbonded.library.utilities.pandas import reorder_data_frame
 
-logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
 
+    PositiveInt = int
+    PositiveFloat = float
+
+else:
+
+    from pydantic import PositiveFloat, PositiveInt
+
+logger = logging.getLogger(__name__)
 
 ComponentEnvironments = List[List[ChemicalEnvironment]]
 
@@ -91,7 +101,7 @@ class FilterDuplicates(Component):
             subset_columns = [x for x in subset_columns if x in component_data]
             value_headers = [x for x in component_data if x.find(" Value ") >= 0]
 
-            sorted_data = []
+            sorted_filtered_data = []
 
             for value_header in value_headers:
 
@@ -103,13 +113,17 @@ class FilterDuplicates(Component):
                 property_data = component_data[component_data[value_header].notna()]
                 property_data = property_data.sort_values(uncertainty_header)
 
-                sorted_data.append(property_data)
+                property_data = property_data.drop_duplicates(
+                    subset=subset_columns, keep="last"
+                )
 
-            sorted_data = pandas.concat(sorted_data, ignore_index=True, sort=False)
+                sorted_filtered_data.append(property_data)
 
-            filtered_data.append(
-                sorted_data.drop_duplicates(subset=subset_columns, keep="last")
+            sorted_filtered_data = pandas.concat(
+                sorted_filtered_data, ignore_index=True, sort=False
             )
+
+            filtered_data.append(sorted_filtered_data)
 
         filtered_data = pandas.concat(filtered_data, ignore_index=True, sort=False)
         return filtered_data
@@ -119,11 +133,11 @@ class FilterByTemperatureSchema(ComponentSchema):
 
     type: Literal["FilterByTemperature"] = "FilterByTemperature"
 
-    minimum_temperature: Optional[float] = Field(
+    minimum_temperature: Optional[PositiveFloat] = Field(
         ...,
         description="Retain data points measured for temperatures above this value (K)",
     )
-    maximum_temperature: Optional[float] = Field(
+    maximum_temperature: Optional[PositiveFloat] = Field(
         ...,
         description="Retain data points measured for temperatures below this value (K)",
     )
@@ -132,11 +146,6 @@ class FilterByTemperatureSchema(ComponentSchema):
     def _min_max(cls, values):
         minimum_temperature = values.get("minimum_temperature")
         maximum_temperature = values.get("maximum_temperature")
-
-        if minimum_temperature is not None:
-            assert minimum_temperature > 0
-        if maximum_temperature is not None:
-            assert maximum_temperature > 0
 
         if minimum_temperature is not None and maximum_temperature is not None:
             assert maximum_temperature > minimum_temperature
@@ -153,21 +162,30 @@ class FilterByTemperature(Component):
         n_processes,
     ) -> pandas.DataFrame:
 
-        return data_frame[
-            (schema.minimum_temperature < data_frame["Temperature (K)"])
-            & (data_frame["Temperature (K)"] < schema.maximum_temperature)
-        ]
+        filtered_frame = data_frame
+
+        if schema.minimum_temperature is not None:
+            filtered_frame = filtered_frame[
+                schema.minimum_temperature < data_frame["Temperature (K)"]
+            ]
+
+        if schema.maximum_temperature is not None:
+            filtered_frame = filtered_frame[
+                data_frame["Temperature (K)"] < schema.maximum_temperature
+            ]
+
+        return filtered_frame
 
 
 class FilterByPressureSchema(ComponentSchema):
 
     type: Literal["FilterByPressure"] = "FilterByPressure"
 
-    minimum_pressure: Optional[float] = Field(
+    minimum_pressure: Optional[PositiveFloat] = Field(
         ...,
         description="Retain data points measured for pressures above this value (kPa)",
     )
-    maximum_pressure: Optional[float] = Field(
+    maximum_pressure: Optional[PositiveFloat] = Field(
         ...,
         description="Retain data points measured for pressures below this value (kPa)",
     )
@@ -176,11 +194,6 @@ class FilterByPressureSchema(ComponentSchema):
     def _min_max(cls, values):
         minimum_pressure = values.get("minimum_pressure")
         maximum_pressure = values.get("maximum_pressure")
-
-        if minimum_pressure is not None:
-            assert minimum_pressure > 0
-        if maximum_pressure is not None:
-            assert maximum_pressure > 0
 
         if minimum_pressure is not None and maximum_pressure is not None:
             assert maximum_pressure > minimum_pressure
@@ -194,23 +207,32 @@ class FilterByPressure(Component):
         cls, data_frame: pandas.DataFrame, schema: FilterByPressureSchema, n_processes
     ) -> pandas.DataFrame:
 
-        return data_frame[
-            (schema.minimum_pressure < data_frame["Pressure (kPa)"])
-            & (data_frame["Pressure (kPa)"] < schema.maximum_pressure)
-        ]
+        filtered_frame = data_frame
+
+        if schema.minimum_pressure is not None:
+            filtered_frame = filtered_frame[
+                schema.minimum_pressure < data_frame["Pressure (kPa)"]
+            ]
+
+        if schema.maximum_pressure is not None:
+            filtered_frame = filtered_frame[
+                data_frame["Pressure (kPa)"] < schema.maximum_pressure
+            ]
+
+        return filtered_frame
 
 
 class FilterByElementsSchema(ComponentSchema):
 
     type: Literal["FilterByElements"] = "FilterByElements"
 
-    allowed_elements: Optional[List[str]] = Field(
+    allowed_elements: Optional[List[NonEmptyStr]] = Field(
         None,
         description="The only elements which must be present in the measured system "
         "for the data point to be retained. This option is mutually exclusive with "
         "`forbidden_elements`",
     )
-    forbidden_elements: Optional[List[str]] = Field(
+    forbidden_elements: Optional[List[NonEmptyStr]] = Field(
         None,
         description="The elements which must not be present in the measured system for "
         "the data point to be retained. This option is mutually exclusive with "
@@ -268,10 +290,10 @@ class FilterByPropertyTypesSchema(ComponentSchema):
 
     type: Literal["FilterByPropertyTypes"] = "FilterByPropertyTypes"
 
-    property_types: List[str] = Field(
+    property_types: List[NonEmptyStr] = Field(
         ..., description="The types of property to retain.",
     )
-    n_components: Dict[str, List[int]] = Field(
+    n_components: Dict[NonEmptyStr, List[PositiveInt]] = Field(
         default_factory=dict,
         description="Optionally specify the number of components that a property "
         "should have been measured for (e.g. pure, binary) in order for that data "
@@ -600,19 +622,11 @@ class FilterByNComponentsSchema(ComponentSchema):
 
     type: Literal["FilterByNComponents"] = "FilterByNComponents"
 
-    n_components: List[int] = Field(
+    n_components: List[PositiveInt] = Field(
         ...,
         description="The number of components that measurements should have been "
         "measured for in order to be retained.",
     )
-
-    @validator("n_components")
-    def _validate_n_components(cls, value):
-
-        assert len(value) > 0
-        assert all(x > 0 for x in value)
-
-        return value
 
 
 class FilterByNComponents(Component):
@@ -695,6 +709,18 @@ class FilterBySubstances(Component):
 
             n_components = data_row["N Components"]
 
+            substances_to_include = schema.substances_to_include
+            substances_to_exclude = schema.substances_to_exclude
+
+            if substances_to_include is not None:
+                substances_to_include = [
+                    tuple(sorted(x)) for x in substances_to_include
+                ]
+            if substances_to_exclude is not None:
+                substances_to_exclude = [
+                    tuple(sorted(x)) for x in substances_to_exclude
+                ]
+
             substance = tuple(
                 sorted(
                     [
@@ -705,11 +731,10 @@ class FilterBySubstances(Component):
             )
 
             return (
-                schema.substances_to_exclude is not None
-                and substance not in schema.substances_to_exclude
+                substances_to_exclude is not None
+                and substance not in substances_to_exclude
             ) or (
-                schema.substances_to_include is not None
-                and substance in schema.substances_to_include
+                substances_to_include is not None and substance in substances_to_include
             )
 
         return data_frame[data_frame.apply(filter_function, axis=1)]
@@ -723,9 +748,9 @@ class FilterByEnvironmentsSchema(ComponentSchema):
         None,
         description="The environments which should be present in the components of "
         "the substance for which the measurements were made. Each dictionary "
-        "key corresponds to the expected number of components in the system, and each "
-        "value the environments for each component. This option is mutually exclusive "
-        "with `environments`.",
+        "key corresponds to a number of components in the system, and each "
+        "value the environments which should be matched by those n components. "
+        "This option is mutually exclusive with `environments`.",
     )
     environments: Optional[List[ChemicalEnvironment]] = Field(
         None,
@@ -734,17 +759,19 @@ class FilterByEnvironmentsSchema(ComponentSchema):
         "`per_component_environments`.",
     )
 
-    at_least_one: bool = Field(
+    at_least_one_environment: bool = Field(
         True,
         description="If true, data points will only be retained if all of the "
         "components in the measured system contain at least one of the specified "
-        "environments. This option is mutually exclusive with `all_of`.",
+        "environments. This option is mutually exclusive with "
+        "`strictly_specified_environments`.",
     )
-    all_of: bool = Field(
+    strictly_specified_environments: bool = Field(
         False,
         description="If true, data points will only be retained if all of the "
-        "components in the measured system contain only the specified environments "
-        "and no others. This option is mutually exclusive with `at_least_one`.",
+        "components in the measured system strictly contain only the specified "
+        "environments and no others. This option is mutually exclusive with "
+        "`at_least_one_environment`.",
     )
 
     @validator("per_component_environments")
@@ -759,11 +786,16 @@ class FilterByEnvironmentsSchema(ComponentSchema):
     @root_validator
     def _validate_mutually_exclusive(cls, values):
 
-        at_least_one = values.get("at_least_one")
-        all_of = values.get("all_of")
+        at_least_one_environment = values.get("at_least_one_environment")
+        strictly_specified_environments = values.get("strictly_specified_environments")
 
-        assert at_least_one is True or all_of is True
-        assert at_least_one is False or all_of is False
+        assert (
+            at_least_one_environment is True or strictly_specified_environments is True
+        )
+        assert (
+            at_least_one_environment is False
+            or strictly_specified_environments is False
+        )
 
         per_component_environments = values.get("per_component_environments")
         environments = values.get("environments")
@@ -803,7 +835,7 @@ class FilterByEnvironments(Component):
     @classmethod
     def _is_match(cls, component_environments, environments_to_match, schema):
 
-        operator = all if schema.all_of else any
+        operator = all if schema.strictly_specified_environments else any
 
         return operator(
             environment in environments_to_match
@@ -868,9 +900,13 @@ class FilterByEnvironments(Component):
     ) -> pandas.DataFrame:
 
         if schema.environments is not None:
-            filter_function = cls._filter_by_environments
+            filter_function = functools.partial(
+                cls._filter_by_environments, schema=schema
+            )
         else:
-            filter_function = cls._filter_by_per_component
+            filter_function = functools.partial(
+                cls._filter_by_per_component, schema=schema
+            )
 
         return data_frame[data_frame.apply(filter_function, axis=1)]
 
