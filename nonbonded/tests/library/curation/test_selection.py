@@ -87,6 +87,11 @@ def test_select_data_points(target_temperatures, expected_temperatures, data_fra
 
     selected_data = SelectDataPoints.apply(data_frame, schema)
 
+    print(target_temperatures)
+    print(expected_temperatures)
+    print(data_frame.head())
+    print(selected_data.head())
+
     assert len(selected_data) == len(expected_temperatures) * 2
     assert len(selected_data["Temperature (K)"].unique()) == len(expected_temperatures)
 
