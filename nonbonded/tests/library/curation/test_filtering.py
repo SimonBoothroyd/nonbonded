@@ -522,8 +522,7 @@ def test_filter_by_smiles(data_frame):
 
     # Exclude any hydrocarbons
     filtered_frame = FilterBySmiles.apply(
-        data_frame,
-        FilterBySmilesSchema(smiles_to_exclude=["C"]),
+        data_frame, FilterBySmilesSchema(smiles_to_exclude=["C"]),
     )
 
     pure_data = filtered_frame[filtered_frame["N Components"] == 1]
@@ -811,15 +810,10 @@ def test_filter_by_environment_per_component():
         data_frame,
         FilterByEnvironmentsSchema(
             per_component_environments={
-                1: [
-                    [ChemicalEnvironment.Aqueous],
-                ],
-                2: [
-                    [ChemicalEnvironment.Aqueous],
-                    [ChemicalEnvironment.Aqueous],
-                ]
+                1: [[ChemicalEnvironment.Aqueous]],
+                2: [[ChemicalEnvironment.Aqueous], [ChemicalEnvironment.Aqueous]],
             },
-            at_least_one_environment=True
+            at_least_one_environment=True,
         ),
     )
 
@@ -832,12 +826,9 @@ def test_filter_by_environment_per_component():
         data_frame,
         FilterByEnvironmentsSchema(
             per_component_environments={
-                2: [
-                    [ChemicalEnvironment.Aldehyde],
-                    [ChemicalEnvironment.Aqueous],
-                ]
+                2: [[ChemicalEnvironment.Aldehyde], [ChemicalEnvironment.Aqueous]]
             },
-            at_least_one_environment=True
+            at_least_one_environment=True,
         ),
     )
     assert len(filtered_frame) == 4
@@ -863,13 +854,10 @@ def test_filter_by_environment_per_component():
         data_frame,
         FilterByEnvironmentsSchema(
             per_component_environments={
-                2: [
-                    [ChemicalEnvironment.Aldehyde],
-                    [ChemicalEnvironment.Aqueous],
-                ]
+                2: [[ChemicalEnvironment.Aldehyde], [ChemicalEnvironment.Aqueous]]
             },
             at_least_one_environment=False,
-            strictly_specified_environments=True
+            strictly_specified_environments=True,
         ),
     )
     assert len(filtered_frame) == 2
@@ -891,7 +879,7 @@ def test_filter_by_environment_per_component():
                 ]
             },
             at_least_one_environment=False,
-            strictly_specified_environments=True
+            strictly_specified_environments=True,
         ),
     )
     assert len(filtered_frame) == 4
