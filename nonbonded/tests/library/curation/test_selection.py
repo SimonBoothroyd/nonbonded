@@ -26,14 +26,13 @@ def data_frame() -> pandas.DataFrame:
     )
 
     def _temperature_noise():
-        return (
-            (numpy.random.rand() / 2.0 + 0.5)
-            / 10.0
-            * (1 if numpy.random.rand() < 0.5 else -1)
-        )
+        return (numpy.random.rand() / 2.0 + 0.51) / 10.0
 
     for temperature in temperatures:
-        for property_type in property_types:
+        for index, property_type in enumerate(property_types):
+
+            noise = _temperature_noise()
+            noise *= 1 if index == 0 else -1
 
             data_set.entries.append(
                 DataSetEntry(
@@ -50,7 +49,7 @@ def data_frame() -> pandas.DataFrame:
             data_set.entries.append(
                 DataSetEntry(
                     property_type=property_type,
-                    temperature=temperature + _temperature_noise(),
+                    temperature=temperature + noise,
                     pressure=101.325,
                     value=1.0,
                     std_error=1.0,
@@ -86,11 +85,6 @@ def test_select_data_points(target_temperatures, expected_temperatures, data_fra
     )
 
     selected_data = SelectDataPoints.apply(data_frame, schema)
-
-    print(target_temperatures)
-    print(expected_temperatures)
-    print(data_frame.head())
-    print(selected_data.head())
 
     assert len(selected_data) == len(expected_temperatures) * 2
     assert len(selected_data["Temperature (K)"].unique()) == len(expected_temperatures)
