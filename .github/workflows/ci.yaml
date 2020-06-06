@@ -51,15 +51,10 @@ jobs:
         shell: bash -l {0}
         run: |
 
-          mkdir bin
-          cd bin
-
           curl https://homepage.univie.ac.at/norbert.haider/download/chemistry/checkmol/checkmol.pas > checkmol.pas
           fpc checkmol.pas -S2
 
-          cd -
-
-          echo "::add-path::./bin"
+          echo "::add-path::."
 
       - name: Install Package
         shell: bash -l {0}
