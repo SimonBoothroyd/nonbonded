@@ -19,6 +19,12 @@ def reorder_data_frame(data_frame):
     min_n_components = data_frame["N Components"].min()
     max_n_components = data_frame["N Components"].max()
 
+    if max_n_components > 2:
+
+        raise NotImplementedError(
+            "Reordering more than 2 components has not yet been robustly tested."
+        )
+
     ordered_frames = []
 
     for n_components in range(min_n_components, max_n_components + 1):
