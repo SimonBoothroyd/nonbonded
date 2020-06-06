@@ -21,6 +21,6 @@ def test_analyse_functional_groups(smiles, expected_environment):
 
 
 def test_analyse_functional_groups_error():
-    """Tests the the function returns None when a nonsensical
+    """Tests the the function returns None when an unknown
     smiles pattern is passed."""
-    assert analyse_functional_groups(" ") is None
+    assert analyse_functional_groups("Ar") is None
