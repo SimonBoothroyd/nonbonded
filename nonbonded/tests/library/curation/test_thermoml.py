@@ -15,6 +15,13 @@ def test_import_thermoml_data(requests_mock):
     """Tests that ThermoML archive files can be imported from a
     remote source."""
 
+    try:
+        from pytest_cov.embed import cleanup_on_sigterm
+    except ImportError:
+        pass
+    else:
+        cleanup_on_sigterm()
+
     # Create a tarball to be downloaded.
     source_path = get_data_filename(os.path.join("tests", "thermoml", "density.xml"))
 
