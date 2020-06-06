@@ -79,26 +79,30 @@ class SelectDataPoints(Component):
         return None
 
     @classmethod
-    def _distances_to_cluster(cls, data_frame, target_state):
+    def _distances_to_state(cls, data_frame: pandas.DataFrame, state_point: State):
 
-        n_components = target_state.property_types[0][1]
+        distance_sqr = (
+            (data_frame["Temperature (K)"] - state_point.temperature) ** 2
+            + (data_frame["Pressure (kPa)"] / 10.0 - state_point.pressure / 10.0) ** 2
+        )
+
+        for component_index in range(len(state_point.mole_fractions)):
+            distance_sqr += (
+                data_frame[f"Mole Fraction {component_index + 1}"]
+                - state_point.mole_fractions[component_index]
+            ) ** 2
+
+        return distance_sqr
+
+    @classmethod
+    def _distances_to_cluster(
+        cls, data_frame: pandas.DataFrame, target_state: TargetState
+    ):
+
         distances_sqr = pandas.DataFrame()
 
         for index, state_point in enumerate(target_state.states):
-
-            distance_sqr = (
-                (data_frame["Temperature (K)"] - state_point.temperature) ** 2
-                + (data_frame["Pressure (kPa)"] / 10.0 - state_point.pressure / 10.0)
-                ** 2
-            )
-
-            for component_index in range(n_components):
-                distance_sqr += (
-                    data_frame[f"Mole Fraction {component_index + 1}"]
-                    - state_point.mole_fractions[component_index]
-                ) ** 2
-
-            distances_sqr[index] = distance_sqr
+            distances_sqr[index] = cls._distances_to_state(data_frame, state_point)
 
         return distances_sqr
 
@@ -147,6 +151,9 @@ class SelectDataPoints(Component):
         for cluster_index in range(len(target_state.states)):
 
             cluster_data = grouped_data[grouped_data["Cluster"] == cluster_index]
+            cluster_data["Distance"] = cls._distances_to_state(
+                cluster_data, target_state.states[cluster_index]
+            )
 
             if len(cluster_data) == 0:
                 continue
@@ -155,14 +162,18 @@ class SelectDataPoints(Component):
 
             while len(open_list) > 0 and len(cluster_data) > 0:
 
-                largest_cluster_index = cluster_data["Property Type"].idxmax(axis=0)
+                sorted_cluster_data = cluster_data.sort_values(
+                    by=["Property Type", "Distance"], ascending=[False, True]
+                )
+
+                closest_index = sorted_cluster_data.index[0]
 
                 select_data = data_frame["Property Type"].isin(open_list)
 
                 for cluster_header in cluster_headers:
                     select_data = select_data & numpy.isclose(
                         data_frame[cluster_header],
-                        cluster_data.loc[largest_cluster_index, cluster_header],
+                        sorted_cluster_data.loc[closest_index, cluster_header],
                     )
 
                 selected_data = selected_data | select_data
@@ -170,7 +181,7 @@ class SelectDataPoints(Component):
                 for property_type in data_frame[select_data]["Property Type"].unique():
                     open_list.remove(property_type)
 
-                cluster_data = cluster_data.drop(largest_cluster_index)
+                cluster_data = cluster_data.drop(closest_index)
 
         return original_data_frame[selected_data]
 
