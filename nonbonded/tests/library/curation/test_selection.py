@@ -25,6 +25,13 @@ def data_frame() -> pandas.DataFrame:
         entries=[],
     )
 
+    def _temperature_noise():
+        return (
+            (numpy.random.rand() / 2.0 + 0.5)
+            / 10.0
+            * (1 if numpy.random.rand() < 0.5 else -1)
+        )
+
     for temperature in temperatures:
         for property_type in property_types:
 
@@ -43,7 +50,7 @@ def data_frame() -> pandas.DataFrame:
             data_set.entries.append(
                 DataSetEntry(
                     property_type=property_type,
-                    temperature=temperature + numpy.random.normal(0.0, 0.1),
+                    temperature=temperature + _temperature_noise(),
                     pressure=101.325,
                     value=1.0,
                     std_error=1.0,
