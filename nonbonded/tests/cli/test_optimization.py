@@ -51,7 +51,9 @@ class TestOptimizationCLI:
             arguments.extend(["--output", "optimization.json"])
 
         result = runner.invoke(optimization_cli, arguments)
-        assert result.exit_code == 0
+
+        if result.exit_code != 0:
+            raise result.exception
 
         if output_to_file:
             with open("optimization.json") as file:
@@ -88,4 +90,6 @@ class TestOptimizationCLI:
         ]
 
         result = runner.invoke(optimization_cli, arguments)
-        assert result.exit_code == 0
+
+        if result.exit_code != 0:
+            raise result.exception

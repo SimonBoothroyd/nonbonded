@@ -50,7 +50,9 @@ class TestBenchmarkCLI:
             arguments.extend(["--output", "benchmark.json"])
 
         result = runner.invoke(benchmark_cli, arguments)
-        assert result.exit_code == 0
+
+        if result.exit_code != 0:
+            raise result.exception
 
         if output_to_file:
             with open("benchmark.json") as file:
@@ -84,4 +86,6 @@ class TestBenchmarkCLI:
         ]
 
         result = runner.invoke(benchmark_cli, arguments)
-        assert result.exit_code == 0
+
+        if result.exit_code != 0:
+            raise result.exception
