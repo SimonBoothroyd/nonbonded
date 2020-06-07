@@ -1,6 +1,7 @@
 import click
 
-from nonbonded.library.models.projects import Benchmark
+from nonbonded.library.factories.projects.optimization import OptimizationFactory
+from nonbonded.library.models.projects import Optimization
 from nonbonded.library.utilities.logging import (
     get_log_levels,
     setup_timestamp_logging,
@@ -8,7 +9,7 @@ from nonbonded.library.utilities.logging import (
 )
 
 
-@click.command(help="Retrieve a benchmark from the REST API.")
+@click.command(help="Retrieve the results from an optimization from the REST API.")
 @click.option(
     "--project-id", type=click.STRING, help="The id of the parent project.",
 )
@@ -16,7 +17,9 @@ from nonbonded.library.utilities.logging import (
     "--study-id", type=click.STRING, help="The id of the parent study.",
 )
 @click.option(
-    "--benchmark-id", type=click.STRING, help="The id of the benchmark to retrieve.",
+    "--optimization-id",
+    type=click.STRING,
+    help="The id of the optimization to retrieve.",
 )
 @click.option(
     "--log-level",
@@ -25,7 +28,7 @@ from nonbonded.library.utilities.logging import (
     help="The verbosity of the logger.",
     show_default=True,
 )
-def retrieve(project_id, study_id, benchmark_id, log_level):
+def results(project_id, study_id, optimization_id, log_level):
 
     # Set up logging if requested.
     logging_level = string_to_log_level(log_level)
@@ -33,9 +36,8 @@ def retrieve(project_id, study_id, benchmark_id, log_level):
     if logging_level is not None:
         setup_timestamp_logging(logging_level)
 
-    benchmark = Benchmark.from_rest(
-        project_id=project_id, study_id=study_id, benchmark_id=benchmark_id
+    optimization = Optimization.from_rest(
+        project_id=project_id, study_id=study_id, optimization_id=optimization_id
     )
-    benchmark_json = benchmark.json()
 
-    print(benchmark_json)
+    OptimizationFactory.retrieve_results(optimization)

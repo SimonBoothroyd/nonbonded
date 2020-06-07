@@ -1,5 +1,6 @@
 import click
 
+from nonbonded.library.factories.projects.benchmark import BenchmarkFactory
 from nonbonded.library.models.projects import Benchmark
 from nonbonded.library.utilities.logging import (
     get_log_levels,
@@ -8,7 +9,7 @@ from nonbonded.library.utilities.logging import (
 )
 
 
-@click.command(help="Retrieve a benchmark from the REST API.")
+@click.command(help="Retrieve the results from a benchmark from the REST API.")
 @click.option(
     "--project-id", type=click.STRING, help="The id of the parent project.",
 )
@@ -25,7 +26,7 @@ from nonbonded.library.utilities.logging import (
     help="The verbosity of the logger.",
     show_default=True,
 )
-def retrieve(project_id, study_id, benchmark_id, log_level):
+def results(project_id, study_id, benchmark_id, log_level):
 
     # Set up logging if requested.
     logging_level = string_to_log_level(log_level)
@@ -36,6 +37,5 @@ def retrieve(project_id, study_id, benchmark_id, log_level):
     benchmark = Benchmark.from_rest(
         project_id=project_id, study_id=study_id, benchmark_id=benchmark_id
     )
-    benchmark_json = benchmark.json()
 
-    print(benchmark_json)
+    BenchmarkFactory.retrieve_results(benchmark)

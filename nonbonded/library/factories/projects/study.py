@@ -15,7 +15,59 @@ class StudyFactory:
     """
 
     @classmethod
-    def generate(
+    def _yield_child_factory(cls, study: Study):
+        """Temporarily navigates into the parent directory of each child of
+        a study (creating it if it doesn't exist) and then yields the
+        child and its corresponding factory.
+
+        Parameters
+        ----------
+        study
+            The parent study
+        """
+
+        os.makedirs(study.id, exist_ok=True)
+
+        optimizations_directory = os.path.join(study.id, "optimizations")
+        benchmarks_directory = os.path.join(study.id, "benchmarks")
+
+        for child in [*study.optimizations, *study.benchmarks]:
+
+            child_directory = (
+                optimizations_directory
+                if isinstance(child, Optimization)
+                else benchmarks_directory
+            )
+            os.makedirs(child_directory, exist_ok=True)
+
+            with temporary_cd(child_directory):
+
+                factory = (
+                    OptimizationFactory
+                    if isinstance(child, Optimization)
+                    else BenchmarkFactory
+                )
+
+                yield child, factory
+
+    @classmethod
+    def retrieve_results(
+        cls, study: Study,
+    ):
+        """Retrieves the full results for a study and stores them
+        in an organised directory structure.
+
+        Parameters
+        ----------
+        study
+            The study to retrieve the results for.
+        """
+
+        for child, factory in cls._yield_child_factory(study):
+            factory.retrieve_results(child)
+
+    @classmethod
+    def generate_inputs(
         cls,
         study: Study,
         backend_name: str,
@@ -25,41 +77,20 @@ class StudyFactory:
         max_memory: int,
     ):
 
-        root_directory = study.id
-        os.makedirs(root_directory, exist_ok=True)
-
         port_counter = 8000
 
-        optimizations_directory = os.path.join(root_directory, "optimizations")
-        benchmarks_directory = os.path.join(root_directory, "benchmarks")
+        for child, factory in cls._yield_child_factory(study):
 
-        for child in [*study.optimizations, *study.benchmarks]:
+            logger.info(f"Generating {child.__class__.__name__.lower()}={child.id}")
 
-            parent_directory = (
-                optimizations_directory
-                if isinstance(child, Optimization)
-                else benchmarks_directory
+            factory.generate_inputs(
+                child,
+                backend_name,
+                environment_name,
+                port_counter,
+                max_workers,
+                max_wall_clock,
+                max_memory,
             )
-            os.makedirs(parent_directory, exist_ok=True)
 
-            with temporary_cd(parent_directory):
-
-                logger.info(f"Generating {child.__class__.__name__.lower()}={child.id}")
-
-                factory = (
-                    OptimizationFactory
-                    if isinstance(child, Optimization)
-                    else BenchmarkFactory
-                )
-
-                factory.generate(
-                    child,
-                    backend_name,
-                    environment_name,
-                    port_counter,
-                    max_workers,
-                    max_wall_clock,
-                    max_memory,
-                )
-
-                port_counter += 1
+            port_counter += 1

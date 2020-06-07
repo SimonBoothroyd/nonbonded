@@ -13,22 +13,19 @@ from nonbonded.library.utilities.logging import (
 logger = logging.getLogger(__name__)
 
 
-@click.command(help="Generates the input files for a specified study.")
+@click.command(help="Generates the input files for a particular study.")
 @click.option(
-    "--project-id",
-    type=click.STRING,
-    help="The id of the project which the study to is part of.",
+    "--project-id", type=click.STRING, help="The id of the parent project.",
 )
 @click.option(
-    "--study-id", type=click.STRING, help="The id of the study.",
+    "--study-id", type=click.STRING, help="The id of the study to generate inputs for.",
 )
 @click.option(
     "--backend",
     "backend_name",
     default="lilac-dask",
     type=click.Choice(["lilac-dask", "lilac-local"], case_sensitive=True),
-    help="The name of the backend to perform the study's optimizations and benchmarks "
-    "using.",
+    help="The name of the backend to perform calculations with.",
     show_default=True,
 )
 @click.option(
@@ -36,15 +33,15 @@ logger = logging.getLogger(__name__)
     "environment_name",
     default="forcebalance",
     type=click.STRING,
-    help="The name of the conda environment to run using.",
+    help="The name of the conda environment to perform calculations with.",
     show_default=True,
 )
 @click.option(
     "--max-workers",
     required=True,
     type=click.INT,
-    help="The maximum number of workers to spawn. This option is only used with dask-"
-    "jobqueue based backends",
+    help="The maximum number of workers to spawn. This option is only used "
+    "with `dask-jobqueue` based backends",
     show_default=True,
 )
 @click.option(
@@ -52,21 +49,25 @@ logger = logging.getLogger(__name__)
     "max_wall_clock",
     default="168:00",
     type=click.STRING,
-    help="The maximum wall-clock time to run for.",
+    help="The maximum wall-clock time for any calculations. This is not "
+    "the maximum wall-clock time which will be made available to `dask-jobqueue` "
+    "workers which is instead defined by the server configuration.",
     show_default=True,
 )
 @click.option(
     "--max-memory",
     default=8,
     type=click.INT,
-    help="The maximum memory (GB) to request for the main job.",
+    help="The maximum memory (GB) to request for any calculations. This is not "
+    "the maximum memory which will be made available to `dask-jobqueue` workers "
+    "which is instead defined by the server configuration.",
     show_default=True,
 )
 @click.option(
     "--log-level",
     default="info",
     type=click.Choice(get_log_levels()),
-    help="The verbosity of the server logger.",
+    help="The verbosity of the logger.",
     show_default=True,
 )
 def generate(
@@ -89,6 +90,6 @@ def generate(
     # Retrieve the study
     study: Study = Study.from_rest(project_id=project_id, study_id=study_id)
 
-    StudyFactory.generate(
+    StudyFactory.generate_inputs(
         study, backend_name, environment_name, max_workers, max_wall_clock, max_memory,
     )
