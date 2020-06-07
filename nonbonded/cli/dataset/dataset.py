@@ -7,7 +7,7 @@ from nonbonded.cli.dataset.retrieve import retrieve
 
 @click.group()
 def dataset():
-    pass
+    """The stub group for the dataset commands."""
 
 
 dataset.add_command(curate)

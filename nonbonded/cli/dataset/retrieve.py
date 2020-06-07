@@ -34,6 +34,5 @@ def retrieve(data_set_id, return_pandas, output_path):
         data_set = data_set.to_pandas()
         data_set.to_csv(output_path, index=False)
     else:
-
         with open(output_path, "w") as file:
             file.write(data_set.json())

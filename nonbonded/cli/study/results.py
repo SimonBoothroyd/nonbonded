@@ -1,6 +1,7 @@
 import click
 
-from nonbonded.library.models.projects import Benchmark
+from nonbonded.library.factories.projects.study import StudyFactory
+from nonbonded.library.models.projects import Study
 from nonbonded.library.utilities.logging import (
     get_log_levels,
     setup_timestamp_logging,
@@ -8,15 +9,12 @@ from nonbonded.library.utilities.logging import (
 )
 
 
-@click.command(help="Retrieve a benchmark from the REST API.")
+@click.command(help="Retrieve the results of a study from the REST API.")
 @click.option(
     "--project-id", type=click.STRING, help="The id of the parent project.",
 )
 @click.option(
-    "--study-id", type=click.STRING, help="The id of the parent study.",
-)
-@click.option(
-    "--benchmark-id", type=click.STRING, help="The id of the benchmark to retrieve.",
+    "--study-id", type=click.STRING, help="The id of the study to retrieve.",
 )
 @click.option(
     "--log-level",
@@ -25,7 +23,7 @@ from nonbonded.library.utilities.logging import (
     help="The verbosity of the logger.",
     show_default=True,
 )
-def retrieve(project_id, study_id, benchmark_id, log_level):
+def results(project_id, study_id, log_level):
 
     # Set up logging if requested.
     logging_level = string_to_log_level(log_level)
@@ -33,9 +31,5 @@ def retrieve(project_id, study_id, benchmark_id, log_level):
     if logging_level is not None:
         setup_timestamp_logging(logging_level)
 
-    benchmark = Benchmark.from_rest(
-        project_id=project_id, study_id=study_id, benchmark_id=benchmark_id
-    )
-    benchmark_json = benchmark.json()
-
-    print(benchmark_json)
+    study = Study.from_rest(project_id=project_id, study_id=study_id)
+    StudyFactory.retrieve_results(study)

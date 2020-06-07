@@ -11,8 +11,10 @@ from nonbonded.cli.options.evaluator import (
 )
 from nonbonded.library.models.datasets import DataSet, DataSetCollection
 from nonbonded.library.models.projects import Optimization
+from nonbonded.library.models.results import OptimizationResult
 from nonbonded.library.templates.forcebalance import ForceBalanceInput
 from nonbonded.library.templates.submission import Submission, SubmissionTemplate
+from nonbonded.library.utilities import temporary_cd
 
 
 class OptimizationFactory:
@@ -21,7 +23,42 @@ class OptimizationFactory:
     """
 
     @classmethod
-    def generate(
+    def generate_directory_structure(cls, optimization: Optimization):
+        """Generates the directory for an optimization."""
+        os.makedirs(optimization.id, exist_ok=True)
+
+    @classmethod
+    def retrieve_results(
+        cls, optimization: Optimization,
+    ):
+        """Retrieves the full results for a optimization.
+
+        Parameters
+        ----------
+        optimization
+            The optimization to retrieve the results for.
+        """
+
+        results = OptimizationResult.from_rest(
+            project_id=optimization.project_id,
+            study_id=optimization.study_id,
+            model_id=optimization.id,
+        )
+
+        cls.generate_directory_structure(optimization)
+
+        with temporary_cd(optimization.id):
+
+            output_directory = "analysis"
+            os.makedirs(output_directory, exist_ok=True)
+
+            with open(
+                os.path.join(output_directory, "optimization-results.json"), "w"
+            ) as file:
+                file.write(results.json())
+
+    @classmethod
+    def generate_inputs(
         cls,
         optimization: Optimization,
         backend_name: str,
@@ -35,146 +72,156 @@ class OptimizationFactory:
         from forcebalance.evaluator_io import Evaluator_SMIRNOFF
         from openff.evaluator import unit
 
-        root_directory = optimization.id
-        os.makedirs(root_directory, exist_ok=True)
+        cls.generate_directory_structure(optimization)
 
-        # Save the optimization definition in the directory
-        optimization_path = os.path.join(root_directory, "optimization.json")
+        with temporary_cd(optimization.id):
 
-        with open(optimization_path, "w") as file:
-            file.write(optimization.json())
+            # Save the optimization definition in the directory
+            optimization_path = "optimization.json"
 
-        # Create the force field directory
-        force_field_directory = os.path.join(root_directory, "forcefield")
-        os.makedirs(force_field_directory, exist_ok=True)
+            with open(optimization_path, "w") as file:
+                file.write(optimization.json())
 
-        off_force_field = optimization.initial_force_field.to_openff()
+            # Create the force field directory
+            force_field_directory = "forcefield"
+            os.makedirs(force_field_directory, exist_ok=True)
 
-        # Add the required cosmetic attributes to the force field.
-        parameters_to_train = defaultdict(lambda: defaultdict(list))
+            off_force_field = optimization.initial_force_field.to_openff()
 
-        for parameter_to_train in optimization.parameters_to_train:
+            # Add the required cosmetic attributes to the force field.
+            parameters_to_train = defaultdict(lambda: defaultdict(list))
 
-            parameters_to_train[parameter_to_train.handler_type][
-                parameter_to_train.smirks
-            ].append(parameter_to_train.attribute_name)
+            for parameter_to_train in optimization.parameters_to_train:
 
-        for handler_type in parameters_to_train:
-            for smirks in parameters_to_train[handler_type]:
+                parameters_to_train[parameter_to_train.handler_type][
+                    parameter_to_train.smirks
+                ].append(parameter_to_train.attribute_name)
 
-                attributes = parameters_to_train[handler_type][smirks]
-                attributes_string = ", ".join(attributes)
+            for handler_type in parameters_to_train:
+                for smirks in parameters_to_train[handler_type]:
 
-                parameter_handler = off_force_field.get_parameter_handler(handler_type)
+                    attributes = parameters_to_train[handler_type][smirks]
+                    attributes_string = ", ".join(attributes)
 
-                parameter = parameter_handler.parameters[smirks]
-                parameter.add_cosmetic_attribute("parameterize", attributes_string)
+                    parameter_handler = off_force_field.get_parameter_handler(
+                        handler_type
+                    )
 
-        force_field_path = os.path.join(force_field_directory, "force-field.offxml")
-        off_force_field.to_file(
-            force_field_path, io_format="offxml", discard_cosmetic_attributes=False
-        )
+                    parameter = parameter_handler.parameters[smirks]
+                    parameter.add_cosmetic_attribute("parameterize", attributes_string)
 
-        # Create the options.in file.
-        optimize_in_path = os.path.join(root_directory, "optimize.in")
-
-        optimize_in_contents = ForceBalanceInput.generate(
-            "force-field.offxml",
-            optimization.force_balance_input.max_iterations,
-            optimization.force_balance_input.convergence_step_criteria,
-            optimization.force_balance_input.convergence_objective_criteria,
-            optimization.force_balance_input.convergence_gradient_criteria,
-            optimization.force_balance_input.n_criteria,
-            optimization.force_balance_input.target_name,
-            optimization.priors,
-        )
-
-        with open(optimize_in_path, "w") as file:
-            file.write(optimize_in_contents)
-
-        # Create the targets directory
-        targets_directory = os.path.join(
-            root_directory, "targets", optimization.force_balance_input.target_name
-        )
-        os.makedirs(targets_directory, exist_ok=True)
-
-        # Store the data set in the targets directory
-        training_sets: List[DataSet] = [
-            DataSet.from_rest(data_set_id=x) for x in optimization.training_set_ids
-        ]
-        training_set_collection = DataSetCollection(data_sets=training_sets)
-
-        with open(
-            os.path.join(targets_directory, "training-set-collection.json"), "w"
-        ) as file:
-            file.write(training_set_collection.json())
-
-        evaluator_set = training_set_collection.to_evaluator()
-        evaluator_set.json(os.path.join(targets_directory, "training-set.json"))
-
-        # Create the target options
-        target_options = Evaluator_SMIRNOFF.OptionsFile()
-        target_options.connection_options.server_port = port
-        target_options.estimation_options.calculation_layers = ["SimulationLayer"]
-
-        target_options.data_set_path = "training-set.json"
-
-        target_options.weights = {
-            property_type: 1.0 for property_type in evaluator_set.property_types
-        }
-        target_options.denominators = {
-            property_type: unit.Quantity(value)
-            for property_type, value in optimization.denominators.items()
-        }
-        target_options.polling_interval = 600
-
-        with open(os.path.join(targets_directory, "options.json"), "w") as file:
-            file.write(target_options.to_json())
-
-        # Generate a server configuration
-        if backend_name == "lilac-local":
-
-            backend_config = DaskLocalClusterConfig(
-                resources_per_worker=ComputeResources()
+            force_field_path = os.path.join(force_field_directory, "force-field.offxml")
+            off_force_field.to_file(
+                force_field_path, io_format="offxml", discard_cosmetic_attributes=False
             )
 
-        elif backend_name == "lilac-dask":
+            # Create the options.in file.
+            optimize_in_path = "optimize.in"
 
-            # noinspection PyTypeChecker
-            backend_config = DaskHPCClusterConfig(
-                maximum_workers=max_workers,
-                resources_per_worker=QueueWorkerResources(),
-                queue_name="gpuqueue",
-                setup_script_commands=[
-                    f"conda activate {environment_name}",
-                    "module load cuda/10.1",
+            optimize_in_contents = ForceBalanceInput.generate(
+                "force-field.offxml",
+                optimization.force_balance_input.max_iterations,
+                optimization.force_balance_input.convergence_step_criteria,
+                optimization.force_balance_input.convergence_objective_criteria,
+                optimization.force_balance_input.convergence_gradient_criteria,
+                optimization.force_balance_input.n_criteria,
+                optimization.force_balance_input.target_name,
+                optimization.priors,
+            )
+
+            with open(optimize_in_path, "w") as file:
+                file.write(optimize_in_contents)
+
+            # Create the targets directory
+            targets_directory = os.path.join(
+                "targets", optimization.force_balance_input.target_name
+            )
+            os.makedirs(targets_directory, exist_ok=True)
+
+            # Store the data set in the targets directory
+            training_sets: List[DataSet] = [
+                DataSet.from_rest(data_set_id=x) for x in optimization.training_set_ids
+            ]
+            training_set_collection = DataSetCollection(data_sets=training_sets)
+
+            with open(
+                os.path.join(targets_directory, "training-set-collection.json"), "w"
+            ) as file:
+                file.write(training_set_collection.json())
+
+            evaluator_set = training_set_collection.to_evaluator()
+            evaluator_set.json(os.path.join(targets_directory, "training-set.json"))
+
+            # Create the target options
+            target_options = Evaluator_SMIRNOFF.OptionsFile()
+            target_options.connection_options.server_port = port
+            target_options.estimation_options.calculation_layers = ["SimulationLayer"]
+
+            target_options.data_set_path = "training-set.json"
+
+            target_options.weights = {
+                property_type: 1.0 for property_type in evaluator_set.property_types
+            }
+            target_options.denominators = {
+                property_type: unit.Quantity(value)
+                for property_type, value in optimization.denominators.items()
+            }
+            target_options.polling_interval = 600
+
+            with open(os.path.join(targets_directory, "options.json"), "w") as file:
+                file.write(target_options.to_json())
+
+            # Generate a server configuration
+            if backend_name == "lilac-local":
+
+                backend_config = DaskLocalClusterConfig(
+                    resources_per_worker=ComputeResources()
+                )
+
+            elif backend_name == "lilac-dask":
+
+                # noinspection PyTypeChecker
+                backend_config = DaskHPCClusterConfig(
+                    maximum_workers=max_workers,
+                    resources_per_worker=QueueWorkerResources(),
+                    queue_name="gpuqueue",
+                    setup_script_commands=[
+                        f"conda activate {environment_name}",
+                        "module load cuda/10.1",
+                    ],
+                )
+
+            else:
+                raise NotImplementedError()
+
+            server_config = EvaluatorServerConfig(
+                backend_config=backend_config, port=port
+            )
+
+            with open("server-config.json", "w") as file:
+                file.write(server_config.json())
+
+            # Create a job submission file
+            submission_path = "submit.sh"
+
+            submission = Submission(
+                job_name="optim",
+                wall_clock_limit=max_wall_clock,
+                max_memory=max_memory,
+                gpu=backend_name == "lilac-local",
+                environment_name=environment_name,
+                commands=[
+                    (
+                        "nonbonded optimization run --config server-config.json "
+                        "--restart true"
+                    ),
+                    "nonbonded optimization analyze",
                 ],
             )
 
-        else:
-            raise NotImplementedError()
+            submission_content = SubmissionTemplate.generate(
+                "submit_lilac.txt", submission
+            )
 
-        server_config = EvaluatorServerConfig(backend_config=backend_config, port=port)
-
-        with open(os.path.join(root_directory, "server-config.json"), "w") as file:
-            file.write(server_config.json())
-
-        # Create a job submission file
-        submission_path = os.path.join(root_directory, "submit.sh")
-
-        submission = Submission(
-            job_name="optim",
-            wall_clock_limit=max_wall_clock,
-            max_memory=max_memory,
-            gpu=backend_name == "lilac-local",
-            environment_name=environment_name,
-            commands=[
-                "nonbonded optimization run --config server-config.json --restart true",
-                "nonbonded optimization analyze",
-            ],
-        )
-
-        submission_content = SubmissionTemplate.generate("submit_lilac.txt", submission)
-
-        with open(submission_path, "w") as file:
-            file.write(submission_content)
+            with open(submission_path, "w") as file:
+                file.write(submission_content)
