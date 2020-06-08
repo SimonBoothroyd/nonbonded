@@ -9,12 +9,12 @@ from nonbonded.tests.backend.crud.utilities.create import (
     create_benchmark,
     create_benchmark_result,
     create_data_set,
-    create_force_field,
+    create_force_field, create_empty_study, create_optimization,
 )
 from nonbonded.tests.cli.utilities import (
     mock_get_benchmark,
     mock_get_benchmark_result,
-    mock_get_data_set,
+    mock_get_data_set, mock_get_study,
 )
 
 
@@ -113,3 +113,28 @@ class TestBenchmarkCLI:
 
         if result.exit_code != 0:
             raise result.exception
+
+    def test_list(self, requests_mock, runner):
+
+        study = create_empty_study("project-1", "study-1")
+        study.optimizations = [
+            create_optimization(
+                "project-1", "study-1", "optimization-1", [" "]
+            )
+        ]
+        study.benchmarks = [
+            create_benchmark(
+                "project-1", "study-1", "benchmark-1", [" "], "optimization-1", None
+            )
+        ]
+        mock_get_study(requests_mock, study)
+
+        result = runner.invoke(
+            benchmark_cli,
+            ["list", "--project-id", "project-1", "--study-id", "study-1"]
+        )
+
+        if result.exit_code != 0:
+            raise result.exception
+
+        assert study.benchmarks[0].id in result.output

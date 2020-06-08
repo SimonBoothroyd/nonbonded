@@ -7,12 +7,12 @@ from nonbonded.library.models.forcefield import ForceField
 from nonbonded.tests.backend.crud.utilities.create import (
     create_data_set,
     create_optimization,
-    create_optimization_result,
+    create_optimization_result, create_empty_study,
 )
 from nonbonded.tests.cli.utilities import (
     mock_get_data_set,
     mock_get_optimization,
-    mock_get_optimization_result,
+    mock_get_optimization_result, mock_get_study,
 )
 
 
@@ -108,3 +108,23 @@ class TestOptimizationCLI:
 
         if result.exit_code != 0:
             raise result.exception
+
+    def test_list(self, requests_mock, runner):
+
+        study = create_empty_study("project-1", "study-1")
+        study.optimizations = [
+            create_optimization(
+                "project-1", "study-1", "optimization-1", [" "]
+            )
+        ]
+        mock_get_study(requests_mock, study)
+
+        result = runner.invoke(
+            optimization_cli,
+            ["list", "--project-id", "project-1", "--study-id", "study-1"]
+        )
+
+        if result.exit_code != 0:
+            raise result.exception
+
+        assert study.optimizations[0].id in result.output

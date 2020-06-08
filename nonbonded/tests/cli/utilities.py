@@ -1,6 +1,7 @@
 from nonbonded.library.config import settings
 from nonbonded.library.models.datasets import DataSet, DataSetCollection
-from nonbonded.library.models.projects import Benchmark, Optimization, Project, Study
+from nonbonded.library.models.projects import Benchmark, Optimization, Project, Study, \
+    StudyCollection, ProjectCollection
 from nonbonded.library.models.results import BenchmarkResult, OptimizationResult
 
 
@@ -25,11 +26,25 @@ def mock_get_project(requests_mock, project: Project):
     )
 
 
+def mock_get_projects(requests_mock, projects: ProjectCollection):
+    """Mock the get projects endpoint."""
+    requests_mock.get(
+        f"{settings.API_URL}/projects/", text=projects.json(),
+    )
+
+
 def mock_get_study(requests_mock, study: Study):
     """Mock the get study endpoint."""
     requests_mock.get(
         Study._get_endpoint(project_id=study.project_id, study_id=study.id),
         text=study.json(),
+    )
+
+
+def mock_get_studies(requests_mock, project_id, studies: StudyCollection):
+    """Mock the get studies endpoint."""
+    requests_mock.get(
+        f"{settings.API_URL}/projects/{project_id}/studies/", text=studies.json(),
     )
 
 
