@@ -12,7 +12,7 @@ def list_projects():
 
     text_wrapper = TextWrapper(initial_indent="    ", subsequent_indent="    ")
 
-    print(f"\n")
+    print("\n")
 
     for index, project in enumerate(projects.projects):
         authors = ", ".join(x.name for x in project.authors)

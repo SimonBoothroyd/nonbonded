@@ -5,10 +5,7 @@ import click
 from nonbonded.library.models.projects import StudyCollection
 
 
-@click.command(
-    name="list",
-    help="Lists the studies of a particular project."
-)
+@click.command(name="list", help="Lists the studies of a particular project.")
 @click.option(
     "--project-id", type=click.STRING, help="The id of the project.",
 )

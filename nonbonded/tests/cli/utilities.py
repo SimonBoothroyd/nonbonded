@@ -1,7 +1,13 @@
 from nonbonded.library.config import settings
 from nonbonded.library.models.datasets import DataSet, DataSetCollection
-from nonbonded.library.models.projects import Benchmark, Optimization, Project, Study, \
-    StudyCollection, ProjectCollection
+from nonbonded.library.models.projects import (
+    Benchmark,
+    Optimization,
+    Project,
+    ProjectCollection,
+    Study,
+    StudyCollection,
+)
 from nonbonded.library.models.results import BenchmarkResult, OptimizationResult
 
 

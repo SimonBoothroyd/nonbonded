@@ -5,10 +5,7 @@ import click
 from nonbonded.library.models.projects import Study
 
 
-@click.command(
-    name="list",
-    help="Lists the benchmarks of a particular study."
-)
+@click.command(name="list", help="Lists the benchmarks of a particular study.")
 @click.option(
     "--project-id", type=click.STRING, help="The id of the parent project.",
 )

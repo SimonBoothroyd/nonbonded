@@ -6,13 +6,15 @@ from nonbonded.cli.optimization import optimization as optimization_cli
 from nonbonded.library.models.forcefield import ForceField
 from nonbonded.tests.backend.crud.utilities.create import (
     create_data_set,
+    create_empty_study,
     create_optimization,
-    create_optimization_result, create_empty_study,
+    create_optimization_result,
 )
 from nonbonded.tests.cli.utilities import (
     mock_get_data_set,
     mock_get_optimization,
-    mock_get_optimization_result, mock_get_study,
+    mock_get_optimization_result,
+    mock_get_study,
 )
 
 
@@ -113,15 +115,13 @@ class TestOptimizationCLI:
 
         study = create_empty_study("project-1", "study-1")
         study.optimizations = [
-            create_optimization(
-                "project-1", "study-1", "optimization-1", [" "]
-            )
+            create_optimization("project-1", "study-1", "optimization-1", [" "])
         ]
         mock_get_study(requests_mock, study)
 
         result = runner.invoke(
             optimization_cli,
-            ["list", "--project-id", "project-1", "--study-id", "study-1"]
+            ["list", "--project-id", "project-1", "--study-id", "study-1"],
         )
 
         if result.exit_code != 0:

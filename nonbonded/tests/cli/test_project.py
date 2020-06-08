@@ -12,8 +12,11 @@ from nonbonded.tests.backend.crud.utilities.create import (
     create_empty_project,
     create_empty_study,
 )
-from nonbonded.tests.cli.utilities import mock_get_data_set, mock_get_project, \
-    mock_get_projects
+from nonbonded.tests.cli.utilities import (
+    mock_get_data_set,
+    mock_get_project,
+    mock_get_projects,
+)
 
 
 @pytest.mark.usefixtures("change_api_url")

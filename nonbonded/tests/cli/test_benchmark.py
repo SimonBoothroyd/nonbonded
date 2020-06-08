@@ -9,12 +9,15 @@ from nonbonded.tests.backend.crud.utilities.create import (
     create_benchmark,
     create_benchmark_result,
     create_data_set,
-    create_force_field, create_empty_study, create_optimization,
+    create_empty_study,
+    create_force_field,
+    create_optimization,
 )
 from nonbonded.tests.cli.utilities import (
     mock_get_benchmark,
     mock_get_benchmark_result,
-    mock_get_data_set, mock_get_study,
+    mock_get_data_set,
+    mock_get_study,
 )
 
 
@@ -118,9 +121,7 @@ class TestBenchmarkCLI:
 
         study = create_empty_study("project-1", "study-1")
         study.optimizations = [
-            create_optimization(
-                "project-1", "study-1", "optimization-1", [" "]
-            )
+            create_optimization("project-1", "study-1", "optimization-1", [" "])
         ]
         study.benchmarks = [
             create_benchmark(
@@ -131,7 +132,7 @@ class TestBenchmarkCLI:
 
         result = runner.invoke(
             benchmark_cli,
-            ["list", "--project-id", "project-1", "--study-id", "study-1"]
+            ["list", "--project-id", "project-1", "--study-id", "study-1"],
         )
 
         if result.exit_code != 0:
