@@ -30,6 +30,7 @@ from nonbonded.tests.backend.crud.utilities.create import (
     create_benchmark,
     create_empty_project,
     create_empty_study,
+    create_force_field,
     create_optimization,
 )
 
@@ -163,7 +164,7 @@ class TestBenchmarkEndpoints(BaseTestEndpoints):
             "benchmark-1",
             data_set_ids,
             None,
-            "openff-1.0.0.offxml",
+            create_force_field(),
         )
 
         return (

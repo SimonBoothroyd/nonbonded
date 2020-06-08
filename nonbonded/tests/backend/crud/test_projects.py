@@ -31,7 +31,7 @@ from nonbonded.backend.database.utilities.exceptions import (
     UnableToUpdateError,
 )
 from nonbonded.library.models.authors import Author
-from nonbonded.library.models.forcefield import ForceField, Parameter
+from nonbonded.library.models.forcefield import Parameter
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 from nonbonded.tests.backend.crud.utilities import (
     create_and_compare_models,
@@ -61,6 +61,7 @@ from nonbonded.tests.backend.crud.utilities.create import (
     create_benchmark_result,
     create_empty_project,
     create_empty_study,
+    create_force_field,
     create_optimization,
     create_optimization_result,
 )
@@ -356,7 +357,7 @@ class TestStudyCRUD:
             "benchmark-1",
             [benchmark_data_set.id],
             None,
-            "openff-1.0.0",
+            create_force_field(),
         )
 
         assert db.query(models.Optimization.id).count() == 0
@@ -486,7 +487,7 @@ class TestStudyCRUD:
             "benchmark-1",
             [benchmark_data_set.id],
             None,
-            "openff-1.0.0",
+            create_force_field(),
         )
 
         assert db.query(models.Optimization.id).count() == 0
@@ -540,7 +541,7 @@ class TestStudyCRUD:
             "benchmark-1",
             [benchmark_data_set.id],
             None,
-            "openff-1.0.0",
+            create_force_field(),
         )
 
         study.optimizations = [optimization]
@@ -743,7 +744,7 @@ class TestOptimizationCRUD:
 
         assert db.query(models.Optimization.id).count() == 1
         assert db.query(models.DataSet.id).count() == 2
-        assert db.query(models.InitialForceField.id).count() == 1
+        assert db.query(models.ForceField.id).count() == 1
         assert db.query(models.Parameter.id).count() == len(
             optimization.parameters_to_train
         )
@@ -759,7 +760,7 @@ class TestOptimizationCRUD:
         db.commit()
 
         assert db.query(models.Optimization.id).count() == 0
-        assert db.query(models.InitialForceField.id).count() == 0
+        assert db.query(models.ForceField.id).count() == 0
         assert db.query(models.Parameter.id).count() == 0
         assert db.query(models.ForceBalanceOptions.id).count() == 0
         assert db.query(models.Denominator.id).count() == 0
@@ -872,10 +873,12 @@ class TestOptimizationCRUD:
 
         # Make sure the force field to retrain can be altered, and the
         # old one is correctly removed when a new one is used.
-        assert db.query(models.InitialForceField.id).count() == 1
+        assert db.query(models.ForceField.id).count() == 1
 
-        updated_optimization.initial_force_field = ForceField(
-            inner_xml="<root>Updated</root"
+        updated_optimization.initial_force_field = create_force_field("Updated")
+        assert (
+            updated_optimization.initial_force_field.inner_xml
+            not in db.query(models.ForceField.inner_xml).first()[0]
         )
 
         update_and_compare_model(
@@ -886,7 +889,11 @@ class TestOptimizationCRUD:
             compare_optimizations,
         )
 
-        assert db.query(models.InitialForceField.id).count() == 1
+        assert db.query(models.ForceField.id).count() == 1
+        assert (
+            db.query(models.ForceField.inner_xml).first()[0]
+            == updated_optimization.initial_force_field.inner_xml
+        )
 
     def test_update_missing_data_set(self, db: Session):
         """Test that an exception is raised when an optimization is updated to
@@ -998,7 +1005,7 @@ class TestBenchmarkCRUD:
             "benchmark-1",
             test_set_ids,
             optimization_id=optimization.id,
-            force_field_name=None,
+            force_field=None,
         )
 
         with pytest.raises(UnableToCreateError):
@@ -1042,7 +1049,7 @@ class TestBenchmarkCRUD:
             "benchmark-2",
             test_set_ids,
             optimization_id=None,
-            force_field_name="openff-1.0.0.offxml",
+            force_field=create_force_field(),
         )
 
         create_and_compare_models(
@@ -1082,7 +1089,7 @@ class TestBenchmarkCRUD:
             "benchmark-3",
             test_set_ids,
             optimization_id=" ",
-            force_field_name=None,
+            force_field=None,
         )
 
         with pytest.raises(OptimizationNotFoundError):
@@ -1102,7 +1109,7 @@ class TestBenchmarkCRUD:
         project, study = commit_study(db)
 
         benchmark = create_benchmark(
-            project.id, study.id, "benchmark-1", ["x"], None, " "
+            project.id, study.id, "benchmark-1", ["x"], None, create_force_field()
         )
 
         with pytest.raises(DataSetNotFoundError):
@@ -1127,7 +1134,12 @@ class TestBenchmarkCRUD:
         test_set_ids = [x.id for x in commit_data_set_collection(db).data_sets]
 
         benchmark = create_benchmark(
-            "project-1", "study-1", "benchmark-1", test_set_ids, None, " "
+            "project-1",
+            "study-1",
+            "benchmark-1",
+            test_set_ids,
+            None,
+            create_force_field(),
         )
 
         with pytest.raises(StudyNotFoundError):
@@ -1215,6 +1227,35 @@ class TestBenchmarkCRUD:
             optimization.analysis_environments
         )
 
+    def test_delete_with_force_field(self, db: Session):
+        """Test that a deleting a benchmark done upon a custom FF will
+        also delete the orphaned FF.
+        """
+
+        project, study = commit_study(db)
+        data_set = commit_data_set(db)
+
+        benchmark = create_benchmark(
+            project.id,
+            study.id,
+            "benchmark-1",
+            [data_set.id],
+            None,
+            create_force_field()
+        )
+
+        assert db.query(models.ForceField.id).count() == 0
+
+        db.add(BenchmarkCRUD.create(db, benchmark))
+        db.commit()
+
+        assert db.query(models.ForceField.id).count() == 1
+
+        BenchmarkCRUD.delete(db, project.id, study.id, benchmark.id)
+        db.commit()
+
+        assert db.query(models.ForceField.id).count() == 0
+
     def test_delete_not_found(self, db: Session):
 
         with pytest.raises(BenchmarkNotFoundError):
@@ -1290,8 +1331,10 @@ class TestBenchmarkCRUD:
             == 1
         )
 
-        updated_benchmark.force_field_name = " "
+        updated_benchmark.force_field = create_force_field("Updated")
         updated_benchmark.optimization_id = None
+
+        assert db.query(models.ForceField.id).count() == 2
 
         update_and_compare_model(
             db,
@@ -1300,6 +1343,8 @@ class TestBenchmarkCRUD:
             read_function,
             compare_benchmarks,
         )
+
+        assert db.query(models.ForceField.id).count() == 3
 
         assert (
             len(
@@ -1313,7 +1358,7 @@ class TestBenchmarkCRUD:
             == 0
         )
 
-        updated_benchmark.force_field_name = None
+        updated_benchmark.force_field = None
         updated_benchmark.optimization_id = optimization.id
 
         update_and_compare_model(
@@ -1336,11 +1381,13 @@ class TestBenchmarkCRUD:
             == 1
         )
 
+        assert db.query(models.ForceField.id).count() == 2
+
         # Make sure that the correct exception is raised if a benchmark is updated
         # to target a non-existent optimization
         with pytest.raises(OptimizationNotFoundError):
 
-            updated_benchmark.force_field_name = None
+            updated_benchmark.force_field = None
             updated_benchmark.optimization_id = " "
 
             update_and_compare_model(
@@ -1376,7 +1423,7 @@ class TestBenchmarkCRUD:
 
     def test_update_not_found(self, db: Session):
 
-        benchmark = create_benchmark(" ", " ", " ", [" "], None, " ")
+        benchmark = create_benchmark(" ", " ", " ", [" "], None, create_force_field())
 
         with pytest.raises(BenchmarkNotFoundError):
             BenchmarkCRUD.update(db, benchmark)

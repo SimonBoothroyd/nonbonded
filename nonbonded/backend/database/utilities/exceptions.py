@@ -201,3 +201,14 @@ class ProjectNotFoundError(ItemNotFound):
         super(ProjectNotFoundError, self).__init__(
             f"The data base does not contain a project with id={project_id}."
         )
+
+
+class ForceFieldExistsError(ItemExistsError):
+    def __init__(self, project_id, study_id, optimization_id):
+
+        super(ForceFieldExistsError, self).__init__(
+            f"The database already contains the exact same force field "
+            f"as the refit one being uploaded. This should likely never "
+            f"happen (project_id={project_id}, study_id={study_id}, "
+            f"optimization_id={optimization_id})."
+        )

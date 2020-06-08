@@ -41,7 +41,7 @@ def valid_benchmark_kwargs():
         "test_set_ids": [" "],
         "analysis_environments": [],
         "optimization_id": None,
-        "force_field_name": " ",
+        "force_field": ForceField(inner_xml=" "),
     }
 
 
@@ -66,28 +66,26 @@ def test_optimization_validation(valid_optimization_kwargs):
 def test_benchmark_validation(valid_benchmark_kwargs):
     """Test that pydantic correctly validates benchmarks"""
 
+    Benchmark(**{**valid_benchmark_kwargs, "optimization_id": " ", "force_field": None})
     Benchmark(
-        **{**valid_benchmark_kwargs, "optimization_id": " ", "force_field_name": None}
-    )
-    Benchmark(
-        **{**valid_benchmark_kwargs, "optimization_id": None, "force_field_name": " "}
+        **{
+            **valid_benchmark_kwargs,
+            "optimization_id": None,
+            "force_field": ForceField(inner_xml=" "),
+        }
     )
 
     # Test mutually exclusive fields.
     with pytest.raises(ValidationError):
         Benchmark(
-            **{
-                **valid_benchmark_kwargs,
-                "optimization_id": None,
-                "force_field_name": None,
-            }
+            **{**valid_benchmark_kwargs, "optimization_id": None, "force_field": None}
         )
     with pytest.raises(ValidationError):
         Benchmark(
             **{
                 **valid_benchmark_kwargs,
                 "optimization_id": " ",
-                "force_field_name": " ",
+                "force_field": ForceField(inner_xml=" "),
             }
         )
 
@@ -161,7 +159,7 @@ def test_study_validation(valid_optimization_kwargs, valid_benchmark_kwargs):
                     **valid_benchmark_kwargs,
                     "study_id": study_id,
                     "optimization_id": "optim1",
-                    "force_field_name": None,
+                    "force_field": None,
                 }
             )
         ]
@@ -185,7 +183,7 @@ def test_study_validation(valid_optimization_kwargs, valid_benchmark_kwargs):
                         **valid_benchmark_kwargs,
                         "study_id": study_id,
                         "optimization_id": "optim2",
-                        "force_field_name": None,
+                        "force_field": None,
                     }
                 )
             ]

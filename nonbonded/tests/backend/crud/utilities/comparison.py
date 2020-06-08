@@ -517,7 +517,11 @@ def compare_benchmarks(
         optimization_id_2 = benchmark_2.optimization_id
 
     assert optimization_id_1 == optimization_id_2
-    assert benchmark_1.force_field_name == benchmark_2.force_field_name
+
+    if benchmark_1.force_field is None:
+        assert benchmark_1.force_field == benchmark_2.force_field
+    else:
+        assert benchmark_1.force_field.inner_xml == benchmark_2.force_field.inner_xml
 
     # Make sure both benchmarks are analyzing the same environments
     assert len(benchmark_1.analysis_environments) == len(

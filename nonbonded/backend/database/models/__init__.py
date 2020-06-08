@@ -8,7 +8,7 @@ from .datasets import (  # isort:skip
     DataSetEntry,
 )
 from .forcebalance import ForceBalanceOptions  # isort:skip
-from .forcefield import Parameter  # isort:skip
+from .forcefield import ForceField, Parameter  # isort:skip
 from .results import (  # isort:skip
     BenchmarkResultsEntry,
     BenchmarkStatisticsEntry,
@@ -16,12 +16,10 @@ from .results import (  # isort:skip
     BenchmarkResult,
     ObjectiveFunction,
     OptimizationResult,
-    RefitForceField,
 )
 from .projects import (  # isort:skip
     Benchmark,
     Denominator,
-    InitialForceField,
     Optimization,
     Prior,
     Project,
@@ -41,7 +39,7 @@ __all__ = [
     DataSetEntry,
     Denominator,
     ForceBalanceOptions,
-    InitialForceField,
+    ForceField,
     ObjectiveFunction,
     Optimization,
     OptimizationResult,
@@ -49,7 +47,6 @@ __all__ = [
     Parameter,
     Prior,
     Project,
-    RefitForceField,
     Study,
     UniqueMixin,
 ]

@@ -1,15 +1,15 @@
-"""Initial generation
+"""Initial generation.
 
-Revision ID: d83cb453ffd7
+Revision ID: d4a84f539879
 Revises:
-Create Date: 2020-05-29 13:38:45.287694
+Create Date: 2020-06-08 12:00:47.937419
 
 """
 import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "d83cb453ffd7"
+revision = "d4a84f539879"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -46,14 +46,12 @@ def upgrade():
     )
     op.create_index(op.f("ix_data_sets_id"), "data_sets", ["id"], unique=False)
     op.create_table(
-        "initial_force_fields",
+        "force_fields",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("inner_xml", sa.String(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_initial_force_fields_id"), "initial_force_fields", ["id"], unique=False
-    )
+    op.create_index(op.f("ix_force_fields_id"), "force_fields", ["id"], unique=False)
     op.create_table(
         "parameters",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -159,7 +157,6 @@ def upgrade():
         sa.Column("name", sa.String(), nullable=True),
         sa.Column("description", sa.String(), nullable=True),
         sa.Column("optimization_id", sa.Integer(), nullable=True),
-        sa.Column("force_field_name", sa.String(), nullable=True),
         sa.ForeignKeyConstraint(["optimization_id"], ["optimizations.id"],),
         sa.ForeignKeyConstraint(["parent_id"], ["studies.id"],),
         sa.PrimaryKeyConstraint("id"),
@@ -208,12 +205,8 @@ def upgrade():
         "optimization_force_fields",
         sa.Column("optimization_id", sa.Integer(), nullable=False),
         sa.Column("force_field_id", sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["force_field_id"], ["initial_force_fields.id"], ondelete="CASCADE"
-        ),
-        sa.ForeignKeyConstraint(
-            ["optimization_id"], ["optimizations.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["force_field_id"], ["force_fields.id"],),
+        sa.ForeignKeyConstraint(["optimization_id"], ["optimizations.id"],),
         sa.PrimaryKeyConstraint("optimization_id", "force_field_id"),
     )
     op.create_table(
@@ -271,6 +264,14 @@ def upgrade():
         sa.PrimaryKeyConstraint("benchmark_id", "environment_id"),
     )
     op.create_table(
+        "benchmark_force_fields",
+        sa.Column("benchmark_id", sa.Integer(), nullable=False),
+        sa.Column("force_field_id", sa.Integer(), nullable=False),
+        sa.ForeignKeyConstraint(["benchmark_id"], ["benchmarks.id"],),
+        sa.ForeignKeyConstraint(["force_field_id"], ["force_fields.id"],),
+        sa.PrimaryKeyConstraint("benchmark_id", "force_field_id"),
+    )
+    op.create_table(
         "benchmark_results",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("parent_id", sa.Integer(), nullable=False),
@@ -324,15 +325,12 @@ def upgrade():
         unique=False,
     )
     op.create_table(
-        "refit_force_fields",
-        sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("parent_id", sa.Integer(), nullable=False),
-        sa.Column("inner_xml", sa.String(), nullable=True),
-        sa.ForeignKeyConstraint(["parent_id"], ["optimization_results.id"],),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        op.f("ix_refit_force_fields_id"), "refit_force_fields", ["id"], unique=False
+        "results_force_fields",
+        sa.Column("results_id", sa.Integer(), nullable=False),
+        sa.Column("force_field_id", sa.Integer(), nullable=False),
+        sa.ForeignKeyConstraint(["force_field_id"], ["force_fields.id"],),
+        sa.ForeignKeyConstraint(["results_id"], ["optimization_results.id"],),
+        sa.PrimaryKeyConstraint("results_id", "force_field_id"),
     )
     op.create_table(
         "benchmark_results_entries",
@@ -386,8 +384,7 @@ def downgrade():
         op.f("ix_benchmark_results_entries_id"), table_name="benchmark_results_entries"
     )
     op.drop_table("benchmark_results_entries")
-    op.drop_index(op.f("ix_refit_force_fields_id"), table_name="refit_force_fields")
-    op.drop_table("refit_force_fields")
+    op.drop_table("results_force_fields")
     op.drop_index(
         op.f("ix_optimization_statistics_entries_id"),
         table_name="optimization_statistics_entries",
@@ -398,6 +395,7 @@ def downgrade():
     op.drop_table("benchmark_test_sets")
     op.drop_index(op.f("ix_benchmark_results_id"), table_name="benchmark_results")
     op.drop_table("benchmark_results")
+    op.drop_table("benchmark_force_fields")
     op.drop_table("benchmark_environments")
     op.drop_index(op.f("ix_priors_id"), table_name="priors")
     op.drop_table("priors")
@@ -431,8 +429,8 @@ def downgrade():
     op.drop_table("projects")
     op.drop_index(op.f("ix_parameters_id"), table_name="parameters")
     op.drop_table("parameters")
-    op.drop_index(op.f("ix_initial_force_fields_id"), table_name="initial_force_fields")
-    op.drop_table("initial_force_fields")
+    op.drop_index(op.f("ix_force_fields_id"), table_name="force_fields")
+    op.drop_table("force_fields")
     op.drop_index(op.f("ix_data_sets_id"), table_name="data_sets")
     op.drop_table("data_sets")
     op.drop_index(

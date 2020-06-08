@@ -1,6 +1,10 @@
 import pytest
+from openforcefield.typing.engines.smirnoff.forcefield import (
+    ForceField as SMIRNOFFForceField,
+)
 
 from nonbonded.cli.study import study as study_cli
+from nonbonded.library.models.forcefield import ForceField
 from nonbonded.tests.backend.crud.utilities.create import (
     create_benchmark,
     create_data_set,
@@ -41,7 +45,7 @@ class TestStudyCLI:
                 "benchmark-1",
                 ["data-set-1"],
                 None,
-                "openff-1.0.0.offxml",
+                ForceField.from_openff(SMIRNOFFForceField("openff-1.0.0.offxml")),
             )
         ]
 

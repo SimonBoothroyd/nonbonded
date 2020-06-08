@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from nonbonded.backend.database import models
 from nonbonded.backend.database.crud.authors import AuthorCRUD
 from nonbonded.backend.database.crud.datasets import DataSetCRUD
-from nonbonded.backend.database.crud.forcefield import ParameterCRUD
+from nonbonded.backend.database.crud.forcefield import ForceFieldCRUD, ParameterCRUD
 from nonbonded.backend.database.utilities.exceptions import (
     BenchmarkExistsError,
     BenchmarkNotFoundError,
@@ -93,7 +93,7 @@ class OptimizationCRUD:
             force_balance_input=models.ForceBalanceOptions(
                 **optimization.force_balance_input.dict()
             ),
-            initial_force_field=models.InitialForceField.as_unique(
+            initial_force_field=models.ForceField.as_unique(
                 db, inner_xml=optimization.initial_force_field.inner_xml
             ),
             denominators=[
@@ -191,9 +191,19 @@ class OptimizationCRUD:
             )
 
         db_optimization.training_sets = training_sets
-        db_optimization.initial_force_field = models.InitialForceField.as_unique(
+
+        original_initial_force_field = db_optimization.initial_force_field
+
+        db_optimization.initial_force_field = models.ForceField.as_unique(
             db, inner_xml=optimization.initial_force_field.inner_xml
         )
+
+        if (
+            original_initial_force_field.inner_xml
+            != optimization.initial_force_field.inner_xml
+        ):
+            # Attempt to delete the initial FF if it might now be an orphan.
+            ForceFieldCRUD.delete(db, original_initial_force_field)
 
         db_optimization.parameters_to_train = [
             ParameterCRUD.create(db, x) for x in optimization.parameters_to_train
@@ -253,7 +263,10 @@ class OptimizationCRUD:
                 f"deleted. Delete the results first and then try again."
             )
 
+        initial_force_field = db_optimization.initial_force_field
+
         db.delete(db_optimization)
+        ForceFieldCRUD.delete(db, initial_force_field)
 
     @staticmethod
     def db_to_model(db_optimization: models.Optimization) -> projects.Optimization:
@@ -368,7 +381,11 @@ class BenchmarkCRUD:
             description=benchmark.description,
             test_sets=test_sets,
             optimization=db_optimization,
-            force_field_name=benchmark.force_field_name,
+            force_field=None
+            if benchmark.force_field is None
+            else models.ForceField.as_unique(
+                db, inner_xml=benchmark.force_field.inner_xml
+            ),
             analysis_environments=[
                 models.ChemicalEnvironment.as_unique(db, id=x.value)
                 for x in benchmark.analysis_environments
@@ -438,7 +455,23 @@ class BenchmarkCRUD:
 
         db_benchmark.test_sets = test_sets
 
-        db_benchmark.force_field_name = benchmark.force_field_name
+        original_force_field = db_benchmark.force_field
+
+        db_benchmark.force_field = (
+            None
+            if benchmark.force_field is None
+            else models.ForceField.as_unique(
+                db, inner_xml=benchmark.force_field.inner_xml
+            )
+        )
+
+        if (benchmark.force_field is None and original_force_field is not None) or (
+            benchmark.force_field is not None
+            and original_force_field is not None
+            and original_force_field.inner_xml != benchmark.force_field.inner_xml
+        ):
+            # Attempt to delete the FF if it might now be an orphan.
+            ForceFieldCRUD.delete(db, original_force_field)
 
         if benchmark.optimization_id is not None:
 
@@ -481,7 +514,12 @@ class BenchmarkCRUD:
                 f"deleted. Delete the results first and then try again."
             )
 
+        original_force_field = db_benchmark.force_field
+
         db.delete(db_benchmark)
+
+        if original_force_field is not None:
+            ForceFieldCRUD.delete(db, db_benchmark.force_field)
 
     @staticmethod
     def db_to_model(db_benchmark: models.Benchmark) -> projects.Benchmark:
@@ -502,7 +540,7 @@ class BenchmarkCRUD:
             description=db_benchmark.description,
             test_set_ids=[x.id for x in db_benchmark.test_sets],
             optimization_id=optimization_id,
-            force_field_name=db_benchmark.force_field_name,
+            force_field=db_benchmark.force_field,
             analysis_environments=[
                 ChemicalEnvironment(x.id) for x in db_benchmark.analysis_environments
             ],
