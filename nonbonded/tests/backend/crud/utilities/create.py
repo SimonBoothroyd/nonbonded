@@ -21,6 +21,10 @@ from nonbonded.library.statistics.statistics import StatisticType
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 
 
+def create_force_field(inner_text="") -> ForceField:
+    return ForceField(inner_xml=f"<root>{inner_text}</root>")
+
+
 def create_author():
     """Creates an author objects with
 
@@ -128,7 +132,7 @@ def create_optimization(
         name=" ",
         description=" ",
         training_set_ids=data_set_ids,
-        initial_force_field=ForceField(inner_xml="<root/>"),
+        initial_force_field=create_force_field(),
         parameters_to_train=[
             Parameter(handler_type="vdW", smirks="[#6:1]", attribute_name="epsilon")
         ],
@@ -145,7 +149,7 @@ def create_benchmark(
     benchmark_id: str,
     data_set_ids: List[str],
     optimization_id: Optional[str],
-    force_field_name: Optional[str],
+    force_field: Optional[ForceField],
 ) -> Benchmark:
 
     """Creates an benchmark with a specified id which target the specified
@@ -163,12 +167,12 @@ def create_benchmark(
         The ids of the data sets which form the test set.
     optimization_id
         The id of the optimization being benchmarked.
-    force_field_name
-        The name of the OpenFF force field being benchmarked.
+    force_field
+        The force field being benchmarked.
     """
 
-    assert optimization_id is None or force_field_name is None
-    assert optimization_id is not None or force_field_name is not None
+    assert optimization_id is None or force_field is None
+    assert optimization_id is not None or force_field is not None
 
     return Benchmark(
         id=benchmark_id,
@@ -178,7 +182,7 @@ def create_benchmark(
         description=" ",
         test_set_ids=data_set_ids,
         optimization_id=optimization_id,
-        force_field_name=force_field_name,
+        force_field=force_field,
         analysis_environments=[ChemicalEnvironment.Alkane, ChemicalEnvironment.Alcohol],
     )
 
@@ -220,7 +224,7 @@ def create_optimization_result(
             1: [create_statistic_entry()],
             2: [create_statistic_entry()],
         },
-        refit_force_field=ForceField(inner_xml="<root/>"),
+        refit_force_field=create_force_field("Refit"),
     )
 
 

@@ -1,10 +1,15 @@
 import pytest
+from openforcefield.typing.engines.smirnoff.forcefield import (
+    ForceField as SMIRNOFFForceField,
+)
 
 from nonbonded.cli.benchmark import benchmark as benchmark_cli
+from nonbonded.library.models.forcefield import ForceField
 from nonbonded.tests.backend.crud.utilities.create import (
     create_benchmark,
     create_benchmark_result,
     create_data_set,
+    create_force_field,
 )
 from nonbonded.tests.cli.utilities import (
     mock_get_benchmark,
@@ -18,7 +23,12 @@ class TestBenchmarkCLI:
     def test_retrieve(self, requests_mock, runner):
 
         benchmark = create_benchmark(
-            "project-1", "study-1", "benchmark-1", ["data-set-1"], None, "openff-1.0.0"
+            "project-1",
+            "study-1",
+            "benchmark-1",
+            ["data-set-1"],
+            None,
+            create_force_field(),
         )
         mock_get_benchmark(requests_mock, benchmark)
 
@@ -47,7 +57,7 @@ class TestBenchmarkCLI:
             "benchmark-1",
             ["data-set-1"],
             None,
-            "openff-1.0.0.offxml",
+            ForceField.from_openff(SMIRNOFFForceField("openff-1.0.0.offxml")),
         )
         mock_get_benchmark(requests_mock, benchmark)
         mock_get_data_set(requests_mock, create_data_set("data-set-1"))
@@ -77,7 +87,7 @@ class TestBenchmarkCLI:
             "benchmark-1",
             ["data-set-1"],
             None,
-            "openff-1.0.0.offxml",
+            create_force_field(),
         )
         data_set = create_data_set("data-set-1")
         data_set.entries[0].id = 1

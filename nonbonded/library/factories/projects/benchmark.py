@@ -68,7 +68,6 @@ class BenchmarkFactory:
     ):
 
         from openff.evaluator.client import RequestOptions
-        from openforcefield.typing.engines.smirnoff import ForceField
 
         cls.generate_directory_structure(benchmark)
 
@@ -81,8 +80,8 @@ class BenchmarkFactory:
                 file.write(benchmark.json())
 
             # Retrieve the force field.
-            if benchmark.force_field_name is not None:
-                force_field = ForceField(benchmark.force_field_name)
+            if benchmark.force_field is not None:
+                force_field = benchmark.force_field.to_openff()
             else:
                 optimization_results: OptimizationResult = OptimizationResult.from_rest(
                     project_id=benchmark.project_id,

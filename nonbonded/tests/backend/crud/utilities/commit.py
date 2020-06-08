@@ -17,6 +17,7 @@ from nonbonded.tests.backend.crud.utilities.create import (
     create_data_set,
     create_empty_project,
     create_empty_study,
+    create_force_field,
     create_optimization,
     create_optimization_result,
 )
@@ -177,14 +178,14 @@ def commit_benchmark(
     optimization_id = None
     optimization_result = None
 
-    force_field_name = None
+    force_field = None
 
     if not target_optimization:
 
         data_set = commit_data_set_collection(db)
         data_set_ids = [x.id for x in data_set.data_sets]
 
-        force_field_name = "openff-1.0.0.offxml"
+        force_field = create_force_field()
 
         project, study = commit_study(db)
 
@@ -202,12 +203,7 @@ def commit_benchmark(
         optimization_id = optimization.id
 
     benchmark = create_benchmark(
-        project.id,
-        study.id,
-        "benchmark-1",
-        data_set_ids,
-        optimization_id,
-        force_field_name,
+        project.id, study.id, "benchmark-1", data_set_ids, optimization_id, force_field,
     )
 
     db_benchmark = BenchmarkCRUD.create(db, benchmark)

@@ -149,13 +149,14 @@ class Benchmark(BaseREST):
         ...,
         description="The id of the optimization that should be benchmarked. This must "
         "be the id of an optimization which is part of the same study and project. "
-        "This option is mutually exclusive with `force_field_name`.",
+        "This option is mutually exclusive with `force_field`.",
     )
-    force_field_name: Optional[NonEmptyStr] = Field(
+    force_field: Optional[ForceField] = Field(
         ...,
-        description="The file name of the force field to use in the benchmark. This "
-        "must be the name of a force field in the `openforcefields` GitHub repository. "
-        "This option is mutually exclusive with `optimized_id`.",
+        description="The force field to use in the benchmark. If this is a force field "
+        "produced as part of the same study by one of the optimizations, the "
+        "`optimization_id` input should be used instead of this. This option is "
+        "mutually exclusive with `optimized_id`.",
     )
 
     analysis_environments: List[ChemicalEnvironment] = Field(
@@ -168,12 +169,12 @@ class Benchmark(BaseREST):
     def _validate_mutually_exclusive(cls, values):
 
         optimization_id = values.get("optimization_id")
-        force_field_name = values.get("force_field_name")
+        force_field = values.get("force_field")
 
-        if (optimization_id is None and force_field_name is None) or (
-            optimization_id is not None and force_field_name is not None
+        if (optimization_id is None and force_field is None) or (
+            optimization_id is not None and force_field is not None
         ):
-            raise MutuallyExclusiveError("optimization_id", "force_field_name")
+            raise MutuallyExclusiveError("optimization_id", "force_field")
 
         return values
 

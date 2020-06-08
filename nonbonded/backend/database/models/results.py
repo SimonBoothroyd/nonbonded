@@ -1,7 +1,16 @@
-from sqlalchemy import Column, Float, ForeignKey, Integer, String
+from sqlalchemy import Column, Float, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import relationship
 
 from nonbonded.backend.database.models import Base
+
+results_force_field_table = Table(
+    "results_force_fields",
+    Base.metadata,
+    Column(
+        "results_id", Integer, ForeignKey("optimization_results.id"), primary_key=True
+    ),
+    Column("force_field_id", Integer, ForeignKey("force_fields.id"), primary_key=True),
+)
 
 
 class BaseStatisticsEntry(Base):
@@ -73,20 +82,6 @@ class ObjectiveFunction(Base):
     value = Column(Float)
 
 
-class RefitForceField(Base):
-
-    __tablename__ = "refit_force_fields"
-
-    id = Column(Integer, primary_key=True, index=True)
-
-    parent_id = Column(Integer, ForeignKey("optimization_results.id"), nullable=False)
-    parent = relationship(
-        "OptimizationResult", back_populates="refit_force_field", uselist=False
-    )
-
-    inner_xml = Column(String)
-
-
 class OptimizationStatisticsEntry(BaseStatisticsEntry):
 
     __tablename__ = "optimization_statistics_entries"
@@ -112,8 +107,8 @@ class OptimizationResult(Base):
     )
 
     refit_force_field = relationship(
-        "RefitForceField",
-        back_populates="parent",
-        cascade="all, delete-orphan",
+        "ForceField",
+        secondary=results_force_field_table,
+        backref="results",
         uselist=False,
     )

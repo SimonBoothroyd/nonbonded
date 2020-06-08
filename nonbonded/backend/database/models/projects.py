@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Float, ForeignKey, Integer, String, Table
-from sqlalchemy.orm import Query, relationship
+from sqlalchemy.orm import relationship
 from sqlalchemy_utils import auto_delete_orphans
 
-from nonbonded.backend.database.models import Base, UniqueMixin
+from nonbonded.backend.database.models import Base
 
 author_projects_table = Table(
     "author_projects",
@@ -61,21 +61,19 @@ optimization_parameters_table = Table(
     ),
 )
 
+benchmark_force_field_table = Table(
+    "benchmark_force_fields",
+    Base.metadata,
+    Column("benchmark_id", Integer, ForeignKey("benchmarks.id"), primary_key=True),
+    Column("force_field_id", Integer, ForeignKey("force_fields.id"), primary_key=True),
+)
 optimization_force_field_table = Table(
     "optimization_force_fields",
     Base.metadata,
     Column(
-        "optimization_id",
-        Integer,
-        ForeignKey("optimizations.id", ondelete="CASCADE"),
-        primary_key=True,
+        "optimization_id", Integer, ForeignKey("optimizations.id"), primary_key=True,
     ),
-    Column(
-        "force_field_id",
-        Integer,
-        ForeignKey("initial_force_fields.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
+    Column("force_field_id", Integer, ForeignKey("force_fields.id"), primary_key=True),
 )
 
 optimization_training_table = Table(
@@ -96,7 +94,6 @@ optimization_training_table = Table(
         nullable=False,
     ),
 )
-
 benchmark_test_table = Table(
     "benchmark_test_sets",
     Base.metadata,
@@ -138,22 +135,6 @@ class Prior(Base):
     value = Column(Float)
 
 
-class InitialForceField(UniqueMixin, Base):
-
-    __tablename__ = "initial_force_fields"
-
-    id = Column(Integer, primary_key=True, index=True)
-    inner_xml = Column(String)
-
-    @classmethod
-    def unique_hash(cls, inner_xml):
-        return inner_xml
-
-    @classmethod
-    def unique_filter(cls, query: Query, inner_xml):
-        return query.filter(InitialForceField.inner_xml == inner_xml)
-
-
 class Optimization(Base):
 
     __tablename__ = "optimizations"
@@ -173,7 +154,7 @@ class Optimization(Base):
     )
 
     initial_force_field = relationship(
-        "InitialForceField",
+        "ForceField",
         secondary=optimization_force_field_table,
         backref="optimizations",
         uselist=False,
@@ -217,7 +198,12 @@ class Benchmark(Base):
     optimization_id = Column(Integer, ForeignKey("optimizations.id"))
     optimization = relationship("Optimization", backref="benchmarks")
 
-    force_field_name = Column(String)
+    force_field = relationship(
+        "ForceField",
+        secondary=benchmark_force_field_table,
+        backref="benchmarks",
+        uselist=False,
+    )
 
     analysis_environments = relationship(
         "ChemicalEnvironment", secondary=benchmark_environment_table
@@ -258,5 +244,4 @@ class Project(Base):
     studies = relationship("Study", back_populates="parent")
 
 
-auto_delete_orphans(Optimization.initial_force_field)
 auto_delete_orphans(Optimization.parameters_to_train)

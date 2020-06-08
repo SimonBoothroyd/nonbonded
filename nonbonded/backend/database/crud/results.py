@@ -4,12 +4,14 @@ from typing import List, Union
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.database import models
+from nonbonded.backend.database.crud.forcefield import ForceFieldCRUD
 from nonbonded.backend.database.crud.projects import BenchmarkCRUD, OptimizationCRUD
 from nonbonded.backend.database.utilities.exceptions import (
     BenchmarkNotFoundError,
     BenchmarkResultExistsError,
     BenchmarkResultNotFoundError,
     DataSetEntryNotFound,
+    ForceFieldExistsError,
     OptimizationNotFoundError,
     OptimizationResultExistsError,
     OptimizationResultNotFoundError,
@@ -222,6 +224,24 @@ class OptimizationResultCRUD:
                 optimization_result.id,
             )
 
+        if (
+            db.query(models.ForceField.inner_xml)
+            .filter(
+                models.ForceField.inner_xml
+                == optimization_result.refit_force_field.inner_xml
+            )
+            .count()
+            > 0
+        ):
+
+            # Make sure the refit force field does not yet exist
+            # in the database. This should not be possible.
+            raise ForceFieldExistsError(
+                optimization_result.project_id,
+                optimization_result.study_id,
+                optimization_result.id,
+            )
+
         # noinspection PyTypeChecker
         db_optimization_result = models.OptimizationResult(
             parent=db_optimization,
@@ -229,8 +249,8 @@ class OptimizationResultCRUD:
                 models.ObjectiveFunction(iteration=i, value=x)
                 for i, x in optimization_result.objective_function.items()
             ],
-            refit_force_field=models.RefitForceField(
-                inner_xml=optimization_result.refit_force_field.inner_xml
+            refit_force_field=models.ForceField.as_unique(
+                db, inner_xml=optimization_result.refit_force_field.inner_xml
             ),
             statistics=[
                 models.OptimizationStatisticsEntry(
@@ -295,7 +315,10 @@ class OptimizationResultCRUD:
                 f"first and then try again."
             )
 
+        refit_force_field = db_optimization_result.refit_force_field
+
         db.delete(db_optimization_result)
+        ForceFieldCRUD.delete(db, refit_force_field)
 
     @staticmethod
     def db_to_model(
