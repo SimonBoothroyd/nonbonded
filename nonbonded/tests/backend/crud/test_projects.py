@@ -1241,7 +1241,7 @@ class TestBenchmarkCRUD:
             "benchmark-1",
             [data_set.id],
             None,
-            create_force_field()
+            create_force_field(),
         )
 
         assert db.query(models.ForceField.id).count() == 0
