@@ -2,6 +2,7 @@ import click
 
 from nonbonded.cli.benchmark.analyze import analyze
 from nonbonded.cli.benchmark.generate import generate
+from nonbonded.cli.benchmark.list import list_benchmarks
 from nonbonded.cli.benchmark.plot import plot
 from nonbonded.cli.benchmark.results import results
 from nonbonded.cli.benchmark.retrieve import retrieve
@@ -16,6 +17,7 @@ def benchmark():
 
 benchmark.add_command(analyze)
 benchmark.add_command(generate)
+benchmark.add_command(list_benchmarks)
 benchmark.add_command(plot)
 benchmark.add_command(results)
 benchmark.add_command(retrieve)

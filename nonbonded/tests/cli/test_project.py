@@ -5,13 +5,18 @@ from openforcefield.typing.engines.smirnoff.forcefield import (
 
 from nonbonded.cli.project import project as project_cli
 from nonbonded.library.models.forcefield import ForceField
+from nonbonded.library.models.projects import ProjectCollection
 from nonbonded.tests.backend.crud.utilities.create import (
     create_benchmark,
     create_data_set,
     create_empty_project,
     create_empty_study,
 )
-from nonbonded.tests.cli.utilities import mock_get_data_set, mock_get_project
+from nonbonded.tests.cli.utilities import (
+    mock_get_data_set,
+    mock_get_project,
+    mock_get_projects,
+)
 
 
 @pytest.mark.usefixtures("change_api_url")
@@ -67,3 +72,15 @@ class TestProjectCLI:
 
         if result.exit_code != 0:
             raise result.exception
+
+    def test_list(self, requests_mock, runner):
+
+        projects = ProjectCollection(projects=[create_empty_project("project-1")])
+        mock_get_projects(requests_mock, projects)
+
+        result = runner.invoke(project_cli, ["list"])
+
+        if result.exit_code != 0:
+            raise result.exception
+
+        assert projects.projects[0].id in result.output

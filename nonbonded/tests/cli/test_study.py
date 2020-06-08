@@ -5,12 +5,17 @@ from openforcefield.typing.engines.smirnoff.forcefield import (
 
 from nonbonded.cli.study import study as study_cli
 from nonbonded.library.models.forcefield import ForceField
+from nonbonded.library.models.projects import StudyCollection
 from nonbonded.tests.backend.crud.utilities.create import (
     create_benchmark,
     create_data_set,
     create_empty_study,
 )
-from nonbonded.tests.cli.utilities import mock_get_data_set, mock_get_study
+from nonbonded.tests.cli.utilities import (
+    mock_get_data_set,
+    mock_get_studies,
+    mock_get_study,
+)
 
 
 @pytest.mark.usefixtures("change_api_url")
@@ -66,3 +71,15 @@ class TestStudyCLI:
 
         if result.exit_code != 0:
             raise result.exception
+
+    def test_list(self, requests_mock, runner):
+
+        studies = StudyCollection(studies=[create_empty_study("project-1", "study-1")])
+        mock_get_studies(requests_mock, "project-1", studies)
+
+        result = runner.invoke(study_cli, ["list", "--project-id", "project-1"])
+
+        if result.exit_code != 0:
+            raise result.exception
+
+        assert studies.studies[0].id in result.output

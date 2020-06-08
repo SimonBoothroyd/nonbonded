@@ -1,6 +1,7 @@
 import click
 
 from nonbonded.cli.study.generate import generate
+from nonbonded.cli.study.list import list_studies
 from nonbonded.cli.study.results import results
 from nonbonded.cli.study.retrieve import retrieve
 
@@ -11,5 +12,6 @@ def study():
 
 
 study.add_command(generate)
+study.add_command(list_studies)
 study.add_command(results)
 study.add_command(retrieve)
