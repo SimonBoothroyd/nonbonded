@@ -11,7 +11,7 @@ from nonbonded.library.models.authors import Author
 from nonbonded.library.models.exceptions import MutuallyExclusiveError
 from nonbonded.library.models.forcebalance import ForceBalanceOptions
 from nonbonded.library.models.forcefield import ForceField, Parameter
-from nonbonded.library.models.validators.string import NonEmptyStr
+from nonbonded.library.models.validators.string import IdentifierStr, NonEmptyStr
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 
 if TYPE_CHECKING:
@@ -22,18 +22,18 @@ else:
 
 class Optimization(BaseREST):
 
-    id: NonEmptyStr = Field(
+    id: IdentifierStr = Field(
         ..., description="The unique id assigned to this optimization."
     )
-    study_id: NonEmptyStr = Field(..., description="The id of the parent study.")
-    project_id: NonEmptyStr = Field(..., description="The id of the parent project.")
+    study_id: IdentifierStr = Field(..., description="The id of the parent study.")
+    project_id: IdentifierStr = Field(..., description="The id of the parent project.")
 
     name: NonEmptyStr = Field(..., description="The name of the optimization.")
     description: NonEmptyStr = Field(
         ..., description="A description of this optimization."
     )
 
-    training_set_ids: conlist(NonEmptyStr, min_items=1) = Field(
+    training_set_ids: conlist(IdentifierStr, min_items=1) = Field(
         ...,
         description="The unique identifiers of the data sets to use as part of the "
         "optimization.",
@@ -128,18 +128,18 @@ class Optimization(BaseREST):
 
 class Benchmark(BaseREST):
 
-    id: NonEmptyStr = Field(
+    id: IdentifierStr = Field(
         ..., description="The unique id assigned to this benchmark."
     )
-    study_id: NonEmptyStr = Field(..., description="The id of the parent study.")
-    project_id: NonEmptyStr = Field(..., description="The id of the parent project.")
+    study_id: IdentifierStr = Field(..., description="The id of the parent study.")
+    project_id: IdentifierStr = Field(..., description="The id of the parent project.")
 
     name: NonEmptyStr = Field(..., description="The name of the benchmark.")
     description: NonEmptyStr = Field(
         ..., description="A description of this benchmark."
     )
 
-    test_set_ids: conlist(NonEmptyStr, min_items=1) = Field(
+    test_set_ids: conlist(IdentifierStr, min_items=1) = Field(
         ...,
         description="The unique identifiers of the data sets to use as part of the "
         "benchmarking.",
@@ -238,8 +238,8 @@ class Benchmark(BaseREST):
 
 class Study(BaseREST):
 
-    id: NonEmptyStr = Field(..., description="The unique id assigned to this study.")
-    project_id: NonEmptyStr = Field(..., description="The id of the parent project.")
+    id: IdentifierStr = Field(..., description="The unique id assigned to this study.")
+    project_id: IdentifierStr = Field(..., description="The id of the parent project.")
 
     name: NonEmptyStr = Field(..., description="The name of the study.")
     description: NonEmptyStr = Field(..., description="A description of this study.")
@@ -331,7 +331,7 @@ class StudyCollection(BaseORM):
 
 class Project(BaseREST):
 
-    id: NonEmptyStr = Field(..., description="The unique id assigned to the project.")
+    id: IdentifierStr = Field(..., description="The unique id assigned to the project.")
 
     name: NonEmptyStr = Field(..., description="The name of the project.")
     description: NonEmptyStr = Field(..., description="A description of the project.")

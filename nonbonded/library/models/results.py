@@ -14,7 +14,7 @@ from nonbonded.library.models.datasets import (
     DataSetEntry,
 )
 from nonbonded.library.models.forcefield import ForceField
-from nonbonded.library.models.validators.string import NonEmptyStr
+from nonbonded.library.models.validators.string import IdentifierStr, NonEmptyStr
 from nonbonded.library.statistics.statistics import StatisticType, compute_statistics
 from nonbonded.library.utilities.checkmol import analyse_functional_groups
 from nonbonded.library.utilities.environments import ChemicalEnvironment
@@ -372,13 +372,13 @@ class AnalysedResult(BaseORM, abc.ABC):
 
 class BaseResult(BaseREST, abc.ABC):
 
-    project_id: NonEmptyStr = Field(
+    project_id: IdentifierStr = Field(
         ..., description="The id of the project that these results were generated for."
     )
-    study_id: NonEmptyStr = Field(
+    study_id: IdentifierStr = Field(
         ..., description="The id of the study that these results were generated for."
     )
-    id: NonEmptyStr = Field(
+    id: IdentifierStr = Field(
         ...,
         description="The unique id assigned to these results. This should match the id "
         "of the benchmark / optimization which yielded this result.",
