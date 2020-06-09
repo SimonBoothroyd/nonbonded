@@ -1,6 +1,8 @@
 import logging
 from typing import TYPE_CHECKING, Union
 
+import numpy
+
 from nonbonded.library.models.datasets import DataSet, DataSetCollection
 from nonbonded.library.utilities.pandas import reorder_data_frame
 
@@ -91,21 +93,27 @@ def reindex_data_set(
                 component_data["Temperature (K)"] = component_data[
                     "Temperature (K)"
                 ].round(1)
-                component_data["Pressure (kPa)"] = component_data[
-                    "Pressure (kPa)"
-                ].round(1)
+                component_data["Pressure (kPa)"] = (
+                    component_data["Pressure (kPa)"].fillna(value=numpy.nan).round(1)
+                )
 
                 for index in range(n_components):
 
-                    component_data[f"Mole Fraction {index + 1}"] = component_data[
-                        f"Mole Fraction {index + 1}"
-                    ].round(2)
+                    component_data[f"Mole Fraction {index + 1}"] = (
+                        component_data[f"Mole Fraction {index + 1}"]
+                        .fillna(value=0.0)
+                        .round(2)
+                    )
+                    component_data[f"Exact Amount {index + 1}"] = component_data[
+                        f"Exact Amount {index + 1}"
+                    ].fillna(value=0)
 
                     comparison_columns.update(
                         [
                             f"Component {index + 1}",
                             f"Role {index + 1}",
                             f"Mole Fraction {index + 1}",
+                            f"Exact Amount {index + 1}",
                         ]
                     )
 

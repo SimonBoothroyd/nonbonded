@@ -1,9 +1,8 @@
 import logging
 
-from openff.evaluator import unit
+from openff.evaluator import substances, unit
 from openff.evaluator.datasets import PhysicalPropertyDataSet, PropertyPhase
-from openff.evaluator.properties import Density
-from openff.evaluator.substances import Substance
+from openff.evaluator.properties import Density, SolvationFreeEnergy
 from openff.evaluator.thermodynamics import ThermodynamicState
 
 from nonbonded.library.models.authors import Author
@@ -30,7 +29,7 @@ def test_reindex_data_set():
                 temperature=298.15 * unit.kelvin, pressure=1.0 * unit.atmosphere
             ),
             phase=PropertyPhase.Liquid,
-            substance=Substance.from_components("O"),
+            substance=substances.Substance.from_components("O"),
             value=1.0 * Density.default_unit(),
             uncertainty=1.0 * Density.default_unit(),
         ),
@@ -39,7 +38,7 @@ def test_reindex_data_set():
                 temperature=298.15 * unit.kelvin, pressure=1.0 * unit.atmosphere
             ),
             phase=PropertyPhase.Liquid,
-            substance=Substance.from_components("C", "O"),
+            substance=substances.Substance.from_components("C", "O"),
             value=1.0 * Density.default_unit(),
             uncertainty=1.0 * Density.default_unit(),
         ),
@@ -48,7 +47,7 @@ def test_reindex_data_set():
                 temperature=300.0 * unit.kelvin, pressure=1.0 * unit.atmosphere
             ),
             phase=PropertyPhase.Liquid,
-            substance=Substance.from_components("C", "O"),
+            substance=substances.Substance.from_components("C", "O"),
             value=1.0 * Density.default_unit(),
             uncertainty=1.0 * Density.default_unit(),
         ),
@@ -140,3 +139,59 @@ def test_reindex_data_set():
     assert evaluator_data_set.properties[0].id == "4"
     assert evaluator_data_set.properties[1].id == "3"
     assert evaluator_data_set.properties[2].id == un_indexed_id
+
+
+def test_reindex_data_set_no_mole_fraction():
+    """Tests that the ``reindex_data_set`` function behaves as expected
+    when exact amounts are present."""
+
+    setup_timestamp_logging(logging.INFO)
+
+    substance = substances.Substance()
+    substance.add_component(
+        substances.Component(smiles="O"), amount=substances.MoleFraction(1.0)
+    )
+    substance.add_component(
+        substances.Component(smiles="CO", role=substances.Component.Role.Solute),
+        amount=substances.ExactAmount(1),
+    )
+
+    evaluator_data_set = PhysicalPropertyDataSet()
+
+    evaluator_data_set.add_properties(
+        SolvationFreeEnergy(
+            thermodynamic_state=ThermodynamicState(
+                temperature=298.15 * unit.kelvin, pressure=1.0 * unit.atmosphere
+            ),
+            phase=PropertyPhase.Liquid,
+            substance=substance,
+            value=1.0 * SolvationFreeEnergy.default_unit(),
+            uncertainty=1.0 * SolvationFreeEnergy.default_unit(),
+        ),
+    )
+
+    data_set = DataSet(
+        id="data-set",
+        description=" ",
+        authors=[Author(name=" ", email="x@x.com", institute=" ")],
+        entries=[
+            DataSetEntry(
+                id=1,
+                property_type="SolvationFreeEnergy",
+                temperature=298.15,
+                pressure=101.325,
+                value=1.0,
+                std_error=1.0,
+                doi=" ",
+                components=[
+                    Component(smiles="O", mole_fraction=1.0),
+                    Component(
+                        smiles="CO", mole_fraction=0.0, exact_amount=1, role="Solute"
+                    ),
+                ],
+            )
+        ],
+    )
+
+    reindex_data_set(evaluator_data_set, data_set)
+    assert evaluator_data_set.properties[0].id == "1"
