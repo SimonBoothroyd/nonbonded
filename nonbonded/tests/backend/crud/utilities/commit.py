@@ -23,7 +23,7 @@ from nonbonded.tests.backend.crud.utilities.create import (
 )
 
 
-def commit_data_set(db: Session, unique_id: str = "data_set-1") -> DataSet:
+def commit_data_set(db: Session, unique_id: str = "data-set-1") -> DataSet:
     """Creates a new data set and commits it the current session.
 
     Parameters

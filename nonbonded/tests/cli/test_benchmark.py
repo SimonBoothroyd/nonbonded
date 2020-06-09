@@ -121,11 +121,11 @@ class TestBenchmarkCLI:
 
         study = create_empty_study("project-1", "study-1")
         study.optimizations = [
-            create_optimization("project-1", "study-1", "optimization-1", [" "])
+            create_optimization("project-1", "study-1", "optimization-1", ["a"])
         ]
         study.benchmarks = [
             create_benchmark(
-                "project-1", "study-1", "benchmark-1", [" "], "optimization-1", None
+                "project-1", "study-1", "benchmark-1", ["a"], "optimization-1", None
             )
         ]
         mock_get_study(requests_mock, study)

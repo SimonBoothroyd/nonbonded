@@ -55,7 +55,7 @@ def test_reindex_data_set():
     )
 
     data_set = DataSet(
-        id=" ",
+        id="data-set",
         description=" ",
         authors=[Author(name=" ", email="x@x.com", institute=" ")],
         entries=[

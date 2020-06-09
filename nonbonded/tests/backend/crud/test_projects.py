@@ -339,8 +339,8 @@ class TestStudyCRUD:
         added and deleted by study updates.
         """
 
-        optimization_data_set = commit_data_set(db, "training_set")
-        benchmark_data_set = commit_data_set(db, "test_set")
+        optimization_data_set = commit_data_set(db, "training-set")
+        benchmark_data_set = commit_data_set(db, "test-set")
 
         project, study = commit_study(db)
 
@@ -468,8 +468,8 @@ class TestStudyCRUD:
         benchmarks works as expected.
         """
 
-        optimization_data_set = commit_data_set(db, "training_set")
-        benchmark_data_set = commit_data_set(db, "test_set")
+        optimization_data_set = commit_data_set(db, "training-set")
+        benchmark_data_set = commit_data_set(db, "test-set")
 
         project, study = commit_study(db)
 
@@ -524,8 +524,8 @@ class TestStudyCRUD:
         benchmarks which have results uploaded raises an exception.
         """
 
-        optimization_data_set = commit_data_set(db, "training_set")
-        benchmark_data_set = commit_data_set(db, "test_set")
+        optimization_data_set = commit_data_set(db, "training-set")
+        benchmark_data_set = commit_data_set(db, "test-set")
 
         project = commit_project(db)
 
@@ -982,7 +982,7 @@ class TestOptimizationCRUD:
 
     def test_update_not_found(self, db: Session):
 
-        optimization = create_optimization(" ", " ", " ", [" "])
+        optimization = create_optimization("a", "b", "c", ["d"])
 
         with pytest.raises(OptimizationNotFoundError):
             OptimizationCRUD.update(db, optimization)
@@ -1423,7 +1423,7 @@ class TestBenchmarkCRUD:
 
     def test_update_not_found(self, db: Session):
 
-        benchmark = create_benchmark(" ", " ", " ", [" "], None, create_force_field())
+        benchmark = create_benchmark("a", "b", "c", ["d"], None, create_force_field())
 
         with pytest.raises(BenchmarkNotFoundError):
             BenchmarkCRUD.update(db, benchmark)

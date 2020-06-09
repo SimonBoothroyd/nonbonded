@@ -19,7 +19,7 @@ def valid_optimization_kwargs():
         "project_id": "id",
         "name": " ",
         "description": " ",
-        "training_set_ids": [" "],
+        "training_set_ids": ["id"],
         "initial_force_field": force_field,
         "parameters_to_train": parameters,
         "force_balance_input": ForceBalanceOptions(),
@@ -38,7 +38,7 @@ def valid_benchmark_kwargs():
         "project_id": "id",
         "name": " ",
         "description": " ",
-        "test_set_ids": [" "],
+        "test_set_ids": ["id"],
         "analysis_environments": [],
         "optimization_id": None,
         "force_field": ForceField(inner_xml=" "),
@@ -98,7 +98,7 @@ def test_study_validation(valid_optimization_kwargs, valid_benchmark_kwargs):
     # Test that a valid study can be produced
     study_kwargs = {
         "id": study_id,
-        "project_id": " ",
+        "project_id": "a",
         "name": " ",
         "description": " ",
     }
@@ -193,13 +193,12 @@ def test_study_validation(valid_optimization_kwargs, valid_benchmark_kwargs):
 def test_project_validation(valid_optimization_kwargs, valid_benchmark_kwargs):
     """Test that pydantic correctly validates studies"""
 
-    project_id = "project1"
-    study_id = "study1"
+    project_id = "project-1"
+    study_id = "study-1"
 
     # Test that a valid project can be produced
     project_kwargs = {
         "id": project_id,
-        "project_id": " ",
         "name": " ",
         "description": " ",
         "authors": [Author(name=" ", email="x@x.com", institute=" ")],
@@ -237,19 +236,19 @@ def test_project_validation(valid_optimization_kwargs, valid_benchmark_kwargs):
         Project(**project_kwargs, studies=[valid_study, valid_study])
 
     # Test bad project id.
-    bad_study = Study(**{**valid_study.dict(), "project_id": " "})
+    bad_study = Study(**{**valid_study.dict(), "project_id": "a"})
 
     with pytest.raises(ValidationError):
         Project(**project_kwargs, studies=[bad_study])
 
     bad_study = Study(**valid_study.dict())
-    bad_study.optimizations[0].project_id = " "
+    bad_study.optimizations[0].project_id = "a"
 
     with pytest.raises(ValidationError):
         Project(**project_kwargs, studies=[bad_study])
 
     bad_study = Study(**valid_study.dict())
-    bad_study.benchmarks[0].project_id = " "
+    bad_study.benchmarks[0].project_id = "a"
 
     with pytest.raises(ValidationError):
         Project(**project_kwargs, studies=[bad_study])

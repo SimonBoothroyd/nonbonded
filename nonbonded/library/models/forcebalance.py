@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from pydantic import Field
 
 from nonbonded.library.models import BaseORM
-from nonbonded.library.models.validators.string import NonEmptyStr
+from nonbonded.library.models.validators.string import IdentifierStr
 
 if TYPE_CHECKING:
     PositiveFloat = float
@@ -33,6 +33,6 @@ class ForceBalanceOptions(BaseORM):
         "optimizer to be declared converged.",
     )
 
-    target_name: NonEmptyStr = Field(
+    target_name: IdentifierStr = Field(
         "phys-prop", description="The name of the fitting target."
     )

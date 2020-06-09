@@ -250,9 +250,9 @@ def test_benchmark_result_from_evaluator(estimated_reference_sets):
     estimated_data_set, reference_data_set = estimated_reference_sets
 
     benchmark_result = BenchmarkResult.from_evaluator(
-        project_id=" ",
-        study_id=" ",
-        benchmark_id=" ",
+        project_id="a",
+        study_id="b",
+        benchmark_id="c",
         reference_data_set=reference_data_set,
         estimated_data_set=estimated_data_set,
         analysis_environments=[

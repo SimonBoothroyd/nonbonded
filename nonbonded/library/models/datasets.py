@@ -6,7 +6,7 @@ from pydantic import Field, conlist
 from nonbonded.library.config import settings
 from nonbonded.library.models import BaseORM, BaseREST
 from nonbonded.library.models.authors import Author
-from nonbonded.library.models.validators.string import NonEmptyStr
+from nonbonded.library.models.validators.string import IdentifierStr, NonEmptyStr
 from nonbonded.library.utilities.exceptions import (
     UnrecognisedPropertyType,
     UnsupportedEndpointError,
@@ -207,7 +207,7 @@ class DataSetEntry(BaseORM):
 
 class DataSet(BaseREST):
 
-    id: str = Field(
+    id: IdentifierStr = Field(
         ..., description="The unique identifier associated with the data set."
     )
 
