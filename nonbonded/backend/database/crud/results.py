@@ -120,12 +120,14 @@ class BenchmarkResultCRUD:
 
         db_results_entries = (
             db.query(models.BenchmarkResultsEntry)
-            .filter(models.BenchmarkResultsEntry.parent_id == db_benchmark.id)
+            .filter(models.BenchmarkResultsEntry.parent_id == db_benchmark.results.id)
             .all()
         )
         db_statistic_entries = (
             db.query(models.BenchmarkStatisticsEntry)
-            .filter(models.BenchmarkStatisticsEntry.parent_id == db_benchmark.id)
+            .filter(
+                models.BenchmarkStatisticsEntry.parent_id == db_benchmark.results.id
+            )
             .all()
         )
 
