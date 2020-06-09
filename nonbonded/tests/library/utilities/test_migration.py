@@ -142,7 +142,8 @@ def test_reindex_data_set():
 
 
 def test_reindex_data_set_no_mole_fraction():
-    """Tests that the ``reindex_data_set`` function behaves as expected."""
+    """Tests that the ``reindex_data_set`` function behaves as expected
+    when exact amounts are present."""
 
     setup_timestamp_logging(logging.INFO)
 
