@@ -115,7 +115,7 @@ class TestOptimizationCLI:
 
         study = create_empty_study("project-1", "study-1")
         study.optimizations = [
-            create_optimization("project-1", "study-1", "optimization-1", [" "])
+            create_optimization("project-1", "study-1", "optimization-1", ["a"])
         ]
         mock_get_study(requests_mock, study)
 
