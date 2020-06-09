@@ -34,6 +34,7 @@ from nonbonded.tests.backend.crud.utilities.comparison import (
     compare_optimization_results,
 )
 from nonbonded.tests.backend.crud.utilities.create import (
+    create_benchmark,
     create_benchmark_result,
     create_force_field,
     create_optimization,
@@ -233,6 +234,58 @@ class TestBenchmarkResultCRUD:
             ),
             compare_benchmark_results,
         )
+
+    def test_read_multiple_results(self, db: Session):
+        """Test that a set benchmark results are correctly read when multiple
+        sets of results are present.
+        """
+
+        n_results = 3
+
+        project, study = commit_study(db)
+
+        data_sets = []
+
+        for index in range(n_results):
+            data_sets.append(commit_data_set(db, f"data-set-{index + 1}"))
+
+        # Add two new benchmarks
+        for index in range(n_results):
+            db.add(
+                BenchmarkCRUD.create(
+                    db,
+                    create_benchmark(
+                        project.id,
+                        study.id,
+                        f"benchmark-{index + 1}",
+                        [f"data-set-{index + 1}"],
+                        None,
+                        create_force_field(),
+                    ),
+                )
+            )
+
+        db.commit()
+
+        # Commit results for the benchmarks in reverse order as a more
+        # comprehensive test.
+        for index in reversed(range(n_results)):
+
+            result = create_benchmark_result(
+                project.id, study.id, f"benchmark-{index + 1}", data_sets[index]
+            )
+
+            db.add(BenchmarkResultCRUD.create(db, result))
+
+        db.commit()
+
+        for index in range(n_results):
+
+            result = BenchmarkResultCRUD.read(
+                db, project.id, study.id, f"benchmark-{index + 1}"
+            )
+            assert len(result.analysed_result.results_entries) == 1
+            assert result.analysed_result.results_entries[0].reference_id == index + 1
 
     def test_create_bad_reference_id(self, db: Session):
         """Test that a set of benchmark results can be generated for
