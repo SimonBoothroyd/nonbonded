@@ -14,8 +14,19 @@ jobs:
     strategy:
 
       matrix:
-        os: [macOS-latest, ubuntu-latest]
         python-version: [3.6, 3.7]
+        cfg:
+          - os: ubuntu-latest
+            openeye: "false"
+
+          - os: macOS-latest
+            openeye: "false"
+
+          - os: ubuntu-latest
+            openeye: "true"
+
+    env:
+      OE_LICENSE: ${{ github.workspace }}/oe_license.txt
 
     steps:
       - uses: actions/checkout@v2
@@ -37,13 +48,13 @@ jobs:
 
       - name: Install PASCAL Compiler (MacOS)
         shell: bash -l {0}
-        if: startsWith(matrix.os, 'macOS')
+        if: startsWith(matrix.cfg.os, 'macOS')
         run: |
           brew install fpc
 
       - name: Install PASCAL Compiler (Ubuntu)
         shell: bash -l {0}
-        if: startsWith(matrix.os, 'ubuntu')
+        if: startsWith(matrix.cfg.os, 'ubuntu')
         run: |
           sudo apt-get install fp-compiler
 
@@ -55,6 +66,19 @@ jobs:
           fpc checkmol.pas -S2
 
           echo "::add-path::."
+
+      - name: Install OpenEye toolkit
+        shell: bash -l {0}
+        if: matrix.cfg.openeye
+        run: |
+
+          echo "${SECRET_OE_LICENSE}" > ${OE_LICENSE}
+          conda install -c openeye openeye-toolkits
+
+          python -c "from openeye import oechem; assert oechem.OEChemIsLicensed()"
+
+        env:
+          SECRET_OE_LICENSE: ${{ secrets.OE_LICENSE }}
 
       - name: Install Package
         shell: bash -l {0}
