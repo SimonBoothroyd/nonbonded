@@ -17,13 +17,13 @@ jobs:
         python-version: [3.6, 3.7]
         cfg:
           - os: ubuntu-latest
-            openeye: "false"
+            openeye: false
 
           - os: macOS-latest
-            openeye: "false"
+            openeye: false
 
           - os: ubuntu-latest
-            openeye: "true"
+            openeye: true
 
     env:
       OE_LICENSE: ${{ github.workspace }}/oe_license.txt

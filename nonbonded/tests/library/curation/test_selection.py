@@ -181,8 +181,10 @@ def test_select_substances():
     selected_data_frame = SelectSubstances.apply(data_frame, schema, 1)
 
     assert len(selected_data_frame) == 2
-    assert selected_data_frame.loc[0, "Component 1"] == "CCC(C)C"
-    assert selected_data_frame.loc[0, "Component 2"] == "CCCCCO"
+    assert selected_data_frame["Component 1"].iloc[0] == "CCC(C)C"
+    assert numpy.isnan(selected_data_frame["Component 2"].iloc[0])
+    assert selected_data_frame["Component 1"].iloc[1] == "CCC(C)C"
+    assert selected_data_frame["Component 2"].iloc[1] == "CCCCCO"
 
 
 @pytest.mark.skipif(
