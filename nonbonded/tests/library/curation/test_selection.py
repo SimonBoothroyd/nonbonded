@@ -1,15 +1,27 @@
+from typing import Tuple
+
 import numpy
 import pandas
 import pytest
 
 from nonbonded.library.curation.components.selection import (
+    FingerPrintType,
     SelectDataPoints,
     SelectDataPointsSchema,
+    SelectSubstances,
+    SelectSubstancesSchema,
     State,
     TargetState,
 )
 from nonbonded.library.models.authors import Author
 from nonbonded.library.models.datasets import Component, DataSet, DataSetEntry
+from nonbonded.library.utilities.environments import ChemicalEnvironment
+from nonbonded.library.utilities.exceptions import MissingOptionalDependency
+
+try:
+    import openeye.oechem
+except ImportError:
+    openeye = None
 
 
 @pytest.fixture(scope="module")
@@ -93,3 +105,101 @@ def test_select_data_points(target_temperatures, expected_temperatures, data_fra
     expected_temperatures = sorted(expected_temperatures)
 
     assert numpy.allclose(selected_temperatures, expected_temperatures)
+
+
+@pytest.mark.skipif(
+    openeye is None or not openeye.oechem.OEChemIsLicensed(),
+    reason="OpenEye is required for this test.",
+)
+def test_mixture_distance_metric():
+    """Tests that the distance metric between mixtures behaves as
+    expected."""
+
+    assert (
+        SelectSubstances._compute_distance(
+            ("CCCCC", "CCCC=O"), ("CCCC=O", "CCCCC"), FingerPrintType.Tree
+        )
+        == 0.0
+    )
+    assert (
+        SelectSubstances._compute_distance(
+            ("CCCCC", "CCCC=O"), ("C#N", "CCCCC"), FingerPrintType.Tree
+        )
+        == 1.0
+    )
+
+
+@pytest.mark.parametrize(
+    "mixture_a", [("Oc1occc1", "c1ccncc1"), ("c1ccncc1", "Oc1occc1")]
+)
+@pytest.mark.parametrize("mixture_b", [("CCCC=O", "CC(C)C#N"), ("CC(C)C#N", "CCCC=O")])
+@pytest.mark.skipif(
+    openeye is None or not openeye.oechem.OEChemIsLicensed(),
+    reason="OpenEye is required for this test.",
+)
+def test_mixture_distance_metric_symmetry(
+    mixture_a: Tuple[str, str], mixture_b: Tuple[str, str]
+):
+    """Tests that the distance metric between mixtures behaves as
+    expected and symmetrically under permutation"""
+
+    distance_a_b = SelectSubstances._compute_distance(
+        mixture_a, mixture_b, FingerPrintType.Tree
+    )
+    distance_b_a = SelectSubstances._compute_distance(
+        mixture_b, mixture_a, FingerPrintType.Tree
+    )
+
+    assert numpy.isclose(distance_a_b, distance_b_a)
+
+
+@pytest.mark.skipif(
+    openeye is None or not openeye.oechem.OEChemIsLicensed(),
+    reason="OpenEye is required for this test.",
+)
+def test_select_substances():
+
+    training_substances = [("CCCCC",), ("CCCCC", "CCCCCO")]
+
+    data_rows = [
+        {"N Components": 1, "Component 1": "CCCCC"},
+        {"N Components": 1, "Component 1": "CCCCCC"},
+        {"N Components": 1, "Component 1": "CCC(C)C"},
+        {"N Components": 2, "Component 1": "CCCCC", "Component 2": "CCCCCO"},
+        {"N Components": 2, "Component 1": "CCCCCC", "Component 2": "CCCCCCO"},
+        {"N Components": 2, "Component 1": "CCC(C)C", "Component 2": "CCCCCO"},
+    ]
+
+    data_frame = pandas.DataFrame(data_rows)
+
+    schema = SelectSubstancesSchema(
+        target_environments=[ChemicalEnvironment.Alkane, ChemicalEnvironment.Alcohol],
+        n_per_environment=1,
+        substances_to_exclude=training_substances,
+    )
+
+    selected_data_frame = SelectSubstances.apply(data_frame, schema, 1)
+
+    assert len(selected_data_frame) == 2
+    assert selected_data_frame["Component 1"].iloc[0] == "CCC(C)C"
+    assert numpy.isnan(selected_data_frame["Component 2"].iloc[0])
+    assert selected_data_frame["Component 1"].iloc[1] == "CCC(C)C"
+    assert selected_data_frame["Component 2"].iloc[1] == "CCCCCO"
+
+
+@pytest.mark.skipif(
+    openeye is not None and openeye.oechem.OEChemIsLicensed(),
+    reason="OpenEye should not be installed for this test.",
+)
+def test_missing_openeye_dependency():
+
+    data_frame = pandas.DataFrame([{"N Components": 1, "Component 1": "CCCCC"}])
+
+    with pytest.raises(MissingOptionalDependency):
+
+        SelectSubstances.apply(
+            data_frame,
+            SelectSubstancesSchema(
+                target_environments=[ChemicalEnvironment.Alkane], n_per_environment=1
+            ),
+        )

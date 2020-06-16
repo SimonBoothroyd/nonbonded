@@ -1,6 +1,9 @@
 import pandas
 
-from nonbonded.library.utilities.pandas import reorder_data_frame
+from nonbonded.library.utilities.pandas import (
+    data_frame_to_substances,
+    reorder_data_frame,
+)
 
 
 def test_reorder_data_frame():
@@ -57,3 +60,20 @@ def test_reorder_data_frame():
         assert reordered_data_frame.loc[index, "Role 2"] == "Solute"
         assert reordered_data_frame.loc[index, "Mole Fraction 2"] == 0.75
         assert reordered_data_frame.loc[index, "Exact Amount 2"] == 2
+
+
+def test_data_frame_to_substances():
+    """Tests that the ``data_frame_to_substances`` function behaves as expected
+    for 1 and 2 component entries, especially when identical substances but
+    with different ordering are present."""
+
+    data_rows = [
+        {"N Components": 1, "Component 1": "C"},
+        {"N Components": 2, "Component 1": "CC", "Component 2": "CO"},
+        {"N Components": 2, "Component 1": "CO", "Component 2": "CC"},
+    ]
+
+    data_frame = pandas.DataFrame(data_rows)
+
+    substances = data_frame_to_substances(data_frame)
+    assert substances == {("C",), ("CC", "CO")}

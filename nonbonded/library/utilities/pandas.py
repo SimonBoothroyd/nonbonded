@@ -1,4 +1,11 @@
-def reorder_data_frame(data_frame):
+from typing import TYPE_CHECKING, Set, Tuple
+
+if TYPE_CHECKING:
+
+    import pandas
+
+
+def reorder_data_frame(data_frame: "pandas.DataFrame") -> "pandas.DataFrame":
     """ Re-order the substance columns of a data frame so that the individual
     components are alphabetically sorted.
 
@@ -66,3 +73,38 @@ def reorder_data_frame(data_frame):
     ordered_data_frame = pandas.concat(ordered_frames, ignore_index=True, sort=False)
 
     return ordered_data_frame
+
+
+def data_frame_to_substances(data_frame: "pandas.DataFrame") -> Set[Tuple[str, ...]]:
+    """Extracts all unique substances from a data frame and returns them
+    as a set, where each element in the set is a tuple of smiles patterns
+    which represent a single substance.
+
+    Parameters
+    ----------
+    data_frame
+        The data frame to extract the substances from.
+
+    Returns
+    -------
+        The set of unique substances.
+    """
+
+    ordered_data = reorder_data_frame(data_frame)
+
+    substances: Set[Tuple[str, ...]] = set()
+
+    min_n_components = data_frame["N Components"].min()
+    max_n_components = data_frame["N Components"].max()
+
+    for n_components in range(min_n_components, max_n_components + 1):
+
+        component_data = ordered_data[ordered_data["N Components"] == n_components]
+
+        component_columns = (
+            component_data[f"Component {i + 1}"] for i in range(n_components)
+        )
+
+        substances.update(list(zip(*component_columns)))
+
+    return substances
