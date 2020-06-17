@@ -1,5 +1,6 @@
 import functools
 import logging
+from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 import numpy
@@ -15,7 +16,10 @@ from nonbonded.library.models.validators.string import NonEmptyStr
 from nonbonded.library.utilities.checkmol import analyse_functional_groups
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 from nonbonded.library.utilities.molecules import find_smirks_matches
-from nonbonded.library.utilities.pandas import reorder_data_frame
+from nonbonded.library.utilities.pandas import (
+    data_frame_to_substances,
+    reorder_data_frame,
+)
 
 if TYPE_CHECKING:
 
@@ -300,6 +304,14 @@ class FilterByPropertyTypesSchema(ComponentSchema):
         "point to be retained.",
     )
 
+    strict: bool = Field(
+        False,
+        description="If true, only substances (defined without consideration for their "
+        "mole fractions or exact amount) which have data available for all of the "
+        "specified property types will be retained. Note that the data points aren't "
+        "required to have been measured at the same state.",
+    )
+
     @root_validator
     def _validate_n_components(cls, values):
 
@@ -324,6 +336,7 @@ class FilterByPropertyTypes(Component):
             header for header in data_frame if header.find(" Value ") >= 0
         ]
 
+        # Removes the columns for properties which are not of interest.
         for header in property_headers:
 
             property_type = header.split(" ")[0]
@@ -338,6 +351,8 @@ class FilterByPropertyTypes(Component):
             if uncertainty_header in data_frame:
                 data_frame = data_frame.drop(uncertainty_header, axis=1)
 
+        # Drop any rows which do not contain any values for the property types of
+        # interest.
         property_headers = [
             header
             for header in property_headers
@@ -346,6 +361,9 @@ class FilterByPropertyTypes(Component):
 
         data_frame = data_frame.dropna(subset=property_headers, how="all")
 
+        # Apply a more specific filter which only retain which contain values
+        # for the specific property types, and which were measured for the
+        # specified number of components.
         for property_type, n_components in schema.n_components.items():
 
             property_header = next(
@@ -360,6 +378,91 @@ class FilterByPropertyTypes(Component):
                 data_frame[property_header].isna()
                 | data_frame["N Components"].isin(n_components)
             ]
+
+        # Apply the strict filter if requested
+        if schema.strict:
+
+            reordered_data_frame = reorder_data_frame(data_frame)
+
+            # Build a dictionary of which properties should be present partitioned
+            # by the number of components they should have been be measured for.
+            property_types = defaultdict(list)
+
+            if len(schema.n_components) > 0:
+
+                for property_type, n_components in schema.n_components.items():
+
+                    for n_component in n_components:
+                        property_types[n_component].append(property_type)
+
+                min_n_components = min(property_types)
+                max_n_components = max(property_types)
+
+            else:
+
+                min_n_components = reordered_data_frame["N Components"].min()
+                max_n_components = reordered_data_frame["N Components"].max()
+
+                for n_components in range(min_n_components, max_n_components + 1):
+                    property_types[n_components].extend(schema.property_types)
+
+            substances_with_data = set()
+            components_with_data = {}
+
+            # For each N component find substances which have data points for
+            # all of the specified property types.
+            for n_components in range(min_n_components, max_n_components + 1):
+
+                component_data = reordered_data_frame[
+                    reordered_data_frame["N Components"] == n_components
+                ]
+
+                if n_components not in property_types or len(component_data) == 0:
+                    continue
+
+                n_component_headers = [
+                    header
+                    for header in property_headers
+                    if header.split(" ")[0] in property_types[n_components]
+                    and header in component_data
+                ]
+
+                if len(n_component_headers) != len(property_types[n_components]):
+                    continue
+
+                n_component_substances = set.intersection(
+                    *[
+                        data_frame_to_substances(
+                            component_data[component_data[header].notna()]
+                        )
+                        for header in n_component_headers
+                    ]
+                )
+                substances_with_data.update(n_component_substances)
+                components_with_data[n_components] = {
+                    component
+                    for substance in n_component_substances
+                    for component in substance
+                }
+
+            if len(schema.n_components) > 0:
+                components_with_all_data = set.intersection(
+                    *components_with_data.values()
+                )
+
+                # Filter out any smiles for don't appear in all of the N component
+                # substances.
+                data_frame = FilterBySmiles.apply(
+                    data_frame,
+                    FilterBySmilesSchema(smiles_to_include=[*components_with_all_data]),
+                )
+
+            # Filter out any substances which (within each N component) don't have
+            # all of the specified data types.
+            data_frame = FilterBySubstances.apply(
+                data_frame,
+                FilterBySubstancesSchema(substances_to_include=[*substances_with_data]),
+            )
 
         data_frame = data_frame.dropna(axis=1, how="all")
         return data_frame
