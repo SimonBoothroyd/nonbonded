@@ -90,6 +90,9 @@ def data_frame_to_substances(data_frame: "pandas.DataFrame") -> Set[Tuple[str, .
         The set of unique substances.
     """
 
+    if len(data_frame) == 0:
+        return set()
+
     ordered_data = reorder_data_frame(data_frame)
 
     substances: Set[Tuple[str, ...]] = set()

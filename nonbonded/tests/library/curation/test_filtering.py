@@ -1,3 +1,5 @@
+from typing import List, Tuple
+
 import numpy
 import pandas
 import pytest
@@ -34,6 +36,7 @@ from nonbonded.library.curation.components.filtering import (
 from nonbonded.library.models.authors import Author
 from nonbonded.library.models.datasets import Component, DataSet, DataSetEntry
 from nonbonded.library.utilities.environments import ChemicalEnvironment
+from nonbonded.library.utilities.pandas import data_frame_to_substances
 
 
 def _build_entry(*smiles: str) -> DataSetEntry:
@@ -66,6 +69,33 @@ def _build_entry(*smiles: str) -> DataSetEntry:
             for smiles_pattern in smiles
         ],
     )
+
+
+def _build_data_frame(
+    property_types: List[str],
+    substance_entries: List[Tuple[Tuple[str, ...], Tuple[bool, ...]]],
+) -> pandas.DataFrame:
+    data_rows = []
+
+    for substance, include_properties in substance_entries:
+
+        for property_type, include_property in zip(property_types, include_properties):
+
+            if not include_property:
+                continue
+
+            data_row = {
+                "N Components": len(substance),
+                f"{property_type} Value (unit)": 1.0,
+            }
+
+            for index, component in enumerate(substance):
+                data_row[f"Component {index + 1}"] = component
+
+            data_rows.append(data_row)
+
+    data_frame = pandas.DataFrame(data_rows)
+    return data_frame
 
 
 @pytest.fixture(scope="module")
@@ -373,6 +403,78 @@ def test_filter_by_property(data_frame):
         ].min()
         == 2
     )
+
+
+def test_filter_by_property_strict():
+    """Tests that the FilterByPropertyTypes filter works
+    correctly when strict mode is set but n_components is not.
+    """
+
+    property_types = ["Density", "DielectricConstant"]
+    substance_entries = [
+        (("CC",), (True, True)),
+        (("CCC",), (True, False)),
+        (("CCCCC",), (True, True)),
+        (("CC", "CCC"), (True, True)),
+        (("CCC", "CCC"), (True, False)),
+        (("CCC", "CCCC"), (False, True)),
+    ]
+
+    data_frame = _build_data_frame(property_types, substance_entries)
+
+    filtered_frame = FilterByPropertyTypes.apply(
+        data_frame,
+        FilterByPropertyTypesSchema(property_types=property_types, strict=True),
+    )
+
+    assert len(filtered_frame) == 6
+
+    assert data_frame_to_substances(filtered_frame) == {
+        ("CC",),
+        ("CCCCC",),
+        ("CC", "CCC"),
+    }
+
+
+def test_filter_by_property_strict_n_components():
+    """Tests that the FilterByPropertyTypes filter works
+    correctly when strict mode and n_components is set.
+    """
+
+    property_types = ["Density", "EnthalpyOfVaporization", "EnthalpyOfMixing"]
+    substance_entries = [
+        (("CC",), (True, True, False)),
+        (("CCC",), (True, True, False)),
+        (("CCCCC",), (True, False, False)),
+        (("CCCCCC",), (True, True, False)),
+        (("CC", "CCC"), (True, False, True)),
+        (("CC", "CCCCC"), (True, False, True)),
+        (("CCC", "CCC"), (True, False, False)),
+        (("CCC", "CCCC"), (False, False, True)),
+    ]
+
+    data_frame = _build_data_frame(property_types, substance_entries)
+
+    filtered_frame = FilterByPropertyTypes.apply(
+        data_frame,
+        FilterByPropertyTypesSchema(
+            property_types=property_types,
+            n_components={
+                "Density": [1, 2],
+                "EnthalpyOfVaporization": [1],
+                "EnthalpyOfMixing": [2],
+            },
+            strict=True,
+        ),
+    )
+
+    assert len(filtered_frame) == 6
+
+    assert data_frame_to_substances(filtered_frame) == {
+        ("CC",),
+        ("CCC",),
+        ("CC", "CCC"),
+    }
 
 
 def test_filter_stereochemistry(data_frame):
