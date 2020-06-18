@@ -46,6 +46,10 @@ def temporary_cd(directory_path: Optional[str] = None):
 
     """
 
+    if directory_path is not None and len(directory_path) == 0:
+        yield
+        return
+
     old_directory = os.getcwd()
 
     try:
