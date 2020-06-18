@@ -29,7 +29,9 @@ def test_temporary_cd():
     with temporary_cd(os.pardir):
 
         current_directory = os.getcwd()
-        expected_directory = os.path.abspath(os.path.join(original_directory, os.pardir))
+        expected_directory = os.path.abspath(
+            os.path.join(original_directory, os.pardir)
+        )
 
         assert compare_paths(current_directory, expected_directory)
 
