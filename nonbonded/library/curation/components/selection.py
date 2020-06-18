@@ -579,6 +579,9 @@ class SelectDataPoints(Component):
 
                 cluster_data = cluster_data.drop(closest_index)
 
+        if len(selected_data) == 0:
+            return pandas.DataFrame()
+
         return original_data_frame[selected_data]
 
     @classmethod
@@ -605,9 +608,17 @@ class SelectDataPoints(Component):
 
             for index, component in enumerate(unique_substance[component_headers]):
 
-                substance_data_frame = substance_data_frame[
-                    substance_data_frame[component_headers[index]] == component
-                ]
+                if pandas.isnull(component):
+
+                    substance_data_frame = substance_data_frame[
+                        substance_data_frame[component_headers[index]].isna()
+                    ]
+
+                else:
+
+                    substance_data_frame = substance_data_frame[
+                        substance_data_frame[component_headers[index]] == component
+                    ]
 
             for target_state in schema.target_states:
 
