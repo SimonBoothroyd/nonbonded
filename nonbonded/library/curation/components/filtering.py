@@ -23,12 +23,13 @@ from nonbonded.library.utilities.pandas import (
 
 if TYPE_CHECKING:
 
+    conint = int
     PositiveInt = int
     PositiveFloat = float
 
 else:
 
-    from pydantic import PositiveFloat, PositiveInt
+    from pydantic import conint, PositiveFloat, PositiveInt
 
 logger = logging.getLogger(__name__)
 
@@ -39,17 +40,17 @@ class FilterDuplicatesSchema(ComponentSchema):
 
     type: Literal["FilterDuplicates"] = "FilterDuplicates"
 
-    temperature_precision: PositiveInt = Field(
+    temperature_precision: conint(ge=0) = Field(
         2,
         description="The number of decimal places to compare temperatures (K) to "
         "within.",
     )
-    pressure_precision: PositiveInt = Field(
+    pressure_precision: conint(ge=0) = Field(
         3,
         description="The number of decimal places to compare pressures (kPa) to "
         "within.",
     )
-    mole_fraction_precision: PositiveInt = Field(
+    mole_fraction_precision: conint(ge=0) = Field(
         6,
         description="The number of decimal places to compare mole fractions to within.",
     )
