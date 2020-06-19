@@ -2,7 +2,6 @@ import os
 import sys
 
 import pytest
-from forcebalance.evaluator_io import Evaluator_SMIRNOFF
 
 from nonbonded.cli.optimization import optimization as optimization_cli
 from nonbonded.library.models.forcefield import ForceField
@@ -53,6 +52,7 @@ class TestOptimizationCLI:
     )
     def test_generate(self, requests_mock, runner):
 
+        from forcebalance.evaluator_io import Evaluator_SMIRNOFF
         from openforcefield.typing.engines.smirnoff.forcefield import (
             ForceField as SMIRNOFFForceField,
         )
