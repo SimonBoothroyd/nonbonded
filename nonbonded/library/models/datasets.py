@@ -157,6 +157,7 @@ class DataSetEntry(BaseORM):
     def to_evaluator(self) -> "PhysicalProperty":
 
         from openff.evaluator import properties, unit, substances
+        from openff.evaluator.attributes import UNDEFINED
         from openff.evaluator.datasets import MeasurementSource, PropertyPhase
         from openff.evaluator.thermodynamics import ThermodynamicState
 
@@ -197,7 +198,9 @@ class DataSetEntry(BaseORM):
             phase=phase,
             substance=substance,
             value=self.value * pint_unit,
-            uncertainty=self.std_error * pint_unit,
+            uncertainty=UNDEFINED
+            if self.std_error is None
+            else self.std_error * pint_unit,
             source=MeasurementSource(doi=self.doi),
         )
         physical_property.id = str(self.id)
