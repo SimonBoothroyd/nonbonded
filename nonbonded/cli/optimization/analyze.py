@@ -76,14 +76,14 @@ def analyze(reindex, log_level):
     reference_data_sets = DataSetCollection.parse_file(
         os.path.join(
             "targets",
-            optimization.force_balance_input.target_name,
+            optimization.force_balance_input.evaluator_target_name,
             "training-set-collection.json",
         )
     )
 
     # Determine the number of optimization iterations.
     tmp_directory = os.path.join(
-        "optimize.tmp", optimization.force_balance_input.target_name
+        "optimize.tmp", optimization.force_balance_input.evaluator_target_name
     )
 
     n_iterations = len(glob(os.path.join(tmp_directory, "iter_*", "results.json")))

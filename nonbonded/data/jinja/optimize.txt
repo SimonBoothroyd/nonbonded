@@ -41,8 +41,8 @@ finite_difference_h 0.001
 # (float) Factor for multiplicative penalty function in objective function
 penalty_additive 1.0
 
-trust0 0.25
-mintrust 0.05
+trust0 {{initial_trust_radius}}
+mintrust {{minimum_trust_radius}}
 error_tolerance 1.0
 adaptive_factor 0.2
 adaptive_damping 1.0
@@ -61,7 +61,7 @@ priors
 $end
 
 $target
-name {{target_name}}
+name {{evaluator_target_name}}
 type Evaluator_SMIRNOFF
 weight 1.0
 evaluator_input options.json

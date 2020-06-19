@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, Float, ForeignKey, Integer, String
 
 from nonbonded.backend.database.models import Base
 
@@ -18,4 +18,13 @@ class ForceBalanceOptions(Base):
 
     n_criteria = Column(Integer)
 
-    target_name = Column(String)
+    initial_trust_radius = Column(Float)
+    minimum_trust_radius = Column(Float)
+
+    evaluator_target_name = Column(String)
+
+    allow_direct_simulation = Column(Boolean)
+    n_molecules = Column(Integer)
+
+    allow_reweighting = Column(Boolean)
+    n_effective_samples = Column(Integer)
