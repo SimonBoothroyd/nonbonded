@@ -304,9 +304,33 @@ def compare_optimizations(
         optimization_1.force_balance_input.n_criteria
         == optimization_2.force_balance_input.n_criteria
     )
+    assert numpy.isclose(
+        optimization_1.force_balance_input.initial_trust_radius,
+        optimization_2.force_balance_input.initial_trust_radius,
+    )
+    assert numpy.isclose(
+        optimization_1.force_balance_input.minimum_trust_radius,
+        optimization_2.force_balance_input.minimum_trust_radius,
+    )
     assert (
-        optimization_1.force_balance_input.target_name
-        == optimization_2.force_balance_input.target_name
+        optimization_1.force_balance_input.evaluator_target_name
+        == optimization_2.force_balance_input.evaluator_target_name
+    )
+    assert (
+        optimization_1.force_balance_input.allow_direct_simulation
+        == optimization_2.force_balance_input.allow_direct_simulation
+    )
+    assert (
+        optimization_1.force_balance_input.n_molecules
+        == optimization_2.force_balance_input.n_molecules
+    )
+    assert (
+        optimization_1.force_balance_input.allow_reweighting
+        == optimization_2.force_balance_input.allow_reweighting
+    )
+    assert (
+        optimization_1.force_balance_input.n_effective_samples
+        == optimization_2.force_balance_input.n_effective_samples
     )
 
     # Make sure the same denominators are being used.

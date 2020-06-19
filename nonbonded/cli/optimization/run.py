@@ -83,7 +83,7 @@ def run(server_config, restart: bool, log_level):
 
     else:
 
-        target_name = optimization.force_balance_input.target_name
+        target_name = optimization.force_balance_input.evaluator_target_name
 
         previous_iteration_directories = glob(
             os.path.join("optimize.tmp", target_name, "iter_*")

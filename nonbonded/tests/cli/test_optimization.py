@@ -1,3 +1,4 @@
+import os
 import sys
 
 import pytest
@@ -51,6 +52,7 @@ class TestOptimizationCLI:
     )
     def test_generate(self, requests_mock, runner):
 
+        from forcebalance.evaluator_io import Evaluator_SMIRNOFF
         from openforcefield.typing.engines.smirnoff.forcefield import (
             ForceField as SMIRNOFFForceField,
         )
@@ -61,6 +63,12 @@ class TestOptimizationCLI:
         optimization.initial_force_field = ForceField.from_openff(
             SMIRNOFFForceField("openff-1.0.0.offxml")
         )
+
+        optimization.force_balance_input.allow_direct_simulation = True
+        optimization.force_balance_input.n_molecules = 512
+
+        optimization.force_balance_input.allow_reweighting = True
+        optimization.force_balance_input.n_effective_samples = 25
 
         mock_get_optimization(requests_mock, optimization)
         mock_get_data_set(requests_mock, create_data_set("data-set-1"))
@@ -81,6 +89,33 @@ class TestOptimizationCLI:
 
         if result.exit_code != 0:
             raise result.exception
+
+        with open(
+            os.path.join(
+                optimization.id,
+                "targets",
+                optimization.force_balance_input.evaluator_target_name,
+                "options.json",
+            ),
+        ) as file:
+
+            target_options = Evaluator_SMIRNOFF.OptionsFile.from_json(file)
+
+        assert target_options.estimation_options.calculation_layers == [
+            "ReweightingLayer",
+            "SimulationLayer",
+        ]
+
+        assert "Density" in target_options.estimation_options.calculation_schemas
+        density_schemas = target_options.estimation_options.calculation_schemas[
+            "Density"
+        ]
+
+        assert "ReweightingLayer" in density_schemas
+        assert density_schemas["ReweightingLayer"] is not None
+
+        assert "SimulationLayer" in density_schemas
+        assert density_schemas["SimulationLayer"] is not None
 
     def test_results(self, requests_mock, runner):
 

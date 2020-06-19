@@ -1,6 +1,6 @@
 import os
 from collections import defaultdict
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from nonbonded.cli.options.evaluator import (
     ComputeResources,
@@ -15,6 +15,11 @@ from nonbonded.library.models.results import OptimizationResult
 from nonbonded.library.templates.forcebalance import ForceBalanceInput
 from nonbonded.library.templates.submission import Submission, SubmissionTemplate
 from nonbonded.library.utilities import temporary_cd
+
+if TYPE_CHECKING:
+
+    from openff.evaluator.client import RequestOptions
+    from openff.evaluator.datasets import PhysicalPropertyDataSet
 
 
 class OptimizationFactory:
@@ -56,6 +61,102 @@ class OptimizationFactory:
                 os.path.join(output_directory, "optimization-results.json"), "w"
             ) as file:
                 file.write(results.json())
+
+    @classmethod
+    def _generate_evaluator_options(
+        cls, optimization: Optimization, training_set: "PhysicalPropertyDataSet"
+    ) -> "RequestOptions":
+        """Generates the evaluator request options to use when estimating
+        the training set.
+
+        Parameters
+        ----------
+        optimization
+            The optimization which will trigger the estimation requests.
+        training_set
+            The training set which will be estimated.
+
+        Returns
+        -------
+            The request options.
+        """
+
+        import inspect
+
+        from openff.evaluator.client import RequestOptions
+        from openff.evaluator.layers import registered_calculation_schemas
+
+        request_options = RequestOptions()
+        force_balance_input = optimization.force_balance_input
+
+        # Specify the calculation layers to use.
+        request_options.calculation_layers = []
+
+        if force_balance_input.allow_reweighting:
+            request_options.calculation_layers.append("ReweightingLayer")
+        if force_balance_input.allow_direct_simulation:
+            request_options.calculation_layers.append("SimulationLayer")
+
+        # Check if a non-default option has been specified.
+        if (
+            force_balance_input.n_molecules is None
+            and force_balance_input.n_effective_samples is None
+        ):
+            return request_options
+
+        # Generate estimation schemas for each of the properties if a non-default
+        # option has been specified in the optimization options.
+        property_types = training_set.property_types
+
+        request_options.calculation_schemas = defaultdict(dict)
+
+        for property_type in property_types:
+
+            default_reweighting_schemas = registered_calculation_schemas.get(
+                "ReweightingLayer", {}
+            )
+
+            if (
+                force_balance_input.allow_reweighting
+                and force_balance_input.n_effective_samples is not None
+                and property_type in default_reweighting_schemas
+                and callable(default_reweighting_schemas[property_type])
+            ):
+
+                default_schema = default_reweighting_schemas[property_type]
+
+                if "n_effective_samples" in inspect.getfullargspec(default_schema).args:
+
+                    default_schema = default_schema(
+                        n_effective_samples=force_balance_input.n_effective_samples
+                    )
+                    request_options.calculation_schemas[property_type][
+                        "ReweightingLayer"
+                    ] = default_schema
+
+            default_simulation_schemas = registered_calculation_schemas.get(
+                "SimulationLayer", {}
+            )
+
+            if (
+                force_balance_input.allow_direct_simulation
+                and force_balance_input.n_molecules is not None
+                and property_type in default_simulation_schemas
+                and callable(default_simulation_schemas[property_type])
+            ):
+
+                default_schema = default_simulation_schemas[property_type]
+
+                if "n_molecules" in inspect.getfullargspec(default_schema).args:
+
+                    default_schema = default_schema(
+                        n_molecules=force_balance_input.n_molecules
+                    )
+                    request_options.calculation_schemas[property_type][
+                        "SimulationLayer"
+                    ] = default_schema
+
+        return request_options
 
     @classmethod
     def generate_inputs(
@@ -125,7 +226,9 @@ class OptimizationFactory:
                 optimization.force_balance_input.convergence_objective_criteria,
                 optimization.force_balance_input.convergence_gradient_criteria,
                 optimization.force_balance_input.n_criteria,
-                optimization.force_balance_input.target_name,
+                optimization.force_balance_input.initial_trust_radius,
+                optimization.force_balance_input.minimum_trust_radius,
+                optimization.force_balance_input.evaluator_target_name,
                 optimization.priors,
             )
 
@@ -134,7 +237,7 @@ class OptimizationFactory:
 
             # Create the targets directory
             targets_directory = os.path.join(
-                "targets", optimization.force_balance_input.target_name
+                "targets", optimization.force_balance_input.evaluator_target_name
             )
             os.makedirs(targets_directory, exist_ok=True)
 
@@ -155,7 +258,10 @@ class OptimizationFactory:
             # Create the target options
             target_options = Evaluator_SMIRNOFF.OptionsFile()
             target_options.connection_options.server_port = port
-            target_options.estimation_options.calculation_layers = ["SimulationLayer"]
+
+            target_options.estimation_options = cls._generate_evaluator_options(
+                optimization, evaluator_set
+            )
 
             target_options.data_set_path = "training-set.json"
 

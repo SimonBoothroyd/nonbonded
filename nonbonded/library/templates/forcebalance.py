@@ -17,7 +17,9 @@ class ForceBalanceInput(BaseTemplate):
         convergence_objective_criteria: float,
         convergence_gradient_criteria: float,
         n_criteria: int,
-        target_name: str,
+        initial_trust_radius: float,
+        minimum_trust_radius: float,
+        evaluator_target_name: str,
         priors: Dict[str, float],
         **options
     ):
@@ -36,7 +38,9 @@ class ForceBalanceInput(BaseTemplate):
             convergence_objective_criteria=convergence_objective_criteria,
             convergence_gradient_criteria=convergence_gradient_criteria,
             n_criteria=n_criteria,
-            target_name=target_name,
+            initial_trust_radius=initial_trust_radius,
+            minimum_trust_radius=minimum_trust_radius,
+            evaluator_target_name=evaluator_target_name,
             priors=priors,
         )
         return rendered_template
