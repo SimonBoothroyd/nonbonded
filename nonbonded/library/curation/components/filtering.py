@@ -24,16 +24,18 @@ from nonbonded.library.utilities.pandas import (
 if TYPE_CHECKING:
 
     conint = int
+    confloat = float
     PositiveInt = int
     PositiveFloat = float
 
 else:
 
-    from pydantic import conint, PositiveFloat, PositiveInt
+    from pydantic import conint, confloat, PositiveFloat, PositiveInt
 
 logger = logging.getLogger(__name__)
 
 ComponentEnvironments = List[List[ChemicalEnvironment]]
+MoleFractionRange = Tuple[confloat(ge=0.0, le=1.0), confloat(ge=0.0, le=1.0)]
 
 
 class FilterDuplicatesSchema(ComponentSchema):
@@ -223,6 +225,80 @@ class FilterByPressure(Component):
                 data_frame["Pressure (kPa)"] < schema.maximum_pressure
             ]
 
+        return filtered_frame
+
+
+class FilterByMoleFractionSchema(ComponentSchema):
+
+    type: Literal["FilterByMoleFraction"] = "FilterByMoleFraction"
+
+    mole_fraction_ranges: Dict[conint(gt=1), List[List[MoleFractionRange]]] = Field(
+        ...,
+        description="The ranges of mole fractions to retain. Each key in the "
+        "dictionary corresponds to a number of components in the system. Each value "
+        "is a list of the allowed mole fraction ranges for all but one of the "
+        "components, i.e for a binary system, the allowed mole fraction for only the "
+        "first component must be specified.",
+    )
+
+    @validator("mole_fraction_ranges")
+    def _validate_ranges(cls, value: Dict[int, List[List[MoleFractionRange]]]):
+
+        for n_components, ranges in value.items():
+
+            assert len(ranges) == n_components - 1
+
+            assert all(
+                mole_fraction_range[0] < mole_fraction_range[1]
+                for component_ranges in ranges
+                for mole_fraction_range in component_ranges
+            )
+
+        return value
+
+
+class FilterByMoleFraction(Component):
+    @classmethod
+    def _apply(
+        cls,
+        data_frame: pandas.DataFrame,
+        schema: FilterByMoleFractionSchema,
+        n_processes,
+    ) -> pandas.DataFrame:
+
+        filtered_frame = data_frame
+
+        full_query = ~filtered_frame["N Components"].isin(schema.mole_fraction_ranges)
+
+        for n_components, ranges in schema.mole_fraction_ranges.items():
+
+            # Build the query to apply
+            n_component_query = filtered_frame["N Components"] == n_components
+
+            for index, component_ranges in enumerate(ranges):
+
+                component_query = None
+
+                for mole_fraction_range in component_ranges:
+
+                    fraction_query = (
+                        filtered_frame[f"Mole Fraction {index + 1}"]
+                        > mole_fraction_range[0]
+                    ) & (
+                        filtered_frame[f"Mole Fraction {index + 1}"]
+                        < mole_fraction_range[1]
+                    )
+
+                    if component_query is None:
+                        component_query = fraction_query
+                    else:
+                        component_query |= fraction_query
+
+                n_component_query &= component_query
+
+            full_query |= n_component_query
+
+        filtered_frame = filtered_frame[full_query]
         return filtered_frame
 
 
@@ -1018,6 +1094,7 @@ FilterComponentSchema = Union[
     FilterDuplicatesSchema,
     FilterByTemperatureSchema,
     FilterByPressureSchema,
+    FilterByMoleFractionSchema,
     FilterByElementsSchema,
     FilterByPropertyTypesSchema,
     FilterByStereochemistrySchema,
