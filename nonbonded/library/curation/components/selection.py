@@ -106,6 +106,18 @@ class SelectSubstancesSchema(ComponentSchema):
         description="The type of finger print to use in the distance metrics.",
     )
 
+    per_property: bool = Field(
+        ...,
+        description="Whether the selection algorithm should be run once per "
+        "property (e.g. select substances for pure densities, and then select "
+        "substances for pure enthalpies of vaporization), or whether to run it "
+        "once for the whole data set without consideration for if the selected "
+        "substances have data points available for each property type in the set. "
+        "This option should usually be set to false when the data set to select "
+        "from strictly contains data points for each type of property for the same"
+        "set of systems, and true otherwise.",
+    )
+
 
 class SelectSubstances(Component):
     @classmethod
@@ -329,38 +341,31 @@ class SelectSubstances(Component):
         return closed_list
 
     @classmethod
-    def _apply(
-        cls, data_frame: pandas.DataFrame, schema: SelectSubstancesSchema, n_processes
-    ) -> pandas.DataFrame:
-        # Make sure OpenEye is available for computing the finger prints.
-        cls._check_oe_available()
+    def _apply_to_data_frame(cls, data_frame, schema, n_processes):
+        """Applies the selection algorithm to a specified data frame.
 
-        # Filter out any substances which should be excluded
-        filtered_data_frame = FilterBySubstances.apply(
-            data_frame,
-            FilterBySubstancesSchema(
-                substances_to_exclude=schema.substances_to_exclude
-            ),
-            n_processes=n_processes,
-        )
-
-        min_n_components = filtered_data_frame["N Components"].min()
-        max_n_components = filtered_data_frame["N Components"].max()
-
-        if max_n_components > 2:
-            raise NotImplementedError()
+        Parameters
+        ----------
+        data_frame
+            The data frame to apply the algorithm to.
+        schema
+            This component schema.
+        n_processes
+            The number of processes available to the component.
+        """
 
         selected_substances = []
+
+        min_n_components = data_frame["N Components"].min()
+        max_n_components = data_frame["N Components"].max()
 
         # Perform the selection one for each size of substance (e.g. once
         # for pure, once for binary etc.)
         for n_components in range(min_n_components, max_n_components + 1):
 
-            component_data = filtered_data_frame[
-                filtered_data_frame["N Components"] == n_components
-            ]
+            component_data = data_frame[data_frame["N Components"] == n_components]
 
-            if len(component_data) == 1:
+            if len(component_data) == 0:
                 continue
 
             # Define all permutations of the target environments.
@@ -435,6 +440,56 @@ class SelectSubstances(Component):
         )
 
         return data_frame
+
+    @classmethod
+    def _apply(
+        cls, data_frame: pandas.DataFrame, schema: SelectSubstancesSchema, n_processes
+    ) -> pandas.DataFrame:
+        # Make sure OpenEye is available for computing the finger prints.
+        cls._check_oe_available()
+
+        # Filter out any substances which should be excluded
+        data_frame = FilterBySubstances.apply(
+            data_frame,
+            FilterBySubstancesSchema(
+                substances_to_exclude=schema.substances_to_exclude
+            ),
+            n_processes=n_processes,
+        )
+
+        max_n_components = data_frame["N Components"].max()
+
+        if max_n_components > 2:
+            raise NotImplementedError()
+
+        if schema.per_property:
+
+            # Partition the data frame into ones which only contain a
+            # single property type.
+            property_headers = [
+                header for header in data_frame if header.find(" Value ") >= 0
+            ]
+
+            data_frames_to_filter = [
+                data_frame[data_frame[header].notna()] for header in property_headers
+            ]
+
+        else:
+            data_frames_to_filter = [data_frame]
+
+        filtered_data_frames = [
+            cls._apply_to_data_frame(filtered_data_frame, schema, n_processes)
+            for filtered_data_frame in data_frames_to_filter
+        ]
+
+        if len(filtered_data_frames) == 1:
+            filtered_data_frame = filtered_data_frames[0]
+        else:
+            filtered_data_frame = pandas.concat(
+                filtered_data_frames, ignore_index=True, sort=False
+            )
+
+        return filtered_data_frame
 
 
 class SelectDataPointsSchema(ComponentSchema):

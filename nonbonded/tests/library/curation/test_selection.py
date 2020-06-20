@@ -250,6 +250,7 @@ def test_select_substances():
         target_environments=[ChemicalEnvironment.Alkane, ChemicalEnvironment.Alcohol],
         n_per_environment=1,
         substances_to_exclude=training_substances,
+        per_property=False,
     )
 
     selected_data_frame = SelectSubstances.apply(data_frame, schema, 1)
@@ -259,6 +260,68 @@ def test_select_substances():
     assert numpy.isnan(selected_data_frame["Component 2"].iloc[0])
     assert selected_data_frame["Component 1"].iloc[1] == "CCC(C)C"
     assert selected_data_frame["Component 2"].iloc[1] == "CCCCCO"
+
+
+@pytest.mark.skipif(
+    openeye is None or not openeye.oechem.OEChemIsLicensed(),
+    reason="OpenEye is required for this test.",
+)
+def test_select_substances_per_property():
+    """Tests that the SelectSubstances works as expected with both
+    the `per_property` option enabled and disabled."""
+
+    training_substances = [("CC(O)C",)]
+
+    data_rows = [
+        {"N Components": 1, "Component 1": "CCC(O)CC", "Density Value (g / ml)": 1.0},
+        {"N Components": 1, "Component 1": "C(O)CCC(O)", "Density Value (g / ml)": 1.0},
+        {"N Components": 1, "Component 1": "CCC(O)CC", "Enthalpy Value (g / ml)": 1.0},
+    ]
+
+    data_frame = pandas.DataFrame(data_rows)
+
+    schema = SelectSubstancesSchema(
+        target_environments=[ChemicalEnvironment.Alcohol],
+        n_per_environment=1,
+        substances_to_exclude=training_substances,
+        per_property=False,
+    )
+
+    selected_data_frame = SelectSubstances.apply(data_frame, schema, 1)
+
+    assert len(selected_data_frame) == 1
+    assert selected_data_frame["Component 1"].iloc[0] == "C(O)CCC(O)"
+
+    assert "Density Value (g / ml)" in selected_data_frame
+    assert (
+        len(selected_data_frame[selected_data_frame["Density Value (g / ml)"].notna()])
+        == 1
+    )
+    assert (
+        len(selected_data_frame[selected_data_frame["Enthalpy Value (g / ml)"].notna()])
+        == 0
+    )
+
+    schema = SelectSubstancesSchema(
+        target_environments=[ChemicalEnvironment.Alcohol],
+        n_per_environment=1,
+        substances_to_exclude=training_substances,
+        per_property=True,
+    )
+
+    selected_data_frame = SelectSubstances.apply(data_frame, schema, 1)
+
+    assert len(selected_data_frame) == 2
+    assert all(selected_data_frame["Component 1"].isin(["C(O)CCC(O)", "CCC(O)CC"]))
+
+    assert (
+        len(selected_data_frame[selected_data_frame["Density Value (g / ml)"].notna()])
+        == 1
+    )
+    assert (
+        len(selected_data_frame[selected_data_frame["Enthalpy Value (g / ml)"].notna()])
+        == 1
+    )
 
 
 @pytest.mark.skipif(
@@ -274,6 +337,8 @@ def test_missing_openeye_dependency():
         SelectSubstances.apply(
             data_frame,
             SelectSubstancesSchema(
-                target_environments=[ChemicalEnvironment.Alkane], n_per_environment=1
+                target_environments=[ChemicalEnvironment.Alkane],
+                n_per_environment=1,
+                per_property=False,
             ),
         )
