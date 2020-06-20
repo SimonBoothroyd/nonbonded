@@ -107,6 +107,80 @@ def test_select_data_points(target_temperatures, expected_temperatures, data_fra
     assert numpy.allclose(selected_temperatures, expected_temperatures)
 
 
+def test_select_data_points_duplicate():
+    """Tests that the select data points component will only select one data
+    point per property type and per target state, even when there are duplicate
+    data points."""
+
+    data_rows = [
+        {
+            "N Components": 1,
+            "Temperature (K)": 298.15004,
+            "Pressure (kPa)": 101.325,
+            "Component 1": "C",
+            "Mole Fraction 1": 1.0,
+            "Density Value (g / ml)": 1.0,
+        },
+        {
+            "N Components": 1,
+            "Temperature (K)": 298.15002,
+            "Pressure (kPa)": 101.325,
+            "Component 1": "C",
+            "Mole Fraction 1": 1.0,
+            "Density Value (g / ml)": 2.0,
+        },
+        {
+            "N Components": 1,
+            "Phase": "Liquid",
+            "Temperature (K)": 298.15002,
+            "Pressure (kPa)": 101.325,
+            "Component 1": "CCCCCCC(C)O",
+            "Mole Fraction 1": 1.0,
+            "EnthalpyOfVaporization Value (kJ / mol)": 2.0,
+        },
+        {
+            "N Components": 1,
+            "Phase": "Liquid",
+            "Temperature (K)": 298.15004,
+            "Pressure (kPa)": 101.325,
+            "Component 1": "CCCCCCC(C)O",
+            "Mole Fraction 1": 1.0,
+            "EnthalpyOfVaporization Value (kJ / mol)": 1.0,
+        },
+    ]
+    data_frame = pandas.DataFrame(data_rows)
+
+    states = [State(temperature=298.15, pressure=101.325, mole_fractions=(1.0,))]
+
+    # Define target states for ambient conditions
+    schema = SelectDataPointsSchema(
+        target_states=[
+            TargetState(
+                property_types=[("Density", 1), ("EnthalpyOfVaporization", 1)],
+                states=states,
+            )
+        ]
+    )
+
+    selected_data = SelectDataPoints.apply(data_frame, schema)
+
+    assert len(selected_data) == 2
+
+    assert len(selected_data["Temperature (K)"].unique()) == 1
+    assert 298.15001 < selected_data["Temperature (K)"].unique()[0] < 298.15003
+
+    density_header = "Density Value (g / ml)"
+    enthalpy_header = "EnthalpyOfVaporization Value (kJ / mol)"
+
+    density_data = selected_data[selected_data[density_header].notna()]
+    assert len(density_data[density_header].unique()) == 1
+    assert numpy.isclose(density_data[density_header].unique(), 2.0)
+
+    enthalpy_data = selected_data[selected_data[enthalpy_header].notna()]
+    assert len(enthalpy_data[enthalpy_header].unique()) == 1
+    assert numpy.isclose(enthalpy_data[enthalpy_header].unique(), 2.0)
+
+
 @pytest.mark.skipif(
     openeye is None or not openeye.oechem.OEChemIsLicensed(),
     reason="OpenEye is required for this test.",

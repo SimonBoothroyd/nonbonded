@@ -516,6 +516,10 @@ class SelectDataPoints(Component):
 
         for property_type in property_types:
             property_header = cls._property_header(data_frame, property_type)
+
+            if not property_header:
+                continue
+
             data_frame.loc[
                 data_frame[property_header].notna(), "Property Type"
             ] = property_type
@@ -538,6 +542,8 @@ class SelectDataPoints(Component):
             *[f"Mole Fraction {index + 1}" for index in range(n_components)],
         ]
 
+        # Compute how may data points are present for each state in the different
+        # clusters.
         grouped_data = data_frame.groupby(
             by=[*cluster_headers, "Cluster"], as_index=False,
         ).agg({"Property Type": pandas.Series.nunique})
@@ -546,6 +552,8 @@ class SelectDataPoints(Component):
 
         for cluster_index in range(len(target_state.states)):
 
+            # Calculate the distance between each clustered state and
+            # the center of the cluster (i.e the clustered state).
             cluster_data = grouped_data[grouped_data["Cluster"] == cluster_index]
             cluster_data["Distance"] = cls._distances_to_state(
                 cluster_data, target_state.states[cluster_index]
@@ -558,12 +566,16 @@ class SelectDataPoints(Component):
 
             while len(open_list) > 0 and len(cluster_data) > 0:
 
+                # Find the clustered state which is closest to the center of
+                # the cluster. Points measured at this state will becomes the
+                # candidates to be selected.
                 sorted_cluster_data = cluster_data.sort_values(
                     by=["Property Type", "Distance"], ascending=[False, True]
                 )
 
                 closest_index = sorted_cluster_data.index[0]
 
+                # Find the data points which were measured at the clustered state.
                 select_data = data_frame["Property Type"].isin(open_list)
 
                 for cluster_header in cluster_headers:
@@ -571,6 +583,37 @@ class SelectDataPoints(Component):
                         data_frame[cluster_header],
                         sorted_cluster_data.loc[closest_index, cluster_header],
                     )
+
+                selected_property_types = data_frame[select_data][
+                    "Property Type"
+                ].unique()
+
+                # Make sure to select a single data point for each type of property.
+                for selected_property_type in selected_property_types:
+
+                    selected_property_data = original_data_frame[
+                        select_data
+                        & (data_frame["Property Type"] == selected_property_type)
+                    ]
+
+                    if len(selected_property_data) <= 1:
+                        continue
+
+                    # Multiple data points were measured for this property type
+                    # at the clustered state. We sort these multiple data points
+                    # by their distance to the target state and select the closest.
+                    # This is not guaranteed to be optimal but should be an ok
+                    # approximation in most cases.
+                    selected_data_distances = cls._distances_to_state(
+                        selected_property_data, target_state.states[cluster_index]
+                    )
+
+                    sorted_data_distances = selected_data_distances.sort_values(
+                        ascending=True
+                    )
+
+                    select_data[sorted_data_distances.index] = False
+                    select_data[sorted_data_distances.index[0]] = True
 
                 selected_data = selected_data | select_data
 

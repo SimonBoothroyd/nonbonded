@@ -52,9 +52,6 @@ def reorder_data_frame(data_frame: "pandas.DataFrame") -> "pandas.DataFrame":
 
                 component_header = f"{substance_header} {component_index + 1}"
 
-                if component_header not in ordered_frame:
-                    continue
-
                 for replacement_index in range(n_components):
 
                     if component_index == replacement_index:
@@ -64,8 +61,12 @@ def reorder_data_frame(data_frame: "pandas.DataFrame") -> "pandas.DataFrame":
 
                     ordered_frame[component_header] = numpy.where(
                         indices == replacement_index,
-                        component_frame[replacement_header],
-                        component_frame[component_header],
+                        numpy.nan
+                        if replacement_header not in component_frame
+                        else component_frame[replacement_header],
+                        numpy.nan
+                        if component_header not in component_frame
+                        else component_frame[component_header],
                     )
 
         ordered_frames.append(ordered_frame)

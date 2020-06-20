@@ -86,6 +86,7 @@ class DataSetEntry(BaseORM):
         property_header = next(
             iter(key for key, value in data_row.items() if " Value " in key)
         )
+        uncertainty_header = property_header.replace("Value", "Uncertainty")
 
         n_components = data_row["N Components"]
 
@@ -105,7 +106,9 @@ class DataSetEntry(BaseORM):
             pressure=data_row["Pressure (kPa)"],
             phase=data_row["Phase"],
             value=data_row[property_header],
-            std_error=data_row[property_header.replace("Value", "Uncertainty")],
+            std_error=None
+            if uncertainty_header not in data_row
+            else data_row[uncertainty_header],
             components=[
                 Component(
                     smiles=data_row[f"Component {i + 1}"],
