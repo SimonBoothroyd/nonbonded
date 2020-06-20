@@ -14,6 +14,8 @@ from nonbonded.library.curation.components.filtering import (
     FilterByEnvironmentsSchema,
     FilterByIonicLiquid,
     FilterByIonicLiquidSchema,
+    FilterByMoleFraction,
+    FilterByMoleFractionSchema,
     FilterByNComponents,
     FilterByNComponentsSchema,
     FilterByPressure,
@@ -267,6 +269,105 @@ def test_filter_by_pressure(data_frame):
 
     assert len(pressures) == 1
     assert numpy.isclose(pressures[0], 101.0)
+
+
+def test_validate_filter_by_mole_fraction():
+
+    # Ensure a valid schema passes
+    FilterByMoleFractionSchema(
+        mole_fraction_ranges={2: [[(0.2, 0.8)]], 3: [[(0.1, 0.2)], [(0.4, 0.5)]]}
+    )
+
+    # Test that an exception is raised when the wrong number of component
+    # lists is provided.
+    with pytest.raises(ValidationError):
+        FilterByMoleFractionSchema(
+            mole_fraction_ranges={2: [[(0.2, 0.8)], [(0.2, 0.8)]]}
+        )
+
+    with pytest.raises(ValidationError):
+        FilterByMoleFractionSchema(mole_fraction_ranges={3: [[(0.2, 0.8)]]})
+
+    # Test that an exception is raised when a bad range is provided.
+    with pytest.raises(ValidationError):
+        FilterByMoleFractionSchema(mole_fraction_ranges={2: [[(0.8, 0.2)]]})
+
+    with pytest.raises(ValidationError):
+        FilterByMoleFractionSchema(mole_fraction_ranges={2: [[(-0.8, 0.2)]]})
+
+    with pytest.raises(ValidationError):
+        FilterByMoleFractionSchema(mole_fraction_ranges={2: [[(0.8, 1.2)]]})
+
+
+def test_filter_by_mole_fraction(data_frame):
+
+    data_rows = [
+        {"N Components": 1, "Component 1": "CCCCC", "Mole Fraction 1": 1.0},
+        {
+            "N Components": 2,
+            "Component 1": "CCCCC",
+            "Mole Fraction 1": 0.2,
+            "Component 2": "CCCCCO",
+            "Mole Fraction 2": 0.8,
+        },
+        {
+            "N Components": 2,
+            "Component 1": "CCCCC",
+            "Mole Fraction 1": 0.8,
+            "Component 2": "CCCCCO",
+            "Mole Fraction 2": 0.2,
+        },
+        {
+            "N Components": 2,
+            "Component 1": "CCCCC",
+            "Mole Fraction 1": 0.5,
+            "Component 2": "CCCCCO",
+            "Mole Fraction 2": 0.5,
+        },
+    ]
+
+    data_frame = pandas.DataFrame(data_rows)
+
+    # Apply a filter which should have no effect.
+    filtered_frame = FilterByMoleFraction.apply(
+        data_frame, FilterByMoleFractionSchema(mole_fraction_ranges={})
+    )
+
+    assert len(filtered_frame) == len(data_frame)
+
+    # Retain only the minimum value
+    filtered_frame = FilterByMoleFraction.apply(
+        data_frame, FilterByMoleFractionSchema(mole_fraction_ranges={2: [[(0.1, 0.3)]]})
+    )
+
+    assert len(filtered_frame) == 2
+    assert len(filtered_frame[filtered_frame["N Components"] == 1]) == 1
+    assert len(filtered_frame[filtered_frame["N Components"] == 2]) == 1
+
+    filtered_frame = filtered_frame[filtered_frame["N Components"] == 2]
+    assert numpy.isclose(filtered_frame["Mole Fraction 1"], 0.2)
+
+    # Drop the pure data point to make the test cleaner from this point on.
+    data_frame = data_frame[data_frame["N Components"] == 2]
+
+    # Retain only the maximum value
+    filtered_frame = FilterByMoleFraction.apply(
+        data_frame, FilterByMoleFractionSchema(mole_fraction_ranges={2: [[(0.7, 0.9)]]})
+    )
+
+    assert len(filtered_frame) == 1
+    assert numpy.isclose(filtered_frame["Mole Fraction 1"], 0.8)
+
+    # Retain both the minimum and maximum values
+    filtered_frame = FilterByMoleFraction.apply(
+        data_frame,
+        FilterByMoleFractionSchema(
+            mole_fraction_ranges={2: [[(0.1, 0.3), (0.7, 0.9)]]}
+        ),
+    )
+
+    assert len(filtered_frame) == 2
+    assert all(filtered_frame["Mole Fraction 1"].round(1).isin([0.2, 0.8]))
 
 
 def test_validate_filter_by_elements():
