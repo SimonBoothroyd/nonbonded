@@ -173,12 +173,12 @@ class FilterByTemperature(Component):
 
         if schema.minimum_temperature is not None:
             filtered_frame = filtered_frame[
-                schema.minimum_temperature < data_frame["Temperature (K)"]
+                schema.minimum_temperature < filtered_frame["Temperature (K)"]
             ]
 
         if schema.maximum_temperature is not None:
             filtered_frame = filtered_frame[
-                data_frame["Temperature (K)"] < schema.maximum_temperature
+                filtered_frame["Temperature (K)"] < schema.maximum_temperature
             ]
 
         return filtered_frame
@@ -218,12 +218,12 @@ class FilterByPressure(Component):
 
         if schema.minimum_pressure is not None:
             filtered_frame = filtered_frame[
-                schema.minimum_pressure < data_frame["Pressure (kPa)"]
+                schema.minimum_pressure < filtered_frame["Pressure (kPa)"]
             ]
 
         if schema.maximum_pressure is not None:
             filtered_frame = filtered_frame[
-                data_frame["Pressure (kPa)"] < schema.maximum_pressure
+                filtered_frame["Pressure (kPa)"] < schema.maximum_pressure
             ]
 
         return filtered_frame
