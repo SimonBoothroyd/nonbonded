@@ -94,7 +94,7 @@ class OptimizationCRUD:
                 **optimization.force_balance_input.dict()
             ),
             initial_force_field=models.ForceField.as_unique(
-                db, inner_xml=optimization.initial_force_field.inner_xml
+                db, inner_content=optimization.initial_force_field.inner_content
             ),
             denominators=[
                 models.Denominator(property_type=key, value=value)
@@ -195,12 +195,12 @@ class OptimizationCRUD:
         original_initial_force_field = db_optimization.initial_force_field
 
         db_optimization.initial_force_field = models.ForceField.as_unique(
-            db, inner_xml=optimization.initial_force_field.inner_xml
+            db, inner_content=optimization.initial_force_field.inner_content
         )
 
         if (
-            original_initial_force_field.inner_xml
-            != optimization.initial_force_field.inner_xml
+            original_initial_force_field.inner_content
+            != optimization.initial_force_field.inner_content
         ):
             # Attempt to delete the initial FF if it might now be an orphan.
             ForceFieldCRUD.delete(db, original_initial_force_field)
@@ -384,7 +384,7 @@ class BenchmarkCRUD:
             force_field=None
             if benchmark.force_field is None
             else models.ForceField.as_unique(
-                db, inner_xml=benchmark.force_field.inner_xml
+                db, inner_content=benchmark.force_field.inner_content
             ),
             analysis_environments=[
                 models.ChemicalEnvironment.as_unique(db, id=x.value)
@@ -461,14 +461,15 @@ class BenchmarkCRUD:
             None
             if benchmark.force_field is None
             else models.ForceField.as_unique(
-                db, inner_xml=benchmark.force_field.inner_xml
+                db, inner_content=benchmark.force_field.inner_content
             )
         )
 
         if (benchmark.force_field is None and original_force_field is not None) or (
             benchmark.force_field is not None
             and original_force_field is not None
-            and original_force_field.inner_xml != benchmark.force_field.inner_xml
+            and original_force_field.inner_content
+            != benchmark.force_field.inner_content
         ):
             # Attempt to delete the FF if it might now be an orphan.
             ForceFieldCRUD.delete(db, original_force_field)

@@ -151,7 +151,7 @@ class TestOptimizationResultCRUD:
         assert db.query(models.ForceField.id).count() == 1
 
         # Make sure the right force field as deleted
-        remaining_force_field = db.query(models.ForceField.inner_xml).first()
+        remaining_force_field = db.query(models.ForceField.inner_content).first()
         assert "Refit" not in remaining_force_field
 
     def test_delete_not_found(self, db: Session):

@@ -22,7 +22,7 @@ from nonbonded.library.utilities.environments import ChemicalEnvironment
 
 
 def create_force_field(inner_text="") -> ForceField:
-    return ForceField(inner_xml=f"<root>{inner_text}</root>")
+    return ForceField(inner_content=f"<root>{inner_text}</root>")
 
 
 def create_author():
