@@ -10,7 +10,7 @@ from nonbonded.library.models.projects import Benchmark, Optimization, Project, 
 @pytest.fixture(scope="module")
 def valid_optimization_kwargs():
 
-    force_field = ForceField(inner_xml=" ")
+    force_field = ForceField(inner_content=" ")
     parameters = [Parameter(handler_type=" ", smirks=" ", attribute_name=" ")]
 
     return {
@@ -41,7 +41,7 @@ def valid_benchmark_kwargs():
         "test_set_ids": ["id"],
         "analysis_environments": [],
         "optimization_id": None,
-        "force_field": ForceField(inner_xml=" "),
+        "force_field": ForceField(inner_content=" "),
     }
 
 
@@ -71,7 +71,7 @@ def test_benchmark_validation(valid_benchmark_kwargs):
         **{
             **valid_benchmark_kwargs,
             "optimization_id": None,
-            "force_field": ForceField(inner_xml=" "),
+            "force_field": ForceField(inner_content=" "),
         }
     )
 
@@ -85,7 +85,7 @@ def test_benchmark_validation(valid_benchmark_kwargs):
             **{
                 **valid_benchmark_kwargs,
                 "optimization_id": " ",
-                "force_field": ForceField(inner_xml=" "),
+                "force_field": ForceField(inner_content=" "),
             }
         )
 

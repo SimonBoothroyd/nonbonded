@@ -32,12 +32,12 @@ class ForceField(UniqueMixin, Base):
     __tablename__ = "force_fields"
 
     id = Column(Integer, primary_key=True, index=True)
-    inner_xml = Column(String)
+    inner_content = Column(String)
 
     @classmethod
-    def unique_hash(cls, inner_xml):
-        return inner_xml
+    def unique_hash(cls, inner_content):
+        return inner_content
 
     @classmethod
-    def unique_filter(cls, query: Query, inner_xml):
-        return query.filter(ForceField.inner_xml == inner_xml)
+    def unique_filter(cls, query: Query, inner_content):
+        return query.filter(ForceField.inner_content == inner_content)

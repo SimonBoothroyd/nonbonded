@@ -267,8 +267,8 @@ def compare_optimizations(
 
     # Check that both optimizations start from the same force field.
     assert (
-        optimization_1.initial_force_field.inner_xml
-        == optimization_2.initial_force_field.inner_xml
+        optimization_1.initial_force_field.inner_content
+        == optimization_2.initial_force_field.inner_content
     )
 
     # Check that both optimizations are training the same parameters.
@@ -474,8 +474,8 @@ def compare_optimization_results(
             assert field_1 == field_2
 
     assert (
-        optimization_result_1.refit_force_field.inner_xml
-        == optimization_result_2.refit_force_field.inner_xml
+        optimization_result_1.refit_force_field.inner_content
+        == optimization_result_2.refit_force_field.inner_content
     )
 
 
@@ -545,7 +545,10 @@ def compare_benchmarks(
     if benchmark_1.force_field is None:
         assert benchmark_1.force_field == benchmark_2.force_field
     else:
-        assert benchmark_1.force_field.inner_xml == benchmark_2.force_field.inner_xml
+        assert (
+            benchmark_1.force_field.inner_content
+            == benchmark_2.force_field.inner_content
+        )
 
     # Make sure both benchmarks are analyzing the same environments
     assert len(benchmark_1.analysis_environments) == len(

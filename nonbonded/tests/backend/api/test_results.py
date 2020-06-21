@@ -55,7 +55,7 @@ class TestOptimizationResultEndpoints(BaseTestEndpoints):
 
     @classmethod
     def _perturb_model(cls, model):
-        model.refit_force_field.inner_xml = "<root>Updated</root>"
+        model.refit_force_field.inner_content = "<root>Updated</root>"
 
     @classmethod
     def _commit_model(cls, db):

@@ -227,10 +227,10 @@ class OptimizationResultCRUD:
             )
 
         if (
-            db.query(models.ForceField.inner_xml)
+            db.query(models.ForceField.inner_content)
             .filter(
-                models.ForceField.inner_xml
-                == optimization_result.refit_force_field.inner_xml
+                models.ForceField.inner_content
+                == optimization_result.refit_force_field.inner_content
             )
             .count()
             > 0
@@ -252,7 +252,7 @@ class OptimizationResultCRUD:
                 for i, x in optimization_result.objective_function.items()
             ],
             refit_force_field=models.ForceField.as_unique(
-                db, inner_xml=optimization_result.refit_force_field.inner_xml
+                db, inner_content=optimization_result.refit_force_field.inner_content
             ),
             statistics=[
                 models.OptimizationStatisticsEntry(

@@ -877,8 +877,8 @@ class TestOptimizationCRUD:
 
         updated_optimization.initial_force_field = create_force_field("Updated")
         assert (
-            updated_optimization.initial_force_field.inner_xml
-            not in db.query(models.ForceField.inner_xml).first()[0]
+            updated_optimization.initial_force_field.inner_content
+            not in db.query(models.ForceField.inner_content).first()[0]
         )
 
         update_and_compare_model(
@@ -891,8 +891,8 @@ class TestOptimizationCRUD:
 
         assert db.query(models.ForceField.id).count() == 1
         assert (
-            db.query(models.ForceField.inner_xml).first()[0]
-            == updated_optimization.initial_force_field.inner_xml
+            db.query(models.ForceField.inner_content).first()[0]
+            == updated_optimization.initial_force_field.inner_content
         )
 
     def test_update_missing_data_set(self, db: Session):

@@ -30,7 +30,7 @@ class Parameter(BaseORM):
 
 class ForceField(BaseORM):
 
-    inner_xml: NonEmptyStr = Field(
+    inner_content: NonEmptyStr = Field(
         ...,
         description="The xml representation of a force field in the SMIRNOFF "
         "force field format",
@@ -40,14 +40,14 @@ class ForceField(BaseORM):
     def from_openff(cls, force_field: "OpenForceField") -> "ForceField":
 
         return ForceField(
-            inner_xml=force_field.to_string(discard_cosmetic_attributes=True)
+            inner_content=force_field.to_string(discard_cosmetic_attributes=True)
         )
 
     def to_openff(self) -> "OpenForceField":
 
         from openforcefield.typing.engines.smirnoff.forcefield import ForceField
 
-        force_field = ForceField(self.inner_xml)
+        force_field = ForceField(self.inner_content)
 
         return force_field
 
