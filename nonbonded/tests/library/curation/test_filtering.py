@@ -22,6 +22,8 @@ from nonbonded.library.curation.components.filtering import (
     FilterByPressureSchema,
     FilterByPropertyTypes,
     FilterByPropertyTypesSchema,
+    FilterByRacemic,
+    FilterByRacemicSchema,
     FilterBySmiles,
     FilterBySmilesSchema,
     FilterBySmirks,
@@ -368,6 +370,51 @@ def test_filter_by_mole_fraction(data_frame):
 
     assert len(filtered_frame) == 2
     assert all(filtered_frame["Mole Fraction 1"].round(1).isin([0.2, 0.8]))
+
+
+def test_filter_by_racemic():
+
+    data_rows = [
+        {"N Components": 1, "Component 1": "N[C@H](C)C(=O)O"},
+        {"N Components": 1, "Component 1": "N[C@@H](C)C(=O)O"},
+        {"N Components": 2, "Component 1": "C", "Component 2": "N[C@H](C)C(=O)O"},
+        {
+            "N Components": 2,
+            "Component 1": "N[C@@H](C)C(=O)O",
+            "Component 2": "N[C@H](C)C(=O)O",
+        },
+        {
+            "N Components": 3,
+            "Component 1": "C",
+            "Component 2": "N[C@@H](C)C(=O)O",
+            "Component 3": "N[C@H](C)C(=O)O",
+        },
+        {
+            "N Components": 3,
+            "Component 1": "N[C@@H](C)C(=O)O",
+            "Component 2": "C",
+            "Component 3": "N[C@H](C)C(=O)O",
+        },
+        {
+            "N Components": 3,
+            "Component 1": "N[C@@H](C)C(=O)O",
+            "Component 2": "N[C@H](C)C(=O)O",
+            "Component 3": "C",
+        },
+    ]
+
+    data_frame = pandas.DataFrame(data_rows)
+
+    # Apply the filter
+    filtered_frame = FilterByRacemic.apply(data_frame, FilterByRacemicSchema())
+
+    assert len(filtered_frame[filtered_frame["N Components"] == 1]) == 2
+
+    assert len(filtered_frame[filtered_frame["N Components"] == 2]) == 1
+    binary_data = filtered_frame[filtered_frame["N Components"] == 2]
+    assert binary_data["Component 1"].unique()[0] == "C"
+
+    assert len(filtered_frame[filtered_frame["N Components"] == 3]) == 0
 
 
 def test_validate_filter_by_elements():

@@ -1,4 +1,5 @@
 import functools
+import itertools
 import logging
 from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
@@ -299,6 +300,58 @@ class FilterByMoleFraction(Component):
             full_query |= n_component_query
 
         filtered_frame = filtered_frame[full_query]
+        return filtered_frame
+
+
+class FilterByRacemicSchema(ComponentSchema):
+
+    type: Literal["FilterByRacemicSchema"] = "FilterByRacemicSchema"
+
+
+class FilterByRacemic(Component):
+    @classmethod
+    def _apply(
+        cls,
+        data_frame: pandas.DataFrame,
+        schema: FilterByMoleFractionSchema,
+        n_processes,
+    ) -> pandas.DataFrame:
+
+        # Begin building the query. All pure substances should be
+        # retained by default.
+        query = data_frame["N Components"] < 2
+
+        for n_components in range(2, data_frame["N Components"].max() + 1):
+
+            component_data = data_frame[data_frame["N Components"] == n_components]
+
+            if len(component_data) == 0:
+                continue
+
+            component_combinations = itertools.combinations(range(n_components), 2)
+
+            is_racemic = None
+
+            for index_0, index_1 in component_combinations:
+
+                components_racemic = component_data[
+                    f"Component {index_0 + 1}"
+                ].str.replace("@", "") == component_data[
+                    f"Component {index_1 + 1}"
+                ].str.replace(
+                    "@", ""
+                )
+
+                is_racemic = (
+                    components_racemic
+                    if is_racemic is None
+                    else (is_racemic | components_racemic)
+                )
+
+            not_racemic = ~is_racemic
+            query |= not_racemic
+
+        filtered_frame = data_frame[query]
         return filtered_frame
 
 
@@ -1095,6 +1148,7 @@ FilterComponentSchema = Union[
     FilterByTemperatureSchema,
     FilterByPressureSchema,
     FilterByMoleFractionSchema,
+    FilterByRacemicSchema,
     FilterByElementsSchema,
     FilterByPropertyTypesSchema,
     FilterByStereochemistrySchema,
