@@ -32,8 +32,9 @@ class ForceField(BaseORM):
 
     inner_content: NonEmptyStr = Field(
         ...,
-        description="The xml representation of a force field in the SMIRNOFF "
-        "force field format",
+        description="The string representation of a set of force field parameters."
+        "This should either be an OpenFF SMIRNOFF representation, or an "
+        "OpenFF Evaluator JSON serialized `ForceFieldSource`.",
     )
 
     @classmethod
