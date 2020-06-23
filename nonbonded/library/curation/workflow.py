@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from nonbonded.library.curation.components import Component
 from nonbonded.library.curation.components.conversion import ConversionComponentSchema
 from nonbonded.library.curation.components.filtering import FilterComponentSchema
+from nonbonded.library.curation.components.freesolv import FreeSolvComponentSchema
 from nonbonded.library.curation.components.selection import SelectionComponentSchema
 from nonbonded.library.curation.components.thermoml import ThermoMLComponentSchema
 
@@ -18,10 +19,11 @@ class WorkflowSchema(BaseModel):
 
     component_schemas: List[
         Union[
-            FilterComponentSchema,
-            ThermoMLComponentSchema,
-            SelectionComponentSchema,
             ConversionComponentSchema,
+            FilterComponentSchema,
+            FreeSolvComponentSchema,
+            SelectionComponentSchema,
+            ThermoMLComponentSchema,
         ]
     ] = Field(
         default_factory=list,
