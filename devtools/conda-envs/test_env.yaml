@@ -18,7 +18,7 @@ dependencies:
   - forcebalance >=1.7.2
   - jinja2
   - numpy
-  - openforcefield
+  - openforcefield <0.7.0
   - openff-evaluator >=0.1.0
   - pandas
   - pydantic
