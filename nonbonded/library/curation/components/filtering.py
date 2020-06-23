@@ -642,6 +642,9 @@ class FilterByCharged(Component):
     def _apply(
         cls, data_frame: pandas.DataFrame, schema: FilterByChargedSchema, n_processes
     ) -> pandas.DataFrame:
+
+        from simtk import unit as simtk_unit
+
         def filter_function(data_row):
 
             n_components = data_row["N Components"]
@@ -651,10 +654,15 @@ class FilterByCharged(Component):
                 smiles = data_row[f"Component {index + 1}"]
                 molecule = Molecule.from_smiles(smiles, allow_undefined_stereo=True)
 
-                if numpy.isclose(
-                    sum([atom.formal_charge for atom in molecule.atoms]), 0.0
-                ):
+                # noinspection PyUnresolvedReferences
+                atom_charges = [
+                    atom.formal_charge
+                    if isinstance(atom.formal_charge, int)
+                    else atom.formal_charge.value_in_unit(simtk_unit.elementary_charge)
+                    for atom in molecule.atoms
+                ]
 
+                if numpy.isclose(sum(atom_charges), 0.0):
                     continue
 
                 return False
