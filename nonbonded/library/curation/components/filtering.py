@@ -305,7 +305,7 @@ class FilterByMoleFraction(Component):
 
 class FilterByRacemicSchema(ComponentSchema):
 
-    type: Literal["FilterByRacemicSchema"] = "FilterByRacemicSchema"
+    type: Literal["FilterByRacemic"] = "FilterByRacemic"
 
 
 class FilterByRacemic(Component):
