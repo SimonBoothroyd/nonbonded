@@ -67,6 +67,7 @@ def run(
         RequestResult,
     )
     from openff.evaluator.datasets import PhysicalPropertyDataSet
+    from openff.evaluator.forcefield import ForceFieldSource
 
     from openforcefield.typing.engines.smirnoff import ForceField
 
@@ -109,7 +110,20 @@ def run(
         logger.info(message)
 
     # Load in the force field.
-    force_field = ForceField("force-field.offxml")
+    if os.path.isfile("force-field.offxml") and os.path.isfile("force-field.json"):
+        raise RuntimeError(
+            "Two valid force fields were found: force-field.offxml and force-field.json"
+        )
+    elif os.path.isfile("force-field.offxml"):
+        force_field = ForceField("force-field.offxml")
+    elif os.path.isfile("force-field.json"):
+        force_field = ForceFieldSource.from_json("force-field.json")
+    else:
+        raise RuntimeError(
+            "No valid force field could be found. Either a SMIRNOFF force field "
+            "(named force-field.offxml) or an OpenFF Evaluator force field source "
+            "(named force-field.json) must be present in the current directory."
+        )
 
     # Load in the data set.
     if existing_results is None:
