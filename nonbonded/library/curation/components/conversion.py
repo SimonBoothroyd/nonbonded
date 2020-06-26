@@ -92,6 +92,9 @@ class ConvertExcessDensityData(Component):
             measured for the same substances at the same state pounts
         """
 
+        if len(pure_data_set) == 0 or len(binary_data_set) == 0:
+            return pandas.DataFrame()
+
         pure_data_set = pure_data_set.dropna(axis=1, how="all")
         binary_data_set = binary_data_set.dropna(axis=1, how="all")
 
@@ -291,47 +294,74 @@ class ConvertExcessDensityData(Component):
         if len(data_frame) == 0:
             return data_frame
 
+        # Check to make sure the data frame contains at least a
+        # density column which may store pure densities.
+        if "Density Value (g / ml)" not in data_frame:
+            return data_frame
+
         # Separate out the data sets of interest
         pure_density_data = data_frame[
             (data_frame["Density Value (g / ml)"].notna())
             & (data_frame["N Components"] == 1)
         ]
+
+        pure_density_data = pure_density_data.dropna(axis=1, how="all")
+
+        # Exit early if no pure densities can be found.
+        if len(pure_density_data) == 0:
+            return data_frame
+
+        # Add the pure data to the binary data sets to make conversion easier.
         binary_density_data = data_frame[
             (data_frame["Density Value (g / ml)"].notna())
             & (data_frame["N Components"] == 2)
         ]
-        v_excess_data = data_frame[
-            (data_frame["ExcessMolarVolume Value (cm ** 3 / mol)"].notna())
-            & (data_frame["N Components"] == 2)
-        ]
-
-        pure_density_data = pure_density_data.dropna(axis=1, how="all")
         binary_density_data = binary_density_data.dropna(axis=1, how="all")
-        v_excess_data = v_excess_data.dropna(axis=1, how="all")
 
-        # Add the pure data to the binary data sets to make conversion easier.
         binary_density_data = cls._find_overlapping_data_points(
             pure_density_data, binary_density_data, schema
         )
-        v_excess_data = cls._find_overlapping_data_points(
-            pure_density_data, v_excess_data, schema
-        )
+
+        v_excess_data = pandas.DataFrame()
+
+        if "ExcessMolarVolume Value (cm ** 3 / mol)" in data_frame:
+
+            v_excess_data = data_frame[
+                (data_frame["ExcessMolarVolume Value (cm ** 3 / mol)"].notna())
+                & (data_frame["N Components"] == 2)
+            ]
+            v_excess_data = v_excess_data.dropna(axis=1, how="all")
+            v_excess_data = cls._find_overlapping_data_points(
+                pure_density_data, v_excess_data, schema
+            )
 
         if len(binary_density_data) == 0 and len(v_excess_data) == 0:
             return data_frame
 
         # Inter-convert the two sets
-        v_excess_from_density = cls._convert_density_to_v_excess(binary_density_data)
-        density_from_v_excess = cls._convert_v_excess_to_density(v_excess_data)
+        data_to_concat = [data_frame]
 
-        if len(v_excess_from_density) == 0 and len(density_from_v_excess) == 0:
-            return data_frame
+        if len(binary_density_data) > 0:
 
-        converted_data = pandas.concat(
-            [data_frame, density_from_v_excess, v_excess_from_density],
-            ignore_index=True,
-            sort=False,
-        )
+            v_excess_from_density = cls._convert_density_to_v_excess(
+                binary_density_data
+            )
+            data_to_concat.append(v_excess_from_density)
+
+        if len(v_excess_data) > 0:
+
+            density_from_v_excess = cls._convert_v_excess_to_density(v_excess_data)
+            data_to_concat.append(density_from_v_excess)
+
+        if len(data_to_concat) > 1:
+
+            converted_data = pandas.concat(
+                data_to_concat, ignore_index=True, sort=False,
+            )
+
+        else:
+
+            converted_data = data_frame
 
         return converted_data
 
