@@ -315,7 +315,7 @@ class ConvertExcessDensityData(Component):
         binary_density_data = data_frame[
             (data_frame["Density Value (g / ml)"].notna())
             & (data_frame["N Components"] == 2)
-            ]
+        ]
         binary_density_data = binary_density_data.dropna(axis=1, how="all")
 
         binary_density_data = cls._find_overlapping_data_points(
@@ -343,7 +343,9 @@ class ConvertExcessDensityData(Component):
 
         if len(binary_density_data) > 0:
 
-            v_excess_from_density = cls._convert_density_to_v_excess(binary_density_data)
+            v_excess_from_density = cls._convert_density_to_v_excess(
+                binary_density_data
+            )
             data_to_concat.append(v_excess_from_density)
 
         if len(v_excess_data) > 0:
