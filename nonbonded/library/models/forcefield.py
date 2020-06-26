@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Union
 
 from pydantic import Field
 
@@ -6,6 +6,7 @@ from nonbonded.library.models import BaseORM
 from nonbonded.library.models.validators.string import NonEmptyStr
 
 if TYPE_CHECKING:
+    from openff.evaluator.forcefield import ForceFieldSource
     from openforcefield.typing.engines.smirnoff.forcefield import (
         ForceField as OpenForceField,
     )
@@ -38,17 +39,37 @@ class ForceField(BaseORM):
     )
 
     @classmethod
-    def from_openff(cls, force_field: "OpenForceField") -> "ForceField":
+    def from_openff(
+        cls, force_field: Union["OpenForceField", "ForceFieldSource"]
+    ) -> "ForceField":
 
-        return ForceField(
-            inner_content=force_field.to_string(discard_cosmetic_attributes=True)
+        from openff.evaluator.forcefield import ForceFieldSource
+        from openforcefield.typing.engines.smirnoff.forcefield import (
+            ForceField as OpenForceField,
         )
 
-    def to_openff(self) -> "OpenForceField":
+        if isinstance(force_field, OpenForceField):
 
+            return ForceField(
+                inner_content=force_field.to_string(discard_cosmetic_attributes=True)
+            )
+
+        elif isinstance(force_field, ForceFieldSource):
+
+            return ForceField(inner_content=force_field.json())
+
+        else:
+            raise NotImplementedError()
+
+    def to_openff(self) -> Union["OpenForceField", "ForceFieldSource"]:
+
+        from openff.evaluator.forcefield import ForceFieldSource
         from openforcefield.typing.engines.smirnoff.forcefield import ForceField
 
-        force_field = ForceField(self.inner_content)
+        try:
+            force_field = ForceField(self.inner_content)
+        except (TypeError, IOError):
+            force_field = ForceFieldSource.parse_json(self.inner_content)
 
         return force_field
 

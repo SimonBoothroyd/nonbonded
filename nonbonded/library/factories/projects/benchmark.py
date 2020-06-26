@@ -68,6 +68,10 @@ class BenchmarkFactory:
     ):
 
         from openff.evaluator.client import RequestOptions
+        from openff.evaluator.forcefield import ForceFieldSource
+        from openforcefield.typing.engines.smirnoff.forcefield import (
+            ForceField as SMIRNOFFForceField,
+        )
 
         cls.generate_directory_structure(benchmark)
 
@@ -90,7 +94,10 @@ class BenchmarkFactory:
                 )
                 force_field = optimization_results.refit_force_field.to_openff()
 
-            force_field.to_file("force-field.offxml", io_format="offxml")
+            if isinstance(force_field, SMIRNOFFForceField):
+                force_field.to_file("force-field.offxml", io_format="offxml")
+            elif isinstance(force_field, ForceFieldSource):
+                force_field.json("force-field.json")
 
             # Retrieve the data set.
             test_sets: List[DataSet] = [
