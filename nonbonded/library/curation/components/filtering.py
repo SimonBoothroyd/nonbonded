@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 else:
 
-    from pydantic import conint, confloat, PositiveFloat, PositiveInt
+    from pydantic import PositiveFloat, PositiveInt, confloat, conint
 
 logger = logging.getLogger(__name__)
 

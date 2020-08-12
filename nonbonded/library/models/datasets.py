@@ -13,12 +13,8 @@ from nonbonded.library.utilities.exceptions import (
 )
 
 if TYPE_CHECKING:
-    from openff.evaluator.datasets import (
-        PhysicalProperty,
-        PhysicalPropertyDataSet,
-    )
-
     import pandas
+    from openff.evaluator.datasets import PhysicalProperty, PhysicalPropertyDataSet
 
     PositiveFloat = float
 
@@ -159,7 +155,7 @@ class DataSetEntry(BaseORM):
 
     def to_evaluator(self) -> "PhysicalProperty":
 
-        from openff.evaluator import properties, unit, substances
+        from openff.evaluator import properties, substances, unit
         from openff.evaluator.attributes import UNDEFINED
         from openff.evaluator.datasets import MeasurementSource, PropertyPhase
         from openff.evaluator.thermodynamics import ThermodynamicState

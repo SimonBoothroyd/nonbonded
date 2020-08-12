@@ -29,8 +29,8 @@ def _compute_statistics(measured_values, estimated_values, statistics):
     list of StatisticType
         Human readable labels for each of the statistics.
     """
-    import scipy.stats
     import numpy
+    import scipy.stats
 
     if statistics is None:
         statistics = [StatisticType.R2, StatisticType.RMSE, StatisticType.MSE]

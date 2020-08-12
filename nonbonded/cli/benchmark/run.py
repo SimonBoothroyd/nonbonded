@@ -68,7 +68,6 @@ def run(
     )
     from openff.evaluator.datasets import PhysicalPropertyDataSet
     from openff.evaluator.forcefield import ForceFieldSource
-
     from openforcefield.typing.engines.smirnoff import ForceField
 
     # Set up logging if requested.

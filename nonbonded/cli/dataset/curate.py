@@ -49,6 +49,7 @@ from nonbonded.library.utilities.logging import (
 def curate(schema_path, output_path, initial_data_set_path, n_processes, log_level):
 
     import pandas
+
     from nonbonded.library.curation.workflow import Workflow, WorkflowSchema
 
     # Set up logging if requested.

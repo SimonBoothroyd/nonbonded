@@ -18,7 +18,6 @@ def _plot_parameter_changes(
 ):
     import pandas
     import seaborn
-
     from simtk import unit as simtk_unit
 
     parameter_attributes = ["epsilon", "rmin_half"]

@@ -165,8 +165,8 @@ class SelectSubstances(Component):
         """
         from openeye.oegraphsim import (
             OEFingerPrint,
-            OEFPType_Tree,
             OEFPType_MACCS166,
+            OEFPType_Tree,
             OEMakeFP,
         )
         from openforcefield.topology import Molecule

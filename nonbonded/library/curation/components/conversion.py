@@ -54,8 +54,8 @@ class ConvertExcessDensityData(Component):
     @functools.lru_cache(500)
     def _molecular_weight(cls, smiles):
 
-        from simtk import unit as simtk_unit
         from openforcefield.topology import Molecule
+        from simtk import unit as simtk_unit
 
         molecule = Molecule.from_smiles(smiles, allow_undefined_stereo=True)
 

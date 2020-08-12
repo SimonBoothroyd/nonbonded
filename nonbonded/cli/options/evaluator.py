@@ -38,8 +38,7 @@ class QueueWorkerResources(ComputeResources):
 
     def to_evaluator(self):
 
-        from openff.evaluator import backends
-        from openff.evaluator import unit
+        from openff.evaluator import backends, unit
 
         evaluator_resources = backends.QueueWorkerResources(
             number_of_threads=self.n_processes,
