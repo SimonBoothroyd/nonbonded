@@ -2,7 +2,6 @@ import pandas
 import pytest
 
 from nonbonded.cli.dataset import dataset as dataset_cli
-from nonbonded.library.curation.workflow import WorkflowSchema
 from nonbonded.library.models.datasets import DataSet, DataSetCollection
 from nonbonded.tests.backend.crud.utilities.create import create_data_set
 from nonbonded.tests.cli.utilities import mock_get_data_set, mock_get_data_sets
@@ -49,17 +48,3 @@ class TestDataSetCLI:
             raise result.exception
 
         assert data_sets.data_sets[0].id in result.output
-
-    def test_curate(self, runner):
-
-        schema = WorkflowSchema(component_schemas=[])
-
-        with open("schema.json", "w") as file:
-            file.write(schema.json())
-
-        result = runner.invoke(
-            dataset_cli, ["curate", "--schema", "schema.json", "--output", "output.csv"]
-        )
-
-        if result.exit_code != 0:
-            raise result.exception
