@@ -18,8 +18,8 @@ dependencies:
   - forcebalance >=1.7.2
   - jinja2
   - numpy
-  - openforcefield <0.7.0
-  - openff-evaluator >=0.1.0
+  - openforcefield
+  - openff-evaluator >=0.2.0
   - pandas
   - pydantic
   - requests
@@ -38,6 +38,7 @@ dependencies:
   - starlette
   - uvicorn
   - gunicorn
+  - requests-mock
 
     # Python < 3.7 backwards compatibility.
   - async_generator

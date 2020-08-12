@@ -45,11 +45,6 @@ class TestOptimizationCLI:
 
         assert result.output.replace("\n", "") == optimization.json()
 
-    @pytest.mark.skipif(
-        sys.platform.startswith("linux") and sys.version_info < (3, 7),
-        reason="ForceBalance v1.7.2 is currently not built correctly on "
-        "linux for python 3.6.",
-    )
     def test_generate(self, requests_mock, runner):
 
         from forcebalance.evaluator_io import Evaluator_SMIRNOFF
