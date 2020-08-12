@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Union
 import numpy
 
 from nonbonded.library.models.datasets import DataSet, DataSetCollection
-from nonbonded.library.utilities.pandas import reorder_data_frame
 
 if TYPE_CHECKING:
 
@@ -36,6 +35,7 @@ def reindex_data_set(
     """
 
     import pandas
+    from openff.evaluator.datasets.utilities import reorder_data_frame
 
     if len(data_set) == 0:
         return
