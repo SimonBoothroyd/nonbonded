@@ -23,13 +23,6 @@ def test_benchmark_analysis(caplog, monkeypatch):
     from openff.evaluator.client import RequestResult
     from openff.evaluator.datasets import PhysicalPropertyDataSet
 
-    # Patch checkmol call as it is not being tested here
-    from nonbonded.library.utilities import checkmol
-
-    monkeypatch.setattr(
-        checkmol, "analyse_functional_groups", _mock_analyse_functional_groups
-    )
-
     benchmark = create_benchmark(
         "project-1", "study-1", "benchmark-1", ["data-set-1"], "optimization-1", None
     )
@@ -79,13 +72,6 @@ def test_optimization_analysis(monkeypatch):
     from forcebalance import nifty
     from openff.evaluator.client import RequestResult
     from openforcefield.typing.engines.smirnoff import ForceField as OFFForceField
-
-    # Patch checkmol call as it is not being tested here
-    from nonbonded.library.utilities import checkmol
-
-    monkeypatch.setattr(
-        checkmol, "analyse_functional_groups", _mock_analyse_functional_groups
-    )
 
     target = create_evaluator_target("evaluator-target-1", ["data-set-1"])
 

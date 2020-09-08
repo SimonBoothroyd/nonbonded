@@ -57,7 +57,7 @@ jobs:
           curl https://homepage.univie.ac.at/norbert.haider/download/chemistry/checkmol/checkmol.pas > checkmol.pas
           fpc checkmol.pas -S2
 
-          echo "::add-path::."
+          echo "::add-path::`pwd`"
 
       - name: Install Package
         shell: bash -l {0}
