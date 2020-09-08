@@ -6,7 +6,7 @@ from pydantic import Field
 from pydantic.main import BaseModel
 
 from nonbonded.library.templates import BaseTemplate
-from nonbonded.library.utilities import get_data_filename
+from nonbonded.library.utilities import get_data_file_path
 
 
 class Submission(BaseModel):
@@ -40,7 +40,7 @@ class SubmissionTemplate(BaseTemplate, abc.ABC):
 
         cls._check_unrecognised_options(**options)
 
-        template_file_name = get_data_filename(os.path.join("jinja", template_name))
+        template_file_name = get_data_file_path(os.path.join("jinja", template_name))
 
         with open(template_file_name) as file:
             template = Template(file.read())

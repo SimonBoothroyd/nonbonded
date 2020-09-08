@@ -1,9 +1,11 @@
 import functools
+from typing import List
 
 import pytest
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.database import models
+from nonbonded.backend.database.crud.datasets import DataSetCRUD
 from nonbonded.backend.database.crud.projects import BenchmarkCRUD, OptimizationCRUD
 from nonbonded.backend.database.crud.results import (
     BenchmarkResultCRUD,
@@ -18,222 +20,360 @@ from nonbonded.backend.database.utilities.exceptions import (
     OptimizationNotFoundError,
     OptimizationResultExistsError,
     OptimizationResultNotFoundError,
+    TargetNotFoundError,
+    TargetResultNotFoundError,
+    TargetResultTypeError,
     UnableToDeleteError,
 )
-from nonbonded.tests.backend.crud.utilities import create_and_compare_models
-from nonbonded.tests.backend.crud.utilities.commit import (
-    commit_benchmark,
-    commit_benchmark_result,
-    commit_data_set,
-    commit_optimization,
-    commit_optimization_result,
-    commit_study,
-)
-from nonbonded.tests.backend.crud.utilities.comparison import (
-    compare_benchmark_results,
-    compare_optimization_results,
-)
-from nonbonded.tests.backend.crud.utilities.create import (
+from nonbonded.library.models.projects import Optimization
+from nonbonded.tests.backend.crud.utilities import BaseCRUDTest, create_dependencies
+from nonbonded.tests.utilities.factory import (
     create_benchmark,
     create_benchmark_result,
+    create_data_set,
+    create_evaluator_target,
     create_force_field,
     create_optimization,
     create_optimization_result,
 )
 
 
-class TestOptimizationResultCRUD:
-    def test_create_read(self, db: Session):
-        """Test that an empty project (i.e. one without studies) can be created, and then
-        read back out again while maintaining the integrity of the data.
-        """
+class TestOptimizationResultCRUD(BaseCRUDTest):
+    @classmethod
+    def crud_class(cls):
+        return OptimizationResultCRUD
 
-        project, study, optimization, _ = commit_optimization(db)
-        result = create_optimization_result(project.id, study.id, optimization.id)
+    @classmethod
+    def dependencies(cls):
+        return [
+            "project",
+            "study",
+            "evaluator-target",
+            "recharge-target",
+            "data-set",
+            "molecule-set",
+        ]
 
-        create_and_compare_models(
-            db,
-            result,
-            OptimizationResultCRUD.create,
-            None,
-            functools.partial(
-                OptimizationResultCRUD.read,
-                project_id=project.id,
-                study_id=study.id,
-                optimization_id=optimization.id,
-            ),
-            compare_optimization_results,
+    @classmethod
+    def create_model(cls, include_children=False, index=1):
+
+        results = create_optimization_result(
+            "project-1",
+            "study-1",
+            f"optimization-{index}",
+            ["evaluator-target-1"],
+            ["recharge-target-1"],
         )
 
-        # Make sure results with duplicate parents cannot be added.
-        with pytest.raises(OptimizationResultExistsError):
-            OptimizationResultCRUD.create(db, result)
+        return results
 
-    def test_missing_parent(self, db: Session):
-        """Test that an exception is raised when an optimization result is added
-        but the parent optimization cannot be found.
-        """
+    @classmethod
+    def model_to_read_kwargs(cls, model):
+        return {
+            "project_id": model.project_id,
+            "study_id": model.study_id,
+            "sub_study_id": model.id,
+        }
 
-        optimization_result = create_optimization_result(
-            "project-1", "study-1", "optimization-1"
-        )
+    @classmethod
+    def model_to_read_all_kwargs(cls, model):
+        return {}
 
-        with pytest.raises(OptimizationNotFoundError):
+    @classmethod
+    def not_found_error(cls):
+        return OptimizationResultNotFoundError
 
-            create_and_compare_models(
-                db,
-                optimization_result,
-                OptimizationResultCRUD.create,
-                None,
-                OptimizationResultCRUD.read,
-                compare_optimization_results,
-            )
+    @classmethod
+    def already_exists_error(cls):
+        return OptimizationResultExistsError
 
-    def test_read_not_found(self, db: Session):
-        """Test that an exception is raised when the parent optimization
-        of a result is not found, or None when no results have been submitted yet.
-        """
+    @classmethod
+    def check_has_deleted(cls, db: Session):
 
-        with pytest.raises(OptimizationNotFoundError):
-            OptimizationResultCRUD.read(db, " ", " ", " ")
+        assert db.query(models.Statistic.id).count() == 0
 
-        project, study, optimization, _ = commit_optimization(db)
+        assert db.query(models.DataSetStatistic.id).count() == 0
+        assert db.query(models.DataSetResultEntry.id).count() == 0
+        assert db.query(models.DataSetResult.id).count() == 0
 
-        assert (
-            OptimizationResultCRUD.read(db, project.id, study.id, optimization.id)
-            is None
-        )
+        assert db.query(models.MoleculeSetStatistic.id).count() == 0
+        assert db.query(models.MoleculeSetResult.id).count() == 0
 
-    def test_duplicate_refit_force_field(self, db: Session):
-        """Test that an exception is raised when uploading a refit
-        force field when that force field already is present.
-        """
-
-        data_set = commit_data_set(db)
-        project, study = commit_study(db)
-
-        optimization = create_optimization(
-            project.id, study.id, "optimization-1", [data_set.id]
-        )
-        optimization.initial_force_field = create_force_field("Refit")
-
-        db.add(OptimizationCRUD.create(db, optimization))
-        db.commit()
-
-        result = create_optimization_result(project.id, study.id, optimization.id)
-        result.refit_force_field = create_force_field("Refit")
-
-        # Make sure results with duplicate parents cannot be added.
-        with pytest.raises(ForceFieldExistsError):
-            OptimizationResultCRUD.create(db, result)
-
-    def test_delete(self, db: Session):
-        """Test that an optimization result can be deleted successfully and also
-        that it's children get successfully deleted.
-        """
-
-        _, _, _, _, results = commit_optimization_result(db)
-
-        assert db.query(models.OptimizationResult.id).count() == 1
-        assert db.query(models.ObjectiveFunction.id).count() == 3
-        assert db.query(models.OptimizationStatisticsEntry.id).count() == 3
-        assert db.query(models.ForceField.id).count() == 2
-
-        OptimizationResultCRUD.delete(
-            db, results.project_id, results.study_id, results.id
-        )
-
-        db.commit()
+        assert db.query(models.TargetResult.id).count() == 0
+        assert db.query(models.EvaluatorTargetResult.id).count() == 0
+        assert db.query(models.RechargeTargetResult.id).count() == 0
 
         assert db.query(models.OptimizationResult.id).count() == 0
-        assert db.query(models.ObjectiveFunction.id).count() == 0
-        assert db.query(models.OptimizationStatisticsEntry.id).count() == 0
+
         assert db.query(models.ForceField.id).count() == 1
 
         # Make sure the right force field as deleted
         remaining_force_field = db.query(models.ForceField.inner_content).first()
         assert "Refit" not in remaining_force_field
 
-    def test_delete_not_found(self, db: Session):
+    @pytest.mark.skip("Optimization results cannot be updated.")
+    def test_update(self, db: Session, perturbation, database_checks, expected_raise):
+        pass
 
-        with pytest.raises(OptimizationResultNotFoundError):
-            OptimizationResultCRUD.delete(db, " ", " ", " ")
+    @pytest.mark.skip("Optimization results cannot be updated.")
+    def test_update_not_found(self, db: Session):
+        pass
 
-    def test_delete_with_benchmark(self, db: Session):
+    @pytest.mark.skip("Optimization results cannot be paginated.")
+    def test_pagination(self, db: Session):
+        pass
+
+    @pytest.mark.parametrize(
+        "dependencies, expected_error",
+        [
+            (["evaluator-target", "recharge-target"], OptimizationNotFoundError),
+            (["evaluator-target"], TargetNotFoundError),
+            (["recharge-target"], TargetNotFoundError),
+        ],
+    )
+    def test_missing_dependencies(
+        self, db: Session, dependencies: List[str], expected_error
+    ):
+        super(TestOptimizationResultCRUD, self).test_missing_dependencies(
+            db, dependencies, expected_error
+        )
+
+    @pytest.mark.parametrize(
+        "recharge_target_ids, evaluator_target_ids, expected_target_ids",
+        [
+            ([], ["evaluator-target-1"], {"recharge-target-1"}),
+            (["recharge-target-1"], [], {"evaluator-target-1"}),
+        ],
+    )
+    def test_missing_target_result(
+        self,
+        db: Session,
+        recharge_target_ids,
+        evaluator_target_ids,
+        expected_target_ids,
+    ):
+        """Tests that an exception is raised when results are uploaded but
+        do not contain results for all of the expected targets."""
+
+        create_dependencies(db, self.dependencies())
+
+        model = create_optimization_result(
+            "project-1",
+            "study-1",
+            "optimization-1",
+            evaluator_target_ids,
+            recharge_target_ids,
+        )
+
+        with pytest.raises(TargetResultNotFoundError) as error_info:
+            self.crud_class().create(db, model)
+
+        assert error_info.value.target_ids == expected_target_ids
+
+    def test_invalid_target_result_type(self, db: Session):
+        """Tests that an exception is raised when results are uploaded but
+        do not contain results for all of the expected targets."""
+
+        create_dependencies(db, self.dependencies())
+        model = self.create_model(True)
+
+        evaluator_results = model.target_results[0]["evaluator-target-1"]
+        recharge_results = model.target_results[0]["recharge-target-1"]
+
+        model.target_results = {
+            0: {
+                "evaluator-target-1": recharge_results,
+                "recharge-target-1": evaluator_results,
+            }
+        }
+
+        with pytest.raises(TargetResultTypeError):
+            self.crud_class().create(db, model)
+
+    @pytest.mark.skip("This case is handled by ``test_delete_with_child``.")
+    def test_delete_with_dependent(
+        self, db: Session, create_dependant, delete_dependant
+    ):
+        pass
+
+    def test_duplicate_refit_force_field(self, db: Session):
+        """Test that an exception is raised when uploading a refit
+        force field when that force field already is present.
+        """
+        create_dependencies(db, self.dependencies())
+
+        result = self.create_model()
+        result.refit_force_field = create_force_field()
+
+        # Make sure results with duplicate parents cannot be added.
+        with pytest.raises(ForceFieldExistsError):
+            OptimizationResultCRUD.create(db, result)
+
+    @pytest.mark.parametrize(
+        "create_dependant_child, delete_dependant_child",
+        [
+            (
+                functools.partial(
+                    BenchmarkCRUD.create,
+                    sub_study=create_benchmark(
+                        "project-1",
+                        "study-1",
+                        "benchmark-1",
+                        ["data-set-1"],
+                        "optimization-1",
+                        None,
+                    ),
+                ),
+                functools.partial(
+                    BenchmarkCRUD.delete,
+                    project_id="project-1",
+                    study_id="study-1",
+                    sub_study_id="benchmark-1",
+                ),
+            ),
+            (
+                functools.partial(
+                    OptimizationCRUD.create,
+                    sub_study=Optimization(
+                        **create_optimization(
+                            "project-1",
+                            "study-1",
+                            "optimization-2",
+                            [
+                                create_evaluator_target(
+                                    "evaluator-target-1", ["data-set-1"]
+                                )
+                            ],
+                        ).dict(exclude={"force_field", "optimization_id"}),
+                        optimization_id="optimization-1",
+                    ),
+                ),
+                functools.partial(
+                    OptimizationCRUD.delete,
+                    project_id="project-1",
+                    study_id="study-1",
+                    sub_study_id="optimization-2",
+                ),
+            ),
+        ],
+    )
+    def test_delete_with_child(
+        self, db: Session, create_dependant_child, delete_dependant_child
+    ):
         """Test that optimization results which are being targeted by a benchmark
         can only be deleted once the benchmark has been deleted.
         """
 
-        (
-            project,
-            study,
-            benchmark,
-            data_set,
-            optimization,
-            optimization_result,
-        ) = commit_benchmark(db, True)
+        create_dependencies(db, self.dependencies())
+        model = self.create_model()
 
-        with pytest.raises(UnableToDeleteError) as error_info:
-            OptimizationResultCRUD.delete(db, project.id, study.id, optimization.id)
+        db.add(self.crud_class().create(db, model))
+        db.commit()
 
-        assert "benchmark" in str(error_info.value)
+        db.add(create_dependant_child(db))
+        db.commit()
+
+        db.begin_nested()
+
+        with pytest.raises(UnableToDeleteError):
+            self.crud_class().delete(db, model.project_id, model.study_id, model.id)
+
+        db.rollback()
 
         # Delete the benchmark and results and try again.
-        BenchmarkCRUD.delete(db, project.id, study.id, benchmark.id)
+        delete_dependant_child(db)
+        db.commit()
+        self.crud_class().delete(db, model.project_id, model.study_id, model.id)
         db.commit()
 
-        OptimizationResultCRUD.delete(db, project.id, study.id, optimization.id)
-        db.commit()
+        self.check_has_deleted(db)
 
 
-class TestBenchmarkResultCRUD:
-    def test_create_read_target_force_field(self, db: Session):
-        """Test that a set of benchmark results can be generated for
-        a benchmark which targets a force field directly.
-        """
+class TestBenchmarkResultCRUD(BaseCRUDTest):
+    @classmethod
+    def crud_class(cls):
+        return BenchmarkResultCRUD
 
-        project, study, benchmark, data_set, _, _ = commit_benchmark(db, False)
-        result = create_benchmark_result(project.id, study.id, benchmark.id, data_set)
+    @classmethod
+    def dependencies(cls):
+        return [
+            "project",
+            "study",
+            "evaluator-target",
+            "data-set",
+            "benchmark",
+        ]
 
-        create_and_compare_models(
-            db,
-            result,
-            BenchmarkResultCRUD.create,
-            None,
-            functools.partial(
-                BenchmarkResultCRUD.read,
-                project_id=project.id,
-                study_id=study.id,
-                benchmark_id=benchmark.id,
-            ),
-            compare_benchmark_results,
+    @classmethod
+    def create_model(cls, include_children=False, index=1):
+
+        data_set = create_data_set("data-set-1")
+        data_set.entries[0].id = 1
+
+        results = create_benchmark_result(
+            "project-1", "study-1", f"benchmark-{index}", data_set
         )
 
-        # Make sure results with duplicate parents cannot be added.
-        with pytest.raises(BenchmarkResultExistsError):
-            BenchmarkResultCRUD.create(db, result)
+        return results
 
-    def test_create_target_optimization(self, db: Session):
-        """Test that a set of benchmark results can be generated for
-        a benchmark which targets a force field directly.
-        """
+    @classmethod
+    def model_to_read_kwargs(cls, model):
+        return {
+            "project_id": model.project_id,
+            "study_id": model.study_id,
+            "sub_study_id": model.id,
+        }
 
-        project, study, benchmark, data_set, _, _ = commit_benchmark(db, True)
-        result = create_benchmark_result(project.id, study.id, benchmark.id, data_set)
+    @classmethod
+    def model_to_read_all_kwargs(cls, model):
+        return {}
 
-        create_and_compare_models(
-            db,
-            result,
-            BenchmarkResultCRUD.create,
-            None,
-            functools.partial(
-                BenchmarkResultCRUD.read,
-                project_id=project.id,
-                study_id=study.id,
-                benchmark_id=benchmark.id,
-            ),
-            compare_benchmark_results,
+    @classmethod
+    def not_found_error(cls):
+        return BenchmarkResultNotFoundError
+
+    @classmethod
+    def already_exists_error(cls):
+        return BenchmarkResultExistsError
+
+    @classmethod
+    def check_has_deleted(cls, db: Session):
+
+        assert db.query(models.Statistic.id).count() == 0
+
+        assert db.query(models.DataSetStatistic.id).count() == 0
+        assert db.query(models.DataSetResultEntry.id).count() == 0
+        assert db.query(models.DataSetResult.id).count() == 0
+
+        assert db.query(models.BenchmarkResult.id).count() == 0
+
+    @pytest.mark.skip("Benchmark results cannot be updated.")
+    def test_update(self, db: Session, perturbation, database_checks, expected_raise):
+        pass
+
+    @pytest.mark.skip("Benchmark results cannot be updated.")
+    def test_update_not_found(self, db: Session):
+        pass
+
+    @pytest.mark.skip("Benchmark results cannot be paginated.")
+    def test_pagination(self, db: Session):
+        pass
+
+    @pytest.mark.parametrize(
+        "dependencies, expected_error", [(["benchmark"], BenchmarkNotFoundError)]
+    )
+    def test_missing_dependencies(
+        self, db: Session, dependencies: List[str], expected_error
+    ):
+        super(TestBenchmarkResultCRUD, self).test_missing_dependencies(
+            db, dependencies, expected_error
         )
+
+    @pytest.mark.skip("Benchmark results do not have dependants.")
+    def test_delete_with_dependent(
+        self, db: Session, create_dependant, delete_dependant
+    ):
+        pass
 
     def test_read_multiple_results(self, db: Session):
         """Test that a set benchmark results are correctly read when multiple
@@ -242,12 +382,19 @@ class TestBenchmarkResultCRUD:
 
         n_results = 3
 
-        project, study = commit_study(db)
+        create_dependencies(db, ["project", "study"])
 
         data_sets = []
 
         for index in range(n_results):
-            data_sets.append(commit_data_set(db, f"data-set-{index + 1}"))
+
+            db_data_set = DataSetCRUD.create(
+                db, create_data_set(f"data-set-{index + 1}")
+            )
+            db.add(db_data_set)
+            db.commit()
+
+            data_sets.append(DataSetCRUD.db_to_model(db_data_set))
 
         # Add two new benchmarks
         for index in range(n_results):
@@ -255,8 +402,8 @@ class TestBenchmarkResultCRUD:
                 BenchmarkCRUD.create(
                     db,
                     create_benchmark(
-                        project.id,
-                        study.id,
+                        "project-1",
+                        "study-1",
                         f"benchmark-{index + 1}",
                         [f"data-set-{index + 1}"],
                         None,
@@ -272,7 +419,7 @@ class TestBenchmarkResultCRUD:
         for index in reversed(range(n_results)):
 
             result = create_benchmark_result(
-                project.id, study.id, f"benchmark-{index + 1}", data_sets[index]
+                "project-1", "study-1", f"benchmark-{index + 1}", data_sets[index]
             )
 
             db.add(BenchmarkResultCRUD.create(db, result))
@@ -282,69 +429,26 @@ class TestBenchmarkResultCRUD:
         for index in range(n_results):
 
             result = BenchmarkResultCRUD.read(
-                db, project.id, study.id, f"benchmark-{index + 1}"
+                db, "project-1", "study-1", f"benchmark-{index + 1}"
             )
-            assert len(result.analysed_result.results_entries) == 1
-            assert result.analysed_result.results_entries[0].reference_id == index + 1
+            assert len(result.data_set_result.result_entries) == 1
+            assert result.data_set_result.result_entries[0].reference_id == index + 1
 
-    def test_create_bad_reference_id(self, db: Session):
-        """Test that a set of benchmark results can be generated for
-        a benchmark which targets a force field directly.
+    def test_missing_data_entry(self, db: Session):
+        """Test that an exception is raised when the benchmark reports a result
+        for a non-existent data entry.
         """
 
-        project, study, benchmark, data_set, _, _ = commit_benchmark(db, True)
-        result = create_benchmark_result(project.id, study.id, benchmark.id, data_set)
+        create_dependencies(db, ["benchmark", "data-set"])
+        data_set = create_data_set("data-set-1")
+        data_set.entries[0].id = 1
 
-        for results_entry in result.analysed_result.results_entries:
+        result = create_benchmark_result(
+            "project-1", "study-1", "benchmark-1", data_set
+        )
+
+        for results_entry in result.data_set_result.result_entries:
             results_entry.reference_id = -1
 
         with pytest.raises(DataSetEntryNotFound):
             BenchmarkResultCRUD.create(db, result)
-
-    def test_missing_parent(self, db: Session):
-        """Test that an exception is raised when a benchmark result is added
-        but the parent benchmark cannot be found.
-        """
-
-        benchmark_result = create_benchmark_result(
-            "project-1", "study-1", "benchmark-1", commit_data_set(db)
-        )
-
-        with pytest.raises(BenchmarkNotFoundError):
-            BenchmarkResultCRUD.create(db, benchmark_result)
-
-    def test_read_not_found(self, db: Session):
-        """Test that an exception is raised when the parent benchmark
-        of a result is not found, or None when no results have been submitted yet.
-        """
-
-        with pytest.raises(BenchmarkNotFoundError):
-            BenchmarkResultCRUD.read(db, " ", " ", " ")
-
-        project, study, benchmark, _, _, _ = commit_benchmark(db, False)
-
-        assert BenchmarkResultCRUD.read(db, project.id, study.id, benchmark.id) is None
-
-    def test_delete(self, db: Session):
-        """Test that a benchmark result can be deleted successfully and also
-        that it's children get successfully deleted.
-        """
-
-        _, _, _, results, _, _, _ = commit_benchmark_result(db, False)
-
-        assert db.query(models.BenchmarkResult.id).count() == 1
-        assert db.query(models.BenchmarkResultsEntry.id).count() == 2
-        assert db.query(models.BenchmarkStatisticsEntry.id).count() == 2
-
-        BenchmarkResultCRUD.delete(db, results.project_id, results.study_id, results.id)
-
-        db.commit()
-
-        assert db.query(models.BenchmarkResult.id).count() == 0
-        assert db.query(models.BenchmarkResultsEntry.id).count() == 0
-        assert db.query(models.BenchmarkStatisticsEntry.id).count() == 0
-
-    def test_delete_not_found(self, db: Session):
-
-        with pytest.raises(BenchmarkResultNotFoundError):
-            BenchmarkResultCRUD.delete(db, " ", " ", " ")

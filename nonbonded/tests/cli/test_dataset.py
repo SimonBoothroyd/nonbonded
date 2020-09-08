@@ -3,8 +3,8 @@ import pytest
 
 from nonbonded.cli.dataset import dataset as dataset_cli
 from nonbonded.library.models.datasets import DataSet, DataSetCollection
-from nonbonded.tests.backend.crud.utilities.create import create_data_set
-from nonbonded.tests.cli.utilities import mock_get_data_set, mock_get_data_sets
+from nonbonded.tests.utilities.factory import create_data_set
+from nonbonded.tests.utilities.mock import mock_get_data_set, mock_get_data_sets
 
 
 @pytest.mark.usefixtures("change_api_url")

@@ -5,6 +5,8 @@ from nonbonded.backend.database.crud.authors import AuthorCRUD
 from nonbonded.backend.database.utilities.exceptions import (
     DataSetExistsError,
     DataSetNotFoundError,
+    MoleculeSetExistsError,
+    MoleculeSetNotFoundError,
     UnableToDeleteError,
 )
 from nonbonded.library.models import datasets
@@ -12,7 +14,9 @@ from nonbonded.library.models import datasets
 
 class DataSetEntryCRUD:
     @staticmethod
-    def create(data_set_entry: datasets.DataSetEntry,) -> models.DataSetEntry:
+    def create(
+        data_set_entry: datasets.DataSetEntry,
+    ) -> models.DataSetEntry:
 
         # noinspection PyTypeChecker
         db_data_set_entry = models.DataSetEntry(
@@ -37,7 +41,9 @@ class DataSetEntryCRUD:
         return db_data_set_entry
 
     @staticmethod
-    def db_to_model(db_data_set_entry: models.DataSetEntry,) -> datasets.DataSetEntry:
+    def db_to_model(
+        db_data_set_entry: models.DataSetEntry,
+    ) -> datasets.DataSetEntry:
 
         # noinspection PyTypeChecker
         data_set_entry = datasets.DataSetEntry(
@@ -124,7 +130,9 @@ class DataSetCRUD:
         if len(db_data_set.optimizations) > 0 or len(db_data_set.benchmarks) > 0:
 
             type_name = (
-                "benchmark" if len(db_data_set.benchmarks) > 0 else "optimization"
+                "benchmark"
+                if len(db_data_set.benchmarks) > 0
+                else "optimization target"
             )
 
             raise UnableToDeleteError(
@@ -134,3 +142,79 @@ class DataSetCRUD:
             )
 
         db.delete(db_data_set)
+
+
+class MoleculeSetCRUD:
+    @staticmethod
+    def query(db: Session, molecule_set_id: str):
+
+        db_molecule_set = (
+            db.query(models.MoleculeSet)
+            .filter(models.MoleculeSet.id == molecule_set_id)
+            .first()
+        )
+
+        return db_molecule_set
+
+    @staticmethod
+    def read_all(db: Session, skip: int = 0, limit: int = 100):
+
+        molecule_sets = db.query(models.MoleculeSet).offset(skip).limit(limit).all()
+        return [MoleculeSetCRUD.db_to_model(x) for x in molecule_sets]
+
+    @staticmethod
+    def read(db: Session, molecule_set_id: str):
+
+        db_molecule_set = MoleculeSetCRUD.query(db, molecule_set_id)
+
+        if db_molecule_set is None:
+            raise MoleculeSetNotFoundError(molecule_set_id)
+
+        return MoleculeSetCRUD.db_to_model(db_molecule_set)
+
+    @staticmethod
+    def create(db: Session, molecule_set: datasets.MoleculeSet) -> models.MoleculeSet:
+
+        if MoleculeSetCRUD.query(db, molecule_set.id) is not None:
+            raise MoleculeSetExistsError(molecule_set.id)
+
+        # noinspection PyTypeChecker
+        db_molecule_set = models.MoleculeSet(
+            id=molecule_set.id,
+            description=molecule_set.description,
+            authors=[AuthorCRUD.create(db, author) for author in molecule_set.authors],
+            entries=[models.Molecule(smiles=entry) for entry in molecule_set.entries],
+        )
+
+        return db_molecule_set
+
+    @staticmethod
+    def db_to_model(db_molecule_set: models.MoleculeSet) -> datasets.MoleculeSet:
+
+        # noinspection PyTypeChecker
+        molecule_set = datasets.MoleculeSet(
+            id=db_molecule_set.id,
+            description=db_molecule_set.description,
+            entries=[entry.smiles for entry in db_molecule_set.entries],
+            authors=db_molecule_set.authors,
+        )
+
+        return molecule_set
+
+    @staticmethod
+    def delete(db: Session, molecule_set_id: str):
+
+        db_molecule_set = MoleculeSetCRUD.query(db, molecule_set_id)
+
+        if not db_molecule_set:
+            raise MoleculeSetNotFoundError(molecule_set_id)
+
+        if len(db_molecule_set.optimizations) > 0:
+
+            raise UnableToDeleteError(
+                f"This molecule set (id={molecule_set_id}) is being referenced by at "
+                f"least one optimization target and so cannot be deleted. Delete the "
+                f"referencing optimization target first and then try again."
+            )
+
+        db.delete(db_molecule_set)

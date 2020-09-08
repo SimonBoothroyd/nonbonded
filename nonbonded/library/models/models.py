@@ -33,10 +33,11 @@ class BaseREST(BaseORM, abc.ABC):
         raise NotImplementedError()
 
     def _upload(self, request_function: Callable, url: str) -> T:
-        """The internal implementation of the upload and update methods.
-        """
+        """The internal implementation of the upload and update methods."""
         request = request_function(
-            url=url, data=self.json(), headers={"access_token": settings.ACCESS_TOKEN},
+            url=url,
+            data=self.json(),
+            headers={"access_token": settings.ACCESS_TOKEN},
         )
 
         try:

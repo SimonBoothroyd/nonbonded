@@ -1,9 +1,16 @@
+import abc
+from typing import Any, Dict, Optional, Type, Union
+
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.database import models
 from nonbonded.backend.database.crud.authors import AuthorCRUD
 from nonbonded.backend.database.crud.datasets import DataSetCRUD
 from nonbonded.backend.database.crud.forcefield import ForceFieldCRUD, ParameterCRUD
+from nonbonded.backend.database.crud.targets import (
+    EvaluatorTargetCRUD,
+    RechargeTargetCRUD,
+)
 from nonbonded.backend.database.utilities.exceptions import (
     BenchmarkExistsError,
     BenchmarkNotFoundError,
@@ -19,293 +26,54 @@ from nonbonded.backend.database.utilities.exceptions import (
     UnableToUpdateError,
 )
 from nonbonded.library.models import projects
-from nonbonded.library.models.datasets import DataSetCollection
-from nonbonded.library.models.projects import Study
+from nonbonded.library.models.engines import ForceBalance
+from nonbonded.library.models.targets import EvaluatorTarget, RechargeTarget
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 
 
-class OptimizationCRUD:
-    @staticmethod
+class SubStudyCRUD(abc.ABC):
+    """A base class for optimization and benchmark CRUD methods."""
+
+    @classmethod
+    @abc.abstractmethod
+    def orm_class(cls) -> Type[Union[models.Benchmark, models.Optimization]]:
+        """Returns the ORM class associated with the CRUD."""
+
+    @classmethod
+    @abc.abstractmethod
+    def rest_class(cls) -> Type[Union[projects.Benchmark, projects.Optimization]]:
+        """Returns the REST class associated with the CRUD."""
+
+    @classmethod
+    @abc.abstractmethod
+    def attribute_name(cls) -> str:
+        """The attribute of the parent study which corresponds to the set of
+        child sub-studies associated with this CRUD."""
+
+    @classmethod
+    @abc.abstractmethod
+    def exists_error(
+        cls,
+    ) -> Union[Type[BenchmarkExistsError], Type[OptimizationExistsError]]:
+        """The error to raise when attempting to add an entry which already exists in
+        the database."""
+
+    @classmethod
+    @abc.abstractmethod
+    def not_found_error(
+        cls,
+    ) -> Union[Type[BenchmarkNotFoundError], Type[OptimizationNotFoundError]]:
+        """The error to raise when attempting to retrieve an entry which could not
+        be found in the database."""
+
+    @classmethod
     def query(
-        db: Session, project_id: str, study_id: str, optimization_id: str
-    ) -> models.Optimization:
-
-        db_optimization = (
-            db.query(models.Optimization)
-            .filter(models.Optimization.identifier == optimization_id)
-            .join(models.Study)
-            .filter(models.Study.identifier == study_id)
-            .join(models.Project)
-            .filter(models.Project.identifier == project_id)
-            .first()
-        )
-
-        return db_optimization
-
-    @staticmethod
-    def create(
-        db: Session, optimization: projects.Optimization, parent=None
-    ) -> models.Optimization:
-
-        if (
-            OptimizationCRUD.query(
-                db, optimization.project_id, optimization.study_id, optimization.id
-            )
-            is not None
-        ):
-
-            raise OptimizationExistsError(
-                optimization.project_id, optimization.study_id, optimization.id
-            )
-
-        training_sets = [
-            DataSetCRUD.query(db, x) for x in optimization.training_set_ids
-        ]
-
-        if any(x is None for x in training_sets):
-
-            raise DataSetNotFoundError(
-                next(
-                    iter(
-                        x
-                        for x, y in zip(optimization.training_set_ids, training_sets)
-                        if y is None
-                    )
-                )
-            )
-
-        if parent is None:
-            parent = StudyCRUD.query(db, optimization.project_id, optimization.study_id)
-
-        if parent is None:
-            raise StudyNotFoundError(optimization.project_id, optimization.study_id)
-
-        # noinspection PyTypeChecker
-        db_optimization = models.Optimization(
-            identifier=optimization.id,
-            parent=parent,
-            name=optimization.name,
-            description=optimization.description,
-            training_sets=training_sets,
-            parameters_to_train=[
-                ParameterCRUD.create(db, x) for x in optimization.parameters_to_train
-            ],
-            force_balance_input=models.ForceBalanceOptions(
-                **optimization.force_balance_input.dict()
-            ),
-            initial_force_field=models.ForceField.as_unique(
-                db, inner_content=optimization.initial_force_field.inner_content
-            ),
-            denominators=[
-                models.Denominator(property_type=key, value=value)
-                for key, value in optimization.denominators.items()
-            ],
-            priors=[
-                models.Prior(parameter_type=key, value=value)
-                for key, value in optimization.priors.items()
-            ],
-            analysis_environments=[
-                models.ChemicalEnvironment.as_unique(db, id=x.value)
-                for x in optimization.analysis_environments
-            ],
-        )
-
-        return db_optimization
-
-    @staticmethod
-    def read_all(db: Session, project_id: str, study_id: str):
-
-        db_study = StudyCRUD.query(db, project_id=project_id, study_id=study_id)
-
-        if not db_study:
-            raise StudyNotFoundError(project_id, study_id)
-
-        return [OptimizationCRUD.db_to_model(x) for x in db_study.optimizations]
-
-    @staticmethod
-    def read(db: Session, project_id: str, study_id: str, optimization_id: str):
-
-        db_optimization = OptimizationCRUD.query(
-            db, project_id, study_id, optimization_id
-        )
-
-        if not db_optimization:
-            raise OptimizationNotFoundError(project_id, study_id, optimization_id)
-
-        return OptimizationCRUD.db_to_model(db_optimization)
-
-    @staticmethod
-    def update(db: Session, optimization: projects.Optimization):
-
-        db_optimization = OptimizationCRUD.query(
-            db, optimization.project_id, optimization.study_id, optimization.id
-        )
-
-        if not db_optimization:
-
-            raise OptimizationNotFoundError(
-                optimization.project_id, optimization.study_id, optimization.id
-            )
-
-        if (
-            db_optimization.benchmarks is not None
-            and len(db_optimization.benchmarks) > 0
-        ):
-
-            benchmark_ids = [
-                ", ".join(x.identifier for x in db_optimization.benchmarks)
-            ]
-
-            raise UnableToUpdateError(
-                f"This optimization (project_id={optimization.project_id}, "
-                f"study_id={optimization.study_id}, optimization_id={optimization.id}) "
-                f"has benchmarks (with ids={benchmark_ids}) associated with it and so "
-                f"cannot be updated. Delete the benchmarks first and then try again."
-            )
-
-        if db_optimization.results is not None:
-
-            raise UnableToUpdateError(
-                f"This optimization (project_id={optimization.project_id}, "
-                f"study_id={optimization.study_id}, optimization_id={optimization.id}) "
-                f"already has a set of results associated with it so cannot be "
-                f"updated. Delete the results first and then try again."
-            )
-
-        db_optimization.name = optimization.name
-        db_optimization.description = optimization.description
-
-        training_sets = [
-            DataSetCRUD.query(db, x) for x in optimization.training_set_ids
-        ]
-
-        if any(x is None for x in training_sets):
-            raise DataSetNotFoundError(
-                next(
-                    iter(
-                        x
-                        for x, y in zip(optimization.training_set_ids, training_sets)
-                        if y is None
-                    )
-                )
-            )
-
-        db_optimization.training_sets = training_sets
-
-        original_initial_force_field = db_optimization.initial_force_field
-
-        db_optimization.initial_force_field = models.ForceField.as_unique(
-            db, inner_content=optimization.initial_force_field.inner_content
-        )
-
-        if (
-            original_initial_force_field.inner_content
-            != optimization.initial_force_field.inner_content
-        ):
-            # Attempt to delete the initial FF if it might now be an orphan.
-            ForceFieldCRUD.delete(db, original_initial_force_field)
-
-        db_optimization.parameters_to_train = [
-            ParameterCRUD.create(db, x) for x in optimization.parameters_to_train
-        ]
-
-        db_optimization.force_balance_input = models.ForceBalanceOptions(
-            **optimization.force_balance_input.dict()
-        )
-        db_optimization.denominators = [
-            models.Denominator(property_type=key, value=value)
-            for key, value in optimization.denominators.items()
-        ]
-        db_optimization.priors = [
-            models.Prior(parameter_type=key, value=value)
-            for key, value in optimization.priors.items()
-        ]
-
-        db_optimization.analysis_environments = [
-            models.ChemicalEnvironment.as_unique(db, id=x.value)
-            for x in optimization.analysis_environments
-        ]
-
-        return db_optimization
-
-    @staticmethod
-    def delete(db: Session, project_id: str, study_id: str, optimization_id: str):
-
-        db_optimization = OptimizationCRUD.query(
-            db, project_id, study_id, optimization_id
-        )
-
-        if not db_optimization:
-            raise OptimizationNotFoundError(project_id, study_id, optimization_id)
-
-        if (
-            db_optimization.benchmarks is not None
-            and len(db_optimization.benchmarks) > 0
-        ):
-
-            benchmark_ids = [
-                ", ".join(x.identifier for x in db_optimization.benchmarks)
-            ]
-
-            raise UnableToDeleteError(
-                f"This optimization (project_id={project_id}, "
-                f"study_id={study_id}, optimization_id={optimization_id}) "
-                f"has benchmarks (with ids={benchmark_ids}) associated with it and so "
-                f"cannot be deleted. Delete the benchmarks first and then try again."
-            )
-
-        if db_optimization.results is not None:
-
-            raise UnableToDeleteError(
-                f"This optimization (project_id={project_id}, "
-                f"study_id={study_id}, optimization_id={optimization_id}) "
-                f"already has a set of results associated with it so cannot be "
-                f"deleted. Delete the results first and then try again."
-            )
-
-        initial_force_field = db_optimization.initial_force_field
-
-        db.delete(db_optimization)
-        ForceFieldCRUD.delete(db, initial_force_field)
-
-    @staticmethod
-    def db_to_model(db_optimization: models.Optimization) -> projects.Optimization:
-
-        db_parent_study = db_optimization.parent
-        db_parent_project = db_parent_study.parent
-
-        # noinspection PyTypeChecker
-        optimization = projects.Optimization(
-            id=db_optimization.identifier,
-            study_id=db_parent_study.identifier,
-            project_id=db_parent_project.identifier,
-            name=db_optimization.name,
-            description=db_optimization.description,
-            training_set_ids=[x.id for x in db_optimization.training_sets],
-            parameters_to_train=db_optimization.parameters_to_train,
-            force_balance_input=db_optimization.force_balance_input,
-            initial_force_field=db_optimization.initial_force_field,
-            denominators={
-                x.property_type: x.value for x in db_optimization.denominators
-            },
-            priors={x.parameter_type: x.value for x in db_optimization.priors},
-            analysis_environments=[
-                ChemicalEnvironment(x.id) for x in db_optimization.analysis_environments
-            ],
-        )
-
-        return optimization
-
-
-class BenchmarkCRUD:
-    @staticmethod
-    def query(
-        db: Session, project_id: str, study_id: str, benchmark_id: str
-    ) -> models.Benchmark:
+        cls, db: Session, project_id: str, study_id: str, sub_study_id: str
+    ) -> models.SubStudy:
 
         db_benchmark = (
-            db.query(models.Benchmark)
-            .filter(models.Benchmark.identifier == benchmark_id)
+            db.query(cls.orm_class())
+            .filter(cls.orm_class().identifier == sub_study_id)
             .join(models.Study)
             .filter(models.Study.identifier == study_id)
             .join(models.Project)
@@ -315,239 +83,594 @@ class BenchmarkCRUD:
 
         return db_benchmark
 
-    @staticmethod
-    def create(
-        db: Session, benchmark: projects.Benchmark, parent=None
-    ) -> models.Benchmark:
+    @classmethod
+    def _check_dependencies_exist(cls, db: Session, sub_study: projects.SubStudy):
+        """"""
 
-        if (
-            BenchmarkCRUD.query(
-                db, benchmark.project_id, benchmark.study_id, benchmark.id
+        # Check that any referenced optimization exists.
+        if sub_study.optimization_id is None:
+            return
+
+        db_optimization = OptimizationCRUD.query(
+            db, sub_study.project_id, sub_study.study_id, sub_study.optimization_id
+        )
+
+        if db_optimization is None:
+            raise OptimizationNotFoundError(
+                sub_study.project_id, sub_study.study_id, sub_study.optimization_id
             )
-            is not None
-        ):
 
-            raise BenchmarkExistsError(
-                benchmark.project_id, benchmark.study_id, benchmark.id
-            )
+    @classmethod
+    @abc.abstractmethod
+    def _check_has_dependants(
+        cls,
+        db: Session,
+        db_sub_study: models.Benchmark,
+        error_type: Type[Union[UnableToUpdateError, UnableToDeleteError]],
+    ):
+        """A method to check whether all of the required dependencies (such as training
+        or test sets) of a sub-study are present in the database, and which raises the
+        correct exception if not."""
 
-        test_sets = [DataSetCRUD.query(db, x) for x in benchmark.test_set_ids]
+    @classmethod
+    @abc.abstractmethod
+    def _db_model_kwargs(
+        cls,
+        db: Session,
+        sub_study,
+        db_parent: models.Study,
+        db_force_field: Optional[models.ForceField],
+    ) -> Dict[str, Any]:
+        """Returns the kwargs to create a new database model with."""
 
-        if any(x is None for x in test_sets):
-
-            raise DataSetNotFoundError(
-                next(
-                    iter(
-                        x
-                        for x, y in zip(benchmark.test_set_ids, test_sets)
-                        if y is None
-                    )
+        return dict(
+            identifier=sub_study.id,
+            parent=db_parent,
+            name=sub_study.name,
+            description=sub_study.description,
+            force_field=db_force_field,
+            optimization=(
+                None
+                if sub_study.optimization_id is None
+                else OptimizationCRUD.query(
+                    db,
+                    sub_study.project_id,
+                    sub_study.study_id,
+                    sub_study.optimization_id,
                 )
-            )
-
-        db_optimization = None
-
-        if benchmark.optimization_id is not None:
-
-            db_optimization = OptimizationCRUD.query(
-                db, benchmark.project_id, benchmark.study_id, benchmark.optimization_id
-            )
-
-            if db_optimization is None:
-
-                raise OptimizationNotFoundError(
-                    benchmark.project_id, benchmark.study_id, benchmark.optimization_id
-                )
-
-            if db_optimization.results is None:
-
-                raise UnableToCreateError(
-                    f"The benchmark is for an optimization ("
-                    f"id={benchmark.optimization_id}) which does not have any results "
-                    f"uploaded yet. Upload results for the optimization and then try "
-                    f"again."
-                )
-
-        if parent is None:
-            parent = StudyCRUD.query(db, benchmark.project_id, benchmark.study_id)
-
-        if parent is None:
-            raise StudyNotFoundError(benchmark.project_id, benchmark.study_id)
-
-        db_benchmark = models.Benchmark(
-            identifier=benchmark.id,
-            parent=parent,
-            name=benchmark.name,
-            description=benchmark.description,
-            test_sets=test_sets,
-            optimization=db_optimization,
-            force_field=None
-            if benchmark.force_field is None
-            else models.ForceField.as_unique(
-                db, inner_content=benchmark.force_field.inner_content
             ),
             analysis_environments=[
                 models.ChemicalEnvironment.as_unique(db, id=x.value)
-                for x in benchmark.analysis_environments
+                for x in sub_study.analysis_environments
             ],
         )
 
-        return db_benchmark
+    @classmethod
+    def create(
+        cls, db: Session, sub_study: projects.SubStudy, parent=None
+    ) -> models.Benchmark:
 
-    @staticmethod
-    def read_all(db: Session, project_id: str, study_id: str):
+        # Make sure a sub-study does not already exist with the new identifiers.
+        if (
+            cls.query(db, sub_study.project_id, sub_study.study_id, sub_study.id)
+            is not None
+        ):
+
+            raise cls.exists_error()(
+                sub_study.project_id, sub_study.study_id, sub_study.id
+            )
+
+        # Make sure all of the required dependencies exist in the data base.
+        cls._check_dependencies_exist(db, sub_study)
+
+        # Make sure the parent of the sub-study exists and retrieve it.
+        if parent is None:
+            parent = StudyCRUD.query(db, sub_study.project_id, sub_study.study_id)
+
+        if parent is None:
+            raise StudyNotFoundError(sub_study.project_id, sub_study.study_id)
+
+        # noinspection PyArgumentList
+        db_model = cls.orm_class()(
+            **cls._db_model_kwargs(
+                db=db,
+                sub_study=sub_study,
+                db_parent=parent,
+                db_force_field=(
+                    None
+                    if sub_study.force_field is None
+                    else models.ForceField.as_unique(
+                        db, inner_content=sub_study.force_field.inner_content
+                    )
+                ),
+            )
+        )
+
+        return db_model
+
+    @classmethod
+    def read_all(cls, db: Session, project_id: str, study_id: str):
 
         db_study = StudyCRUD.query(db, project_id=project_id, study_id=study_id)
 
         if not db_study:
             raise StudyNotFoundError(project_id, study_id)
 
-        return [BenchmarkCRUD.db_to_model(x) for x in db_study.benchmarks]
+        sub_studies = getattr(db_study, cls.attribute_name())
 
-    @staticmethod
-    def read(db: Session, project_id: str, study_id: str, benchmark_id: str):
+        return [cls.db_to_model(sub_study) for sub_study in sub_studies]
 
-        db_benchmark = BenchmarkCRUD.query(db, project_id, study_id, benchmark_id)
+    @classmethod
+    def read(cls, db: Session, project_id: str, study_id: str, sub_study_id: str):
 
-        if not db_benchmark:
-            raise BenchmarkNotFoundError(project_id, study_id, benchmark_id)
+        db_model = cls.query(db, project_id, study_id, sub_study_id)
 
-        return BenchmarkCRUD.db_to_model(db_benchmark)
+        if not db_model:
+            raise cls.not_found_error()(project_id, study_id, sub_study_id)
 
-    @staticmethod
-    def update(db: Session, benchmark: projects.Benchmark):
+        return cls.db_to_model(db_model)
 
-        db_benchmark = BenchmarkCRUD.query(
-            db, benchmark.project_id, benchmark.study_id, benchmark.id
+    @classmethod
+    def update(cls, db: Session, sub_study: projects.SubStudy):
+
+        db_sub_study = cls.query(
+            db, sub_study.project_id, sub_study.study_id, sub_study.id
         )
 
-        if not db_benchmark:
+        # Make sure the study to update exists.
+        if not db_sub_study:
 
-            raise BenchmarkNotFoundError(
-                benchmark.project_id, benchmark.study_id, benchmark.id
+            raise cls.not_found_error()(
+                sub_study.project_id, sub_study.study_id, sub_study.id
             )
 
-        if db_benchmark.results is not None:
+        # Make sure this study is free to be updated and not locked by a
+        # dependant.
+        cls._check_has_dependants(db, db_sub_study, UnableToUpdateError)
 
-            raise UnableToUpdateError(
-                f"This benchmark (project_id={benchmark.project_id}, "
-                f"study_id={benchmark.study_id}, benchmark_id={benchmark.id}) "
-                f"already has a set of results associated with it so cannot be "
-                f"updated. Delete the results first and then update."
-            )
+        # Make sure that any of the newly required dependencies actually exist.
+        cls._check_dependencies_exist(db, sub_study)
 
-        db_benchmark.name = benchmark.name
-        db_benchmark.description = benchmark.description
+        db_sub_study.name = sub_study.name
+        db_sub_study.description = sub_study.description
 
-        test_sets = [DataSetCRUD.query(db, x) for x in benchmark.test_set_ids]
+        original_force_field = db_sub_study.force_field
 
-        if any(x is None for x in test_sets):
-
-            raise DataSetNotFoundError(
-                next(
-                    iter(
-                        x
-                        for x, y in zip(benchmark.test_set_ids, test_sets)
-                        if y is None
-                    )
-                )
-            )
-
-        db_benchmark.test_sets = test_sets
-
-        original_force_field = db_benchmark.force_field
-
-        db_benchmark.force_field = (
+        db_sub_study.force_field = (
             None
-            if benchmark.force_field is None
+            if sub_study.force_field is None
             else models.ForceField.as_unique(
-                db, inner_content=benchmark.force_field.inner_content
+                db, inner_content=sub_study.force_field.inner_content
             )
         )
 
-        if (benchmark.force_field is None and original_force_field is not None) or (
-            benchmark.force_field is not None
+        if (sub_study.force_field is None and original_force_field is not None) or (
+            sub_study.force_field is not None
             and original_force_field is not None
             and original_force_field.inner_content
-            != benchmark.force_field.inner_content
+            != sub_study.force_field.inner_content
         ):
             # Attempt to delete the FF if it might now be an orphan.
             ForceFieldCRUD.delete(db, original_force_field)
 
-        if benchmark.optimization_id is not None:
-
-            db_optimization = OptimizationCRUD.query(
-                db, benchmark.project_id, benchmark.study_id, benchmark.optimization_id
-            )
-
-            if db_optimization is None:
-
-                raise OptimizationNotFoundError(
-                    benchmark.project_id, benchmark.study_id, benchmark.optimization_id
-                )
-
-            db_benchmark.optimization = db_optimization
-
-        else:
-            db_benchmark.optimization_id = None
-
-        db_benchmark.analysis_environments = [
+        db_sub_study.analysis_environments = [
             models.ChemicalEnvironment.as_unique(db, id=x.value)
-            for x in benchmark.analysis_environments
+            for x in sub_study.analysis_environments
         ]
 
-        return db_benchmark
+        return db_sub_study
 
-    @staticmethod
-    def delete(db: Session, project_id: str, study_id: str, benchmark_id: str):
+    @classmethod
+    def delete(cls, db: Session, project_id: str, study_id: str, sub_study_id: str):
 
-        db_benchmark = BenchmarkCRUD.query(db, project_id, study_id, benchmark_id)
+        db_sub_study = cls.query(db, project_id, study_id, sub_study_id)
 
-        if not db_benchmark:
-            raise BenchmarkNotFoundError(project_id, study_id, benchmark_id)
+        if not db_sub_study:
+            raise cls.not_found_error()(project_id, study_id, sub_study_id)
 
-        if db_benchmark.results is not None:
+        cls._check_has_dependants(db, db_sub_study, UnableToDeleteError)
 
-            raise UnableToDeleteError(
-                f"This benchmark (project_id={project_id}, "
-                f"study_id={study_id}, benchmark_id={benchmark_id}) "
-                f"already has a set of results associated with it so cannot be "
-                f"deleted. Delete the results first and then try again."
-            )
+        original_force_field = db_sub_study.force_field
+        db_sub_study.force_field = None
 
-        original_force_field = db_benchmark.force_field
-
-        db.delete(db_benchmark)
+        db.delete(db_sub_study)
 
         if original_force_field is not None:
-            ForceFieldCRUD.delete(db, db_benchmark.force_field)
+            ForceFieldCRUD.delete(db, original_force_field)
 
-    @staticmethod
-    def db_to_model(db_benchmark: models.Benchmark) -> projects.Benchmark:
+    @classmethod
+    @abc.abstractmethod
+    def _model_kwargs(
+        cls,
+        db_sub_study: models.SubStudy,
+    ) -> Dict[str, Any]:
+        """Returns the kwargs to create a new model with."""
 
-        db_parent_study = db_benchmark.parent
+        db_parent_study = db_sub_study.parent
         db_parent_project = db_parent_study.parent
 
-        optimization_id = None
-
-        if db_benchmark.optimization is not None:
-            optimization_id = db_benchmark.optimization.identifier
-
-        benchmark = projects.Benchmark(
-            id=db_benchmark.identifier,
+        return dict(
+            id=db_sub_study.identifier,
             study_id=db_parent_study.identifier,
             project_id=db_parent_project.identifier,
-            name=db_benchmark.name,
-            description=db_benchmark.description,
-            test_set_ids=[x.id for x in db_benchmark.test_sets],
-            optimization_id=optimization_id,
-            force_field=db_benchmark.force_field,
+            name=db_sub_study.name,
+            description=db_sub_study.description,
+            force_field=db_sub_study.force_field,
             analysis_environments=[
-                ChemicalEnvironment(x.id) for x in db_benchmark.analysis_environments
+                ChemicalEnvironment(x.id) for x in db_sub_study.analysis_environments
             ],
         )
 
-        return benchmark
+    @classmethod
+    def db_to_model(cls, db_sub_study: models.SubStudy) -> projects.SubStudy:
+
+        sub_study = cls.rest_class()(**cls._model_kwargs(db_sub_study))
+        return sub_study
+
+
+class OptimizationCRUD(SubStudyCRUD):
+    @classmethod
+    def orm_class(cls):
+        return models.Optimization
+
+    @classmethod
+    def rest_class(cls):
+        return projects.Optimization
+
+    @classmethod
+    def attribute_name(cls) -> str:
+        return "optimizations"
+
+    @classmethod
+    def exists_error(cls):
+        return OptimizationExistsError
+
+    @classmethod
+    def not_found_error(cls):
+        return OptimizationNotFoundError
+
+    @classmethod
+    def _db_model_kwargs(
+        cls,
+        db: Session,
+        sub_study: projects.Optimization,
+        db_parent: models.Study,
+        db_force_field: Optional[models.ForceField],
+    ) -> Dict[str, Any]:
+        """Returns the kwargs to create a new database model with."""
+
+        db_model_kwargs = super(OptimizationCRUD, cls)._db_model_kwargs(
+            db, sub_study, db_parent, db_force_field
+        )
+        # noinspection PyTypeChecker
+        db_model_kwargs.update(
+            dict(
+                evaluator_targets=[
+                    EvaluatorTargetCRUD.model_to_db(db, target)
+                    for target in sub_study.targets
+                    if isinstance(target, EvaluatorTarget)
+                ],
+                recharge_targets=[
+                    RechargeTargetCRUD.model_to_db(db, target)
+                    for target in sub_study.targets
+                    if isinstance(target, RechargeTarget)
+                ],
+                parameters_to_train=[
+                    ParameterCRUD.create(db, x) for x in sub_study.parameters_to_train
+                ],
+                force_balance_engine=(
+                    None
+                    if not isinstance(sub_study.engine, ForceBalance)
+                    else models.ForceBalance(
+                        **sub_study.engine.dict(exclude={"priors", "type"}),
+                        priors=[
+                            models.ForceBalancePrior(parameter_type=key, value=value)
+                            for key, value in sub_study.engine.priors.items()
+                        ],
+                    )
+                ),
+                max_iterations=sub_study.max_iterations,
+            )
+        )
+
+        return db_model_kwargs
+
+    @classmethod
+    def check_has_children(
+        cls,
+        db_sub_study: models.Optimization,
+        error_type: Type[Union[UnableToUpdateError, UnableToDeleteError]],
+    ):
+
+        study_id = db_sub_study.parent.identifier
+        project_id = db_sub_study.parent.parent.identifier
+
+        if db_sub_study.children is not None and len(db_sub_study.children) > 0:
+
+            child_optimization_ids = [
+                x.identifier for x in db_sub_study.children if x.type == "optimization"
+            ]
+            child_benchmark_ids = [
+                x.identifier for x in db_sub_study.children if x.type == "benchmark"
+            ]
+            optimizations_string = (
+                ""
+                if len(child_optimization_ids) == 0
+                else f"optimizations (with ids={', '.join(child_optimization_ids)})"
+            )
+            benchmarks_string = (
+                ""
+                if len(child_benchmark_ids) == 0
+                else f"benchmarks (with ids={', '.join(child_benchmark_ids)})"
+            )
+            join_string = "" if len(child_optimization_ids) == 0 else " and "
+
+            raise error_type(
+                f"This optimization (project_id={project_id}, study_id={study_id}, "
+                f"optimization_id={db_sub_study.identifier}) has {optimizations_string}"
+                f"{join_string}{benchmarks_string} associated with it and so cannot be "
+                f"updated. Delete the dependants first and then try again."
+            )
+
+    @classmethod
+    def _check_has_dependants(
+        cls,
+        db: Session,
+        db_sub_study: models.Optimization,
+        error_type: Type[Union[UnableToUpdateError, UnableToDeleteError]],
+    ):
+
+        # Make sure the optimization has no children, e.g. other sub-studies
+        # such as optimizations and benchmarks which depend on the refit force
+        # field produced by this optimization.
+        cls.check_has_children(db_sub_study, error_type)
+
+        # Make sure the optimization does not have any results uploaded yet.
+        study_id = db_sub_study.parent.identifier
+        project_id = db_sub_study.parent.parent.identifier
+
+        if db_sub_study.results is not None:
+
+            error_verb = (
+                "updated" if isinstance(error_type, UnableToUpdateError) else "deleted"
+            )
+
+            raise error_type(
+                f"This optimization (project_id={project_id}, "
+                f"study_id={study_id}, optimization_id={db_sub_study.identifier}) "
+                f"already has a set of results associated with it so cannot be "
+                f"{error_verb}. Delete the results first and then try again."
+            )
+
+    @classmethod
+    def update(cls, db: Session, sub_study: projects.Optimization):
+
+        db_optimization = super(OptimizationCRUD, cls).update(db, sub_study)
+
+        # Update the optimization engine.
+        # noinspection PyTypeChecker
+        db_optimization.force_balance_engine = (
+            None
+            if not isinstance(sub_study.engine, ForceBalance)
+            else models.ForceBalance(
+                **sub_study.engine.dict(exclude={"priors", "type"}),
+                priors=[
+                    models.ForceBalancePrior(parameter_type=key, value=value)
+                    for key, value in sub_study.engine.priors.items()
+                ],
+            )
+        )
+
+        # Update the targets.
+        db_optimization.evaluator_targets = [
+            EvaluatorTargetCRUD.model_to_db(db, target)
+            for target in sub_study.targets
+            if isinstance(target, EvaluatorTarget)
+        ]
+        db_optimization.recharge_targets = [
+            RechargeTargetCRUD.model_to_db(db, target)
+            for target in sub_study.targets
+            if isinstance(target, RechargeTarget)
+        ]
+
+        # Update the maximum number of iterations
+        db_optimization.max_iterations = sub_study.max_iterations
+
+        # Update the parameters to be optimized.
+        db_optimization.parameters_to_train = [
+            ParameterCRUD.create(db, x) for x in sub_study.parameters_to_train
+        ]
+
+        return db_optimization
+
+    @staticmethod
+    def _db_engine_to_model(db_engine: models.ForceBalance) -> ForceBalance:
+
+        # noinspection PyTypeChecker
+        return ForceBalance(
+            convergence_step_criteria=db_engine.convergence_step_criteria,
+            convergence_objective_criteria=db_engine.convergence_objective_criteria,
+            convergence_gradient_criteria=db_engine.convergence_gradient_criteria,
+            n_criteria=db_engine.n_criteria,
+            initial_trust_radius=db_engine.initial_trust_radius,
+            minimum_trust_radius=db_engine.minimum_trust_radius,
+            priors={x.parameter_type: x.value for x in db_engine.priors},
+        )
+
+    @classmethod
+    def _model_kwargs(
+        cls,
+        db_sub_study: models.Optimization,
+    ) -> Dict[str, Any]:
+        """Returns the kwargs to create a new model with."""
+
+        model_kwargs = super(OptimizationCRUD, cls)._model_kwargs(db_sub_study)
+        model_kwargs.update(
+            dict(
+                parameters_to_train=db_sub_study.parameters_to_train,
+                engine=OptimizationCRUD._db_engine_to_model(
+                    db_sub_study.force_balance_engine
+                ),
+                targets=[
+                    *[
+                        EvaluatorTargetCRUD.db_to_model(evaluator_target)
+                        for evaluator_target in db_sub_study.evaluator_targets
+                    ],
+                    *[
+                        RechargeTargetCRUD.db_to_model(recharge_target)
+                        for recharge_target in db_sub_study.recharge_targets
+                    ],
+                ],
+                max_iterations=db_sub_study.max_iterations,
+            )
+        )
+
+        return model_kwargs
+
+
+class BenchmarkCRUD(SubStudyCRUD):
+    @classmethod
+    def orm_class(cls):
+        return models.Benchmark
+
+    @classmethod
+    def rest_class(cls):
+        return projects.Benchmark
+
+    @classmethod
+    def attribute_name(cls) -> str:
+        return "benchmarks"
+
+    @classmethod
+    def exists_error(cls):
+        return BenchmarkExistsError
+
+    @classmethod
+    def not_found_error(cls):
+        return BenchmarkNotFoundError
+
+    @classmethod
+    def _check_dependencies_exist(cls, db: Session, sub_study: projects.Benchmark):
+
+        super(BenchmarkCRUD, cls)._check_dependencies_exist(db, sub_study)
+
+        # Check that all of the test sets exist.
+        test_sets = [DataSetCRUD.query(db, x) for x in sub_study.test_set_ids]
+
+        if any(x is None for x in test_sets):
+
+            raise DataSetNotFoundError(
+                next(
+                    iter(
+                        x
+                        for x, y in zip(sub_study.test_set_ids, test_sets)
+                        if y is None
+                    )
+                )
+            )
+
+        # Check that any referenced optimization results exist.
+        if sub_study.optimization_id is None:
+            return
+
+        db_optimization = OptimizationCRUD.query(
+            db, sub_study.project_id, sub_study.study_id, sub_study.optimization_id
+        )
+
+        if db_optimization.results is None:
+            raise UnableToCreateError(
+                f"The benchmark is for an optimization ("
+                f"id={sub_study.optimization_id}) which does not have any results "
+                f"uploaded yet. Upload results for the optimization and then try "
+                f"again."
+            )
+
+    @classmethod
+    def _db_model_kwargs(
+        cls,
+        db: Session,
+        sub_study: projects.Benchmark,
+        db_parent: models.Study,
+        db_force_field: Optional[models.ForceField],
+    ) -> Dict[str, Any]:
+        """Returns the kwargs to create a new database model with."""
+
+        db_model_kwargs = super(BenchmarkCRUD, cls)._db_model_kwargs(
+            db, sub_study, db_parent, db_force_field
+        )
+        # noinspection PyTypeChecker
+        db_model_kwargs.update(
+            dict(test_sets=[DataSetCRUD.query(db, x) for x in sub_study.test_set_ids])
+        )
+
+        return db_model_kwargs
+
+    @classmethod
+    def _check_has_dependants(
+        cls,
+        db: Session,
+        db_sub_study: models.Benchmark,
+        error_type: Type[Union[UnableToUpdateError, UnableToDeleteError]],
+    ):
+
+        study_id = db_sub_study.parent.identifier
+        project_id = db_sub_study.parent.parent.identifier
+
+        if db_sub_study.results is not None:
+
+            raise error_type(
+                f"This benchmark (project_id={project_id}, "
+                f"study_id={study_id}, benchmark_id={db_sub_study.identifier}) "
+                f"already has a set of results associated with it so cannot be "
+                f"updated. Delete the results first and then update."
+            )
+
+    @classmethod
+    def update(cls, db: Session, sub_study: projects.Benchmark):
+
+        try:
+            db_benchmark = super(BenchmarkCRUD, cls).update(db, sub_study)
+        except UnableToCreateError as e:
+            raise UnableToUpdateError(e.detail)
+        except Exception as e:
+            raise e
+
+        # Update the test sets.
+        db_benchmark.test_sets = [
+            DataSetCRUD.query(db, x) for x in sub_study.test_set_ids
+        ]
+
+        # Update the optimization possibly being benchmarked.
+        db_benchmark.optimization = (
+            None
+            if sub_study.optimization_id is None
+            else OptimizationCRUD.query(
+                db, sub_study.project_id, sub_study.study_id, sub_study.optimization_id
+            )
+        )
+
+        return db_benchmark
+
+    @classmethod
+    def _model_kwargs(
+        cls,
+        db_sub_study: models.Benchmark,
+    ) -> Dict[str, Any]:
+        """Returns the kwargs to create a new model with."""
+
+        model_kwargs = super(BenchmarkCRUD, cls)._model_kwargs(db_sub_study)
+        model_kwargs.update(
+            dict(
+                test_set_ids=[x.id for x in db_sub_study.test_sets],
+                optimization_id=(
+                    None
+                    if db_sub_study.optimization is None
+                    else db_sub_study.optimization.identifier
+                ),
+            )
+        )
+
+        return model_kwargs
 
 
 class StudyCRUD:
@@ -614,34 +737,8 @@ class StudyCRUD:
         return StudyCRUD.db_to_model(db_study)
 
     @staticmethod
-    def read_all_data_sets(
-        db: Session, project_id: str, study_id: str
-    ) -> DataSetCollection:
-
-        db_study = StudyCRUD.query(db, project_id, study_id)
-
-        if not db_study:
-            raise StudyNotFoundError(project_id, study_id)
-
-        data_set_ids = set()
-
-        for optimization in db_study.optimizations:
-            data_set_ids.update(x.id for x in optimization.training_sets)
-        for benchmark in db_study.benchmarks:
-            data_set_ids.update(x.id for x in benchmark.test_sets)
-
-        data_sets = []
-
-        for data_set_id in data_set_ids:
-
-            db_data_set = DataSetCRUD.query(db, data_set_id)
-            data_sets.append(DataSetCRUD.db_to_model(db_data_set))
-
-        return DataSetCollection(data_sets=data_sets)
-
-    @staticmethod
     def _delete_orphaned(
-        db: Session, study: Study, crud_class, db_existing_list, new_list
+        db: Session, study: projects.Study, crud_class, db_existing_list, new_list
     ):
         """Attempts to delete any orphaned children (namely optimizations and
         benchmarks) when a study is being updated.

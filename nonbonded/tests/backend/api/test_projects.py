@@ -2,8 +2,6 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.database import models
-from nonbonded.library.config import settings
-from nonbonded.library.models.datasets import DataSetCollection
 from nonbonded.library.models.projects import (
     Benchmark,
     Optimization,
@@ -12,26 +10,22 @@ from nonbonded.library.models.projects import (
     Study,
     StudyCollection,
 )
-from nonbonded.tests.backend.api.utilities import BaseTestEndpoints
-from nonbonded.tests.backend.crud.utilities.commit import (
+from nonbonded.tests.backend.api.utilities import (
+    BaseTestEndpoints,
     commit_benchmark,
     commit_data_set,
     commit_optimization,
     commit_project,
     commit_study,
 )
-from nonbonded.tests.backend.crud.utilities.comparison import (
-    compare_benchmarks,
-    compare_optimizations,
-    compare_projects,
-    compare_studies,
-)
-from nonbonded.tests.backend.crud.utilities.create import (
+from nonbonded.tests.utilities.comparison import compare_pydantic_models
+from nonbonded.tests.utilities.factory import (
     create_benchmark,
-    create_empty_project,
-    create_empty_study,
+    create_evaluator_target,
     create_force_field,
     create_optimization,
+    create_project,
+    create_study,
 )
 
 
@@ -42,7 +36,7 @@ class TestProjectEndpoints(BaseTestEndpoints):
 
     @classmethod
     def _create_model(cls, db, create_dependencies=True):
-        project = create_empty_project("project-1")
+        project = create_project("project-1")
         return project, {"project_id": project.id}
 
     @classmethod
@@ -55,22 +49,18 @@ class TestProjectEndpoints(BaseTestEndpoints):
         return project, {"project_id": project.id}
 
     @classmethod
-    def _comparison_function(cls):
-        return compare_projects
-
-    @classmethod
     def _n_db_models(cls, db: Session) -> int:
         return db.query(models.Project.id).count()
 
-    def test_get_all(self, rest_client: TestClient, rest_db: Session):
+    def test_get_all(self, rest_client: TestClient, db: Session):
 
-        project = commit_project(rest_db)
+        project = commit_project(db)
         rest_collection = ProjectCollection.from_rest(rest_client)
 
         assert rest_collection is not None
         assert len(rest_collection.projects) == 1
 
-        compare_projects(project, rest_collection.projects[0])
+        compare_pydantic_models(project, rest_collection.projects[0])
 
 
 class TestStudyEndpoints(BaseTestEndpoints):
@@ -87,7 +77,7 @@ class TestStudyEndpoints(BaseTestEndpoints):
             project = commit_project(db)
             project_id = project.id
 
-        study = create_empty_study(project_id, "study-1")
+        study = create_study(project_id, "study-1")
 
         return study, {"project_id": project_id, "study_id": study.id}
 
@@ -101,16 +91,12 @@ class TestStudyEndpoints(BaseTestEndpoints):
         return study, {"project_id": project.id, "study_id": study.id}
 
     @classmethod
-    def _comparison_function(cls):
-        return compare_studies
-
-    @classmethod
     def _n_db_models(cls, db: Session) -> int:
         return db.query(models.Study.id).count()
 
-    def test_get_all(self, rest_client: TestClient, rest_db: Session):
+    def test_get_all(self, rest_client: TestClient, db: Session):
 
-        project, study = commit_study(rest_db)
+        project, study = commit_study(db)
         rest_collection = StudyCollection.from_rest(
             project_id=project.id, requests_class=rest_client
         )
@@ -118,21 +104,7 @@ class TestStudyEndpoints(BaseTestEndpoints):
         assert rest_collection is not None
         assert len(rest_collection.studies) == 1
 
-        compare_studies(study, rest_collection.studies[0])
-
-    def test_get_all_data_sets(self, rest_client: TestClient, rest_db: Session):
-
-        project, study, optimization, data_set = commit_optimization(rest_db)
-
-        data_sets_request = rest_client.get(
-            f"{settings.API_URL}/projects/{project.id}/studies/{study.id}/datasets"
-        )
-        data_sets_request.raise_for_status()
-
-        rest_data_sets = DataSetCollection.parse_raw(data_sets_request.text)
-
-        assert rest_data_sets is not None
-        assert len(rest_data_sets.data_sets) == 2
+        compare_pydantic_models(study, rest_collection.studies[0])
 
 
 class TestBenchmarkEndpoints(BaseTestEndpoints):
@@ -172,7 +144,7 @@ class TestBenchmarkEndpoints(BaseTestEndpoints):
             {
                 "project_id": project_id,
                 "study_id": study_id,
-                "benchmark_id": benchmark.id,
+                "sub_study_id": benchmark.id,
             },
         )
 
@@ -188,13 +160,9 @@ class TestBenchmarkEndpoints(BaseTestEndpoints):
             {
                 "project_id": project.id,
                 "study_id": study.id,
-                "benchmark_id": benchmark.id,
+                "sub_study_id": benchmark.id,
             },
         )
-
-    @classmethod
-    def _comparison_function(cls):
-        return compare_benchmarks
 
     @classmethod
     def _n_db_models(cls, db: Session) -> int:
@@ -225,7 +193,10 @@ class TestOptimizationEndpoints(BaseTestEndpoints):
             data_set_ids = [data_set.id]
 
         optimization = create_optimization(
-            project_id, study_id, "optimization-1", data_set_ids,
+            project_id,
+            study_id,
+            "optimization-1",
+            [create_evaluator_target("name", data_set_ids)],
         )
 
         return (
@@ -233,7 +204,7 @@ class TestOptimizationEndpoints(BaseTestEndpoints):
             {
                 "project_id": project_id,
                 "study_id": study_id,
-                "optimization_id": optimization.id,
+                "sub_study_id": optimization.id,
             },
         )
 
@@ -243,20 +214,16 @@ class TestOptimizationEndpoints(BaseTestEndpoints):
 
     @classmethod
     def _commit_model(cls, db):
-        project, study, optimization, _ = commit_optimization(db)
+        project, study, optimization, _, _ = commit_optimization(db)
 
         return (
             optimization,
             {
                 "project_id": project.id,
                 "study_id": study.id,
-                "optimization_id": optimization.id,
+                "sub_study_id": optimization.id,
             },
         )
-
-    @classmethod
-    def _comparison_function(cls):
-        return compare_optimizations
 
     @classmethod
     def _n_db_models(cls, db: Session) -> int:

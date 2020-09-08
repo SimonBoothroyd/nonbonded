@@ -1,33 +1,40 @@
+import errno
 import os
 from contextlib import contextmanager
 from tempfile import TemporaryDirectory
 from typing import Optional
 
 
-def get_data_filename(relative_path):
-    """Get the full path to one of the reference files in data.
+def get_data_file_path(relative_path: str) -> str:
+    """Get the full path to one of the files included in this packages data
+    directory.
 
-    In the source distribution, these files are in ``nonbonded/data/``,
-    but on installation, they're moved to somewhere in the user's python
+    In the source distribution these files are located in ``nonbonded/data/``.
+    On installation, they're moved to somewhere in the user's python
     site-packages directory.
 
     Parameters
     ----------
-    relative_path : str
+    relative_path
         The relative path of the file to load.
+
+    Returns
+    -------
+        The absolute path to the file.
+
+    Raises
+    ------
+    FileNotFoundError
     """
 
     from pkg_resources import resource_filename
 
-    file_name = resource_filename("nonbonded", os.path.join("data", relative_path))
+    file_path = resource_filename("nonbonded", os.path.join("data", relative_path))
 
-    if not os.path.exists(file_name):
-        raise ValueError(
-            "Sorry! %s does not exist. If you just added it, you'll have to re-install"
-            % file_name
-        )
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), file_path)
 
-    return file_name
+    return file_path
 
 
 @contextmanager

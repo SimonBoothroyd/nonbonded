@@ -2,6 +2,7 @@ name: test
 channels:
   - conda-forge
   - omnia
+  - omnia/label/alpha
 dependencies:
     # Base depends
   - python
@@ -12,25 +13,37 @@ dependencies:
   - pytest-cov
   - codecov
   - mock
+  - requests-mock
+  - deepdiff
 
     # Core dependencies
   - click
-  - forcebalance >=1.7.2
-  - jinja2
+  - click-option-group
   - numpy
-  - openforcefield
-  - openff-evaluator >=0.2.0
-  - pandas
   - pydantic
   - requests
+  - pandas
+  - jinja2
+  - email_validator
+
+    # Benchmark / optimization target dependencies
+  - forcebalance >=1.7.2
+  - openforcefield
+  - openff-evaluator >=0.2.0
+  - openff-recharge >=0.0.1a2
+
+    # SMILES to SVG
   - rdkit
-  - scipy
+
+    # Plotting
   - seaborn
+
+    # Statistics
+  - scipy
 
     # REST dependencies
   - alembic
   - fastapi
-  - email_validator
   - sqlalchemy
   - sqlalchemy-utils
   - sqlite

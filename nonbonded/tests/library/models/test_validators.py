@@ -25,7 +25,8 @@ def test_none_empty_str():
 
 
 @pytest.mark.parametrize(
-    "valid_string", ["a", "-" "abc-123-cba", "".join(["a"] * 32)],
+    "valid_string",
+    ["a", "-" "abc-123-cba", "".join(["a"] * 32)],
 )
 def test_valid_identifier_str(valid_string):
     """Ensures that the identifier string validator works as intended

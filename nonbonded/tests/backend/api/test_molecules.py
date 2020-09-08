@@ -5,7 +5,7 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from nonbonded.backend.api.v1.endpoints.molecules import _get_molecule_image
+from nonbonded.backend.api.dev.endpoints.molecules import _get_molecule_image
 from nonbonded.library.config import settings
 
 

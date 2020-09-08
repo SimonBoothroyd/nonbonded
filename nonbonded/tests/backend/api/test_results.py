@@ -2,18 +2,14 @@ from sqlalchemy.orm import Session
 
 from nonbonded.backend.database import models
 from nonbonded.library.models.results import BenchmarkResult, OptimizationResult
-from nonbonded.tests.backend.api.utilities import BaseTestEndpoints
-from nonbonded.tests.backend.crud.utilities.commit import (
+from nonbonded.tests.backend.api.utilities import (
+    BaseTestEndpoints,
     commit_benchmark,
     commit_benchmark_result,
     commit_optimization,
     commit_optimization_result,
 )
-from nonbonded.tests.backend.crud.utilities.comparison import (
-    compare_benchmark_results,
-    compare_optimization_results,
-)
-from nonbonded.tests.backend.crud.utilities.create import (
+from nonbonded.tests.utilities.factory import (
     create_benchmark_result,
     create_data_set,
     create_optimization_result,
@@ -34,14 +30,18 @@ class TestOptimizationResultEndpoints(BaseTestEndpoints):
 
         if create_dependencies:
 
-            project, study, optimization, _ = commit_optimization(db)
+            project, study, optimization, _, _ = commit_optimization(db)
 
             project_id = project.id
             study_id = study.id
             optimization_id = optimization.id
 
         optimization_result = create_optimization_result(
-            project_id, study_id, optimization_id
+            project_id,
+            study_id,
+            optimization_id,
+            ["evaluator-target-1"],
+            ["recharge-target-1"],
         )
 
         return (
@@ -64,6 +64,7 @@ class TestOptimizationResultEndpoints(BaseTestEndpoints):
             study,
             optimization,
             _,
+            _,
             optimization_result,
         ) = commit_optimization_result(db)
 
@@ -75,10 +76,6 @@ class TestOptimizationResultEndpoints(BaseTestEndpoints):
                 "model_id": optimization.id,
             },
         )
-
-    @classmethod
-    def _comparison_function(cls):
-        return compare_optimization_results
 
     @classmethod
     def _n_db_models(cls, db: Session) -> int:
@@ -113,7 +110,10 @@ class TestBenchmarkResultEndpoints(BaseTestEndpoints):
             data_sets = data_set
 
         benchmark_result = create_benchmark_result(
-            project_id, study_id, benchmark_id, data_sets,
+            project_id,
+            study_id,
+            benchmark_id,
+            data_sets,
         )
 
         return (
@@ -123,7 +123,7 @@ class TestBenchmarkResultEndpoints(BaseTestEndpoints):
 
     @classmethod
     def _perturb_model(cls, model):
-        model.analysed_result.statistic_entries = []
+        model.data_set_result.statistic_entries = []
 
     @classmethod
     def _commit_model(cls, db):
@@ -135,10 +135,6 @@ class TestBenchmarkResultEndpoints(BaseTestEndpoints):
             benchmark_result,
             {"project_id": project.id, "study_id": study.id, "model_id": benchmark.id},
         )
-
-    @classmethod
-    def _comparison_function(cls):
-        return compare_benchmark_results
 
     @classmethod
     def _n_db_models(cls, db: Session) -> int:

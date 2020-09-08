@@ -15,5 +15,6 @@ def check_access_token(access_token: str = Security(acces_token_header)):
         return access_token
 
     raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid access token.",
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid access token.",
     )

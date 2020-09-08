@@ -17,11 +17,7 @@ class ForceFieldCRUD:
 
         # Check if the force field still has parents.
         # noinspection PyUnresolvedReferences
-        if (
-            len(force_field.optimizations) > 0
-            or len(force_field.benchmarks) > 0
-            or len(force_field.results) > 0
-        ):
+        if len(force_field.sub_studies) > 0 or len(force_field.results) > 0:
             return
 
         db.delete(force_field)

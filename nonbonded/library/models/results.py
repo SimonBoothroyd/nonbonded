@@ -3,7 +3,8 @@ import logging
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
 import requests
-from pydantic import Field
+from pydantic import Field, conint, validator
+from typing_extensions import Literal
 
 from nonbonded.library.config import settings
 from nonbonded.library.models import BaseORM, BaseREST
@@ -33,39 +34,12 @@ else:
 logger = logging.getLogger(__name__)
 
 
-class ResultsEntry(BaseORM):
+class Statistic(BaseORM):
+    """An object which contains information about a statistic (e.g. the RMSE) computed
+    from a set of reference and estimated points."""
 
-    reference_id: int = Field(
-        ...,
-        description="The identifier of the original data point which has been "
-        "estimated.",
-    )
-
-    estimated_value: float = Field(..., description="The estimated value.")
-    estimated_std_error: float = Field(..., description="The estimated std error")
-
-    category: Optional[str] = Field(
-        ..., description="The category which this data point has been placed into."
-    )
-
-
-class StatisticsEntry(BaseORM):
-
-    statistics_type: StatisticType = Field(
+    statistic_type: StatisticType = Field(
         ..., description="The type of statistic recorded by this entry."
-    )
-
-    property_type: NonEmptyStr = Field(
-        ..., description="The type of property which the statistic was calculated for."
-    )
-    n_components: Optional[PositiveInt] = Field(
-        ...,
-        description="The number of components in the systems which the statistic was "
-        "calculated for (pure, binary, etc.).",
-    )
-
-    category: Optional[str] = Field(
-        None, description="The category which this statistic has been placed into."
     )
 
     value: float = Field(..., description="The value of the statistic.")
@@ -77,19 +51,56 @@ class StatisticsEntry(BaseORM):
         ..., description="The upper 95% confidence interval of the statistic."
     )
 
-
-class AnalysedResult(BaseORM, abc.ABC):
-
-    statistic_entries: List[StatisticsEntry] = Field(
-        ...,
-        description="Overall statistics about the results, including values such as "
-        "the RMSE and R^2 of each type of property.",
+    category: Optional[str] = Field(
+        None, description="The category which this statistic has been placed into."
     )
 
-    results_entries: List[ResultsEntry] = Field(
+
+class DataSetStatistic(Statistic):
+
+    property_type: NonEmptyStr = Field(
+        ..., description="The type of property which the statistic was calculated for."
+    )
+    n_components: Optional[PositiveInt] = Field(
         ...,
-        description="A comparison of the estimated and reference values for each of "
-        "the properties which were analysed.",
+        description="The number of components in the systems which the statistic was "
+        "calculated for (pure, binary, etc.).",
+    )
+
+
+class DataSetResultEntry(BaseORM):
+    """An object which stores the value of an estimated data entry as well as the
+    original id of the data entry which was estimated."""
+
+    reference_id: int = Field(
+        ...,
+        description="The unique id of the original data point which has been "
+        "estimated.",
+    )
+
+    estimated_value: float = Field(..., description="The estimated value.")
+    estimated_std_error: float = Field(..., description="The estimated std error")
+
+    category: Optional[str] = Field(
+        ...,
+        description="The category which this result has been assigned. This may "
+        "indicate, for example, the measurement was made for a system of alcohols.",
+    )
+
+
+class DataSetResult(BaseORM):
+    """Encodes the results of estimating a data set of physical properties using
+    a particular force field as part of a sub-study."""
+
+    result_entries: List[DataSetResultEntry] = Field(
+        ...,
+        description="The estimated values of each property within a reference data "
+        "set.",
+    )
+    statistic_entries: List[DataSetStatistic] = Field(
+        ...,
+        description="Statistics about how the estimated properties compare to the "
+        "reference set. These include, e.g. R^2 and RMSE values.",
     )
 
     @classmethod
@@ -182,7 +193,7 @@ class AnalysedResult(BaseORM, abc.ABC):
         reference_data_set: Union[DataSet, DataSetCollection],
         estimated_data_set: "PhysicalPropertyDataSet",
         analysis_environments: List[ChemicalEnvironment],
-    ) -> Tuple[List[ResultsEntry], "pandas.DataFrame"]:
+    ) -> Tuple[List[DataSetResultEntry], "pandas.DataFrame"]:
 
         import pandas
         from openff.evaluator.datasets import PhysicalProperty
@@ -227,7 +238,7 @@ class AnalysedResult(BaseORM, abc.ABC):
             property_class = estimated_entry.__class__
             default_units = property_class.default_unit()
 
-            results_entry = ResultsEntry(
+            results_entry = DataSetResultEntry(
                 reference_id=reference_entry.id,
                 estimated_value=estimated_entry.value.to(default_units).magnitude,
                 estimated_std_error=estimated_entry.uncertainty.to(
@@ -265,7 +276,7 @@ class AnalysedResult(BaseORM, abc.ABC):
         category: Optional[str],
         bootstrap_iterations: int,
         statistic_types: List[StatisticType],
-    ) -> List[StatisticsEntry]:
+    ) -> List[DataSetStatistic]:
 
         bulk_statistics, _, bulk_statistics_ci = compute_statistics(
             measured_values=results_frame["Reference Value"].values,
@@ -279,8 +290,8 @@ class AnalysedResult(BaseORM, abc.ABC):
         statistics_entries = []
 
         for statistic_type in bulk_statistics:
-            statistics_entry = StatisticsEntry(
-                statistics_type=statistic_type,
+            statistics_entry = DataSetStatistic(
+                statistic_type=statistic_type,
                 property_type=property_type,
                 n_components=n_components,
                 category=category,
@@ -300,7 +311,7 @@ class AnalysedResult(BaseORM, abc.ABC):
         analysis_environments: List[ChemicalEnvironment],
         bootstrap_iterations: int = 1000,
         statistic_types: List[StatisticType] = None,
-    ) -> "AnalysedResult":
+    ) -> "DataSetResult":
 
         if statistic_types is None:
 
@@ -363,26 +374,23 @@ class AnalysedResult(BaseORM, abc.ABC):
             len(categories) + 1
         ) * len(statistic_types)
 
-        analysed_result = AnalysedResult(
-            statistic_entries=statistic_entries, results_entries=results_entries,
+        data_set_result = DataSetResult(
+            statistic_entries=statistic_entries,
+            result_entries=results_entries,
         )
 
-        return analysed_result
+        return data_set_result
 
 
-class BaseResult(BaseREST, abc.ABC):
+class SubStudyResult(BaseREST, abc.ABC):
 
-    project_id: IdentifierStr = Field(
-        ..., description="The id of the project that these results were generated for."
-    )
-    study_id: IdentifierStr = Field(
-        ..., description="The id of the study that these results were generated for."
-    )
     id: IdentifierStr = Field(
         ...,
-        description="The unique id assigned to these results. This should match the id "
-        "of the benchmark / optimization which yielded this result.",
+        description="The unique id of the sub-study which generated this result.",
     )
+
+    study_id: IdentifierStr = Field(..., description="The id of the parent study.")
+    project_id: IdentifierStr = Field(..., description="The id of the parent project.")
 
     @classmethod
     def _url_name(cls):
@@ -430,10 +438,15 @@ class BaseResult(BaseREST, abc.ABC):
 
     @classmethod
     def from_rest(
-        cls, *, project_id: str, study_id: str, model_id: str, requests_class=requests,
+        cls,
+        *,
+        project_id: str,
+        study_id: str,
+        model_id: str,
+        requests_class=requests,
     ):
         # noinspection PyTypeChecker
-        return super(BaseResult, cls).from_rest(
+        return super(SubStudyResult, cls).from_rest(
             project_id=project_id,
             study_id=study_id,
             model_id=model_id,
@@ -441,9 +454,9 @@ class BaseResult(BaseREST, abc.ABC):
         )
 
 
-class BenchmarkResult(BaseResult):
+class BenchmarkResult(SubStudyResult):
 
-    analysed_result: AnalysedResult = Field(
+    data_set_result: DataSetResult = Field(
         ..., description="The analysed results of the benchmark"
     )
 
@@ -459,34 +472,91 @@ class BenchmarkResult(BaseResult):
         bootstrap_iterations: int = 1000,
     ) -> "BenchmarkResult":
 
-        analysed_result = AnalysedResult.from_evaluator(
-            reference_data_set=reference_data_set,
-            estimated_data_set=estimated_data_set,
-            analysis_environments=analysis_environments,
-            bootstrap_iterations=bootstrap_iterations,
-        )
-
         benchmark_result = BenchmarkResult(
             project_id=project_id,
             study_id=study_id,
             id=benchmark_id,
-            analysed_result=analysed_result,
+            data_set_result=DataSetResult.from_evaluator(
+                reference_data_set=reference_data_set,
+                estimated_data_set=estimated_data_set,
+                analysis_environments=analysis_environments,
+                bootstrap_iterations=bootstrap_iterations,
+            ),
         )
 
         return benchmark_result
 
 
-class OptimizationResult(BaseResult):
+class TargetResult(BaseORM, abc.ABC):
+    """A base class for the results of a particular optimization target at a
+    single optimization iteration.
+    """
 
-    objective_function: Dict[int, float] = Field(
-        ..., description="The value of the objective function at each iteration"
+    objective_function: float = Field(
+        ...,
+        description="The targets contribution to the total objective function.",
     )
-    statistics: Dict[int, List[StatisticsEntry]] = Field(
+
+
+class EvaluatorTargetResult(TargetResult):
+    """Results output while training against an OpenFF Evaluator optimization
+    target."""
+
+    type: Literal["evaluator"] = "evaluator"
+
+    statistic_entries: List[DataSetStatistic] = Field(
         ...,
         description="Statistics measuring the performance of the force field being "
-        "refit against the training set at each iteration.",
+        "refit against the training set.",
+    )
+
+
+class RechargeTargetResult(TargetResult):
+    """Results output while training against an OpenFF Recharge optimization
+    target at a particular optimization iteration."""
+
+    type: Literal["recharge"] = "recharge"
+
+    statistic_entries: List[Statistic] = Field(
+        ...,
+        description="Statistics measuring the performance of the force field being "
+        "refit against the training set.",
+    )
+
+
+TargetResultType = Union[EvaluatorTargetResult, RechargeTargetResult]
+
+
+class OptimizationResult(SubStudyResult):
+
+    target_results: Dict[conint(ge=0), Dict[IdentifierStr, TargetResultType]] = Field(
+        ...,
+        description="The results output by each optimization target at each iteration.",
     )
 
     refit_force_field: ForceField = Field(
         ..., description="The refit force field produced by the optimization."
     )
+
+    @validator("target_results")
+    def validate_target_results(cls, value):
+
+        # Make sure at least one target result is provided.
+        assert len(value) > 0
+        assert all(len(x) > 0 for x in value.values())
+
+        # Make sure the targets are the same between iterations.
+        expected_targets = value[next(iter(value))]
+
+        for iteration in value:
+
+            assert {*expected_targets} == {*value[iteration]}
+
+            assert all(
+                isinstance(
+                    value[iteration][target_id], type(expected_targets[target_id])
+                )
+                for target_id in expected_targets
+            )
+
+        return value

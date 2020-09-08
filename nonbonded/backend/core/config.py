@@ -12,7 +12,7 @@ class DatabaseType(Enum):
 
 
 class Settings(BaseSettings):
-    API_V1_STR: str = "/api/v1"
+    API_V1_STR: str = "/api/dev"
     ACCESS_TOKEN: str = secrets.token_urlsafe(32)
 
     PROJECT_NAME: str = "nonbonded"

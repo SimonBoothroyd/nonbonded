@@ -10,9 +10,9 @@ class Parameter(UniqueMixin, Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    handler_type = Column(String)
-    smirks = Column(String)
-    attribute_name = Column(String)
+    handler_type = Column(String, nullable=False)
+    smirks = Column(String, nullable=False)
+    attribute_name = Column(String, nullable=False)
 
     @classmethod
     def unique_hash(cls, handler_type, smirks, attribute_name):
@@ -32,7 +32,7 @@ class ForceField(UniqueMixin, Base):
     __tablename__ = "force_fields"
 
     id = Column(Integer, primary_key=True, index=True)
-    inner_content = Column(String)
+    inner_content = Column(String, nullable=False)
 
     @classmethod
     def unique_hash(cls, inner_content):

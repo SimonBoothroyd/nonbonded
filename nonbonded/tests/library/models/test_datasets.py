@@ -3,6 +3,7 @@ import pytest
 from openff.evaluator import unit
 from openff.evaluator.datasets import (
     MeasurementSource,
+    PhysicalProperty,
     PhysicalPropertyDataSet,
     PropertyPhase,
 )
@@ -15,20 +16,30 @@ from openff.evaluator.properties import (
 )
 from openff.evaluator.substances import Component, ExactAmount, MoleFraction, Substance
 from openff.evaluator.thermodynamics import ThermodynamicState
+from pydantic import ValidationError
 
 from nonbonded.library.models.authors import Author
-from nonbonded.library.models.datasets import DataSet, DataSetCollection
+from nonbonded.library.models.datasets import (
+    DataSet,
+    DataSetCollection,
+    DataSetEntry,
+    MoleculeSet,
+    MoleculeSetCollection,
+)
+from nonbonded.tests.utilities.factory import create_data_set, create_molecule_set
 
 
-def compare_properties(evaluator_property, data_set_entry):
+def compare_properties(
+    evaluator_property: PhysicalProperty, data_set_entry: DataSetEntry
+):
     """Compares whether an evaluator property is equivalent to a
     data set entry
 
     Parameters
     ----------
-    evaluator_property: openff.evaluator.datasets.PhysicalProperty
+    evaluator_property
         The evaluator property to compare.
-    data_set_entry: DataSetEntry
+    data_set_entry
         The data set entry to compare.
 
     Raises
@@ -83,38 +94,30 @@ def compare_properties(evaluator_property, data_set_entry):
     assert data_set_entry.doi == evaluator_property.source.doi
 
 
-def compare_evaluator_properties(evaluator_property_1, evaluator_property_2):
+def compare_evaluator_properties(property_1, property_2):
     """Compares whether two evaluator properties are equivalent.
 
     Parameters
     ----------
-    evaluator_property_1: openff.evaluator.datasets.PhysicalProperty
-        The first evaluator property to compare.
-    evaluator_property_2: openff.evaluator.datasets.PhysicalProperty
-        The second evaluator property to compare.
+    property_1
+        The first property to compare.
+    property_2
+        The second property to compare.
 
     Raises
     ------
     AssertionError
     """
-    assert (
-        evaluator_property_2.substance.identifier
-        == evaluator_property_1.substance.identifier
-    )
-    assert evaluator_property_2.phase == evaluator_property_1.phase
+    assert property_2.substance.identifier == property_1.substance.identifier
+    assert property_2.phase == property_1.phase
 
-    assert (
-        evaluator_property_2.thermodynamic_state
-        == evaluator_property_1.thermodynamic_state
-    )
+    assert property_2.thermodynamic_state == property_1.thermodynamic_state
 
-    assert numpy.isclose(evaluator_property_2.value, evaluator_property_1.value)
-    assert numpy.isclose(
-        evaluator_property_2.uncertainty, evaluator_property_1.uncertainty
-    )
+    assert numpy.isclose(property_2.value, property_1.value)
+    assert numpy.isclose(property_2.uncertainty, property_1.uncertainty)
 
     # noinspection PyUnresolvedReferences
-    assert evaluator_property_2.source.doi == evaluator_property_1.source.doi
+    assert property_2.source.doi == property_1.source.doi
 
 
 def simple_evaluator_data_set():
@@ -344,3 +347,47 @@ def test_collection_to_evaluator(evaluator_data_set):
 
         evaluator_property = evaluator_properties_by_id[recreated_property.id]
         compare_evaluator_properties(evaluator_property, recreated_property)
+
+
+def test_data_set_collection_validation():
+    """Check that the data set correctly validates for unique set ids."""
+
+    # Create a set which should not error
+    DataSetCollection(data_sets=[create_data_set("data-set-1")])
+
+    # Create a set which should error
+    with pytest.raises(ValidationError):
+
+        DataSetCollection(
+            data_sets=[create_data_set("data-set-1"), create_data_set("data-set-1")]
+        )
+
+
+def test_molecule_set_collection_validation():
+    """Check that the molecule set correctly validates for unique set ids."""
+
+    # Create a set which should not error
+    MoleculeSetCollection(molecule_sets=[create_molecule_set("molecule-set-1")])
+
+    # Create a set which should error
+    with pytest.raises(ValidationError):
+
+        MoleculeSetCollection(
+            molecule_sets=[
+                create_molecule_set("molecule-set-1"),
+                create_molecule_set("molecule-set-1"),
+            ]
+        )
+
+
+def test_molecule_set_validation():
+    """Check that the molecule set correctly validates for unique set ids."""
+
+    # Create a set which should not error
+    molecule_set = create_molecule_set("molecule-set-1")
+
+    # Create a set which should error
+    with pytest.raises(ValidationError):
+
+        molecule_set.entries.append(molecule_set.entries[0])
+        MoleculeSet(**molecule_set.dict())

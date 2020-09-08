@@ -60,9 +60,20 @@ priors
 
 $end
 
+{%- for target in evaluator_targets %}
 $target
-name {{evaluator_target_name}}
+name {{target.id}}
 type Evaluator_SMIRNOFF
-weight 1.0
+weight {{target.weight}}
 evaluator_input options.json
 $end
+{%- endfor %}
+
+{%- for target in recharge_targets %}
+$target
+name {{target.id}}
+type Recharge_SMIRNOFF
+weight {{target.weight}}
+recharge_esp_store esp-store.sqlite
+$end
+{%- endfor %}

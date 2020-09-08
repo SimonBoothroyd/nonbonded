@@ -207,7 +207,10 @@ def _plot_relative_rmse(
         plot_frame = results_frame[results_frame["Property Type"] == property_type]
 
         plot = seaborn.FacetGrid(
-            plot_frame, size=4.0, aspect=0.6 * len(iterations), sharey=False,
+            plot_frame,
+            size=4.0,
+            aspect=0.6 * len(iterations),
+            sharey=False,
         )
         plot.map_dataframe(
             plot_categories_with_custom_ci,

@@ -24,6 +24,5 @@ conda activate {{ environment_name }}
 conda env export > conda_env.yaml
 
 # Run the commands
-{%- for command in commands %}
-{{ command }}
+{% for command in commands %}{{ command }}
 {% endfor %}

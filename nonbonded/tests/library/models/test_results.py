@@ -5,12 +5,20 @@ from openff.evaluator.datasets import PhysicalPropertyDataSet, PropertyPhase
 from openff.evaluator.properties import Density, EnthalpyOfMixing
 from openff.evaluator.substances import Substance
 from openff.evaluator.thermodynamics import ThermodynamicState
+from pydantic import ValidationError
 
 from nonbonded.library.models.authors import Author
 from nonbonded.library.models.datasets import Component, DataSet, DataSetEntry
-from nonbonded.library.models.results import AnalysedResult, BenchmarkResult
+from nonbonded.library.models.results import (
+    BenchmarkResult,
+    DataSetResult,
+    OptimizationResult,
+    RechargeTargetResult,
+)
 from nonbonded.library.statistics.statistics import StatisticType
 from nonbonded.library.utilities.environments import ChemicalEnvironment
+from nonbonded.tests.utilities.comparison import does_not_raise
+from nonbonded.tests.utilities.factory import create_force_field, create_statistic
 
 
 @pytest.fixture(scope="module")
@@ -142,7 +150,7 @@ def test_components_to_category(components, expected_category):
     ]
 
     assert (
-        AnalysedResult._components_to_category(components, environments)
+        DataSetResult._components_to_category(components, environments)
         == expected_category
     )
 
@@ -157,7 +165,7 @@ def test_evaluator_to_results_entries(estimated_reference_sets):
 
     analysis_environments = [ChemicalEnvironment.Aqueous, ChemicalEnvironment.Aldehyde]
 
-    results_entries, results_frame = AnalysedResult._evaluator_to_results_entries(
+    results_entries, results_frame = DataSetResult._evaluator_to_results_entries(
         reference_data_set, estimated_data_set, analysis_environments
     )
 
@@ -225,7 +233,7 @@ def test_analysed_result_from_evaluator():
 
     analysis_environments = [ChemicalEnvironment.Aqueous]
 
-    analysed_results = AnalysedResult.from_evaluator(
+    analysed_results = DataSetResult.from_evaluator(
         reference_data_set=reference_data_set,
         estimated_data_set=estimated_data_set,
         analysis_environments=analysis_environments,
@@ -233,7 +241,7 @@ def test_analysed_result_from_evaluator():
         bootstrap_iterations=1000,
     )
 
-    assert len(analysed_results.results_entries) == len(estimated_properties)
+    assert len(analysed_results.result_entries) == len(estimated_properties)
 
     full_statistics = next(
         iter(x for x in analysed_results.statistic_entries if x.category is None)
@@ -241,7 +249,7 @@ def test_analysed_result_from_evaluator():
 
     assert full_statistics.property_type == "Density"
     assert full_statistics.n_components == 1
-    assert full_statistics.statistics_type == StatisticType.RMSE
+    assert full_statistics.statistic_type == StatisticType.RMSE
     assert numpy.isclose(full_statistics.value, expected_std, rtol=0.10)
 
 
@@ -261,9 +269,98 @@ def test_benchmark_result_from_evaluator(estimated_reference_sets):
         ],
     )
 
-    assert benchmark_result.analysed_result is not None
-    assert len(benchmark_result.analysed_result.results_entries) == len(
+    assert benchmark_result.data_set_result is not None
+    assert len(benchmark_result.data_set_result.result_entries) == len(
         estimated_data_set
     )
     # 3 statistic types x 2 properties x 2 categories
-    assert len(benchmark_result.analysed_result.statistic_entries) == 12
+    assert len(benchmark_result.data_set_result.statistic_entries) == 12
+
+
+@pytest.mark.parametrize(
+    "result_kwargs, expected_raises",
+    [
+        (
+            dict(
+                project_id="project-1",
+                study_id="study-1",
+                id="optimization-1",
+                target_results={
+                    0: {
+                        "target-1": RechargeTargetResult(
+                            objective_function=0.0,
+                            statistic_entries=[create_statistic()],
+                        )
+                    }
+                },
+                refit_force_field=create_force_field(),
+            ),
+            does_not_raise(),
+        ),
+        (
+            dict(
+                project_id="project-1",
+                study_id="study-1",
+                id="optimization-1",
+                target_results={},
+                refit_force_field=create_force_field(),
+            ),
+            pytest.raises(ValidationError),
+        ),
+        (
+            dict(
+                project_id="project-1",
+                study_id="study-1",
+                id="optimization-1",
+                target_results={0: {}},
+                refit_force_field=create_force_field(),
+            ),
+            pytest.raises(ValidationError),
+        ),
+        (
+            dict(
+                project_id="project-1",
+                study_id="study-1",
+                id="optimization-1",
+                target_results={
+                    0: {
+                        "target-1": RechargeTargetResult(
+                            objective_function=0.0,
+                            statistic_entries=[create_statistic()],
+                        )
+                    },
+                    1: {
+                        "target-2": RechargeTargetResult(
+                            objective_function=0.0,
+                            statistic_entries=[create_statistic()],
+                        )
+                    },
+                },
+                refit_force_field=create_force_field(),
+            ),
+            pytest.raises(ValidationError),
+        ),
+        (
+            dict(
+                project_id="project-1",
+                study_id="study-1",
+                id="optimization-1",
+                target_results={
+                    0: {
+                        "target-1": RechargeTargetResult(
+                            objective_function=0.0,
+                            statistic_entries=[create_statistic()],
+                        )
+                    },
+                    1: {},
+                },
+                refit_force_field=create_force_field(),
+            ),
+            pytest.raises(ValidationError),
+        ),
+    ],
+)
+def test_validate_optimization_result(result_kwargs, expected_raises):
+
+    with expected_raises:
+        OptimizationResult(**result_kwargs)

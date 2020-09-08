@@ -1,6 +1,9 @@
 import functools
+import logging
 
 from nonbonded.library.utilities.environments import ChemicalEnvironment
+
+logger = logging.getLogger(__name__)
 
 
 def checkmol_code_to_environment(checkmol_code) -> ChemicalEnvironment:
@@ -269,7 +272,8 @@ def analyse_functional_groups(smiles):
         try:
 
             result = subprocess.check_output(
-                ["checkmol", "-p", file.name], stderr=subprocess.STDOUT,
+                ["checkmol", "-p", file.name],
+                stderr=subprocess.STDOUT,
             ).decode()
 
         except subprocess.CalledProcessError:

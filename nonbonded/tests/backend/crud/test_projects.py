@@ -1,11 +1,10 @@
 import functools
+from typing import List
 
 import pytest
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.database import models
-from nonbonded.backend.database.crud.datasets import DataSetCRUD
 from nonbonded.backend.database.crud.projects import (
     BenchmarkCRUD,
     OptimizationCRUD,
@@ -16,10 +15,12 @@ from nonbonded.backend.database.crud.results import (
     BenchmarkResultCRUD,
     OptimizationResultCRUD,
 )
+from nonbonded.backend.database.models.projects import author_projects_table
 from nonbonded.backend.database.utilities.exceptions import (
     BenchmarkExistsError,
     BenchmarkNotFoundError,
     DataSetNotFoundError,
+    MoleculeSetNotFoundError,
     OptimizationExistsError,
     OptimizationNotFoundError,
     ProjectExistsError,
@@ -30,1432 +31,904 @@ from nonbonded.backend.database.utilities.exceptions import (
     UnableToDeleteError,
     UnableToUpdateError,
 )
-from nonbonded.library.models.authors import Author
+from nonbonded.library.models.engines import ForceBalance
 from nonbonded.library.models.forcefield import Parameter
+from nonbonded.library.models.projects import Optimization
+from nonbonded.library.models.targets import EvaluatorTarget, RechargeTarget
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 from nonbonded.tests.backend.crud.utilities import (
-    create_and_compare_models,
-    paginate_models,
+    BaseCRUDTest,
+    create_dependencies,
     update_and_compare_model,
 )
-from nonbonded.tests.backend.crud.utilities.commit import (
-    commit_benchmark,
-    commit_benchmark_result,
-    commit_data_set,
-    commit_data_set_collection,
-    commit_optimization,
-    commit_optimization_result,
-    commit_project,
-    commit_study,
-)
-from nonbonded.tests.backend.crud.utilities.comparison import (
-    compare_benchmarks,
-    compare_data_sets,
-    compare_optimizations,
-    compare_projects,
-    compare_studies,
-)
-from nonbonded.tests.backend.crud.utilities.create import (
+from nonbonded.tests.utilities.comparison import does_not_raise
+from nonbonded.tests.utilities.factory import (
     create_author,
     create_benchmark,
     create_benchmark_result,
-    create_empty_project,
-    create_empty_study,
+    create_data_set,
+    create_evaluator_target,
     create_force_field,
     create_optimization,
     create_optimization_result,
+    create_project,
+    create_recharge_target,
+    create_study,
 )
 
 
-class TestProjectCRUD:
-    def test_create_read_empty(self, db: Session):
-        """Test that an empty project (i.e. one without studies) can be created, and then
-        read back out again while maintaining the integrity of the data.
-        """
+def project_model_perturbations():
 
-        project_id = "project-1"
-        project = create_empty_project(project_id)
+    updated_author = create_author()
+    updated_author.email = "updated@email.com"
 
-        create_and_compare_models(
-            db,
-            project,
-            ProjectCRUD.create,
-            ProjectCRUD.read_all,
-            functools.partial(ProjectCRUD.read, project_id=project_id),
-            compare_projects,
-        )
+    updated_study = create_study("project-1", "study-1")
+    updated_study.name = "updated"
 
-        # Make sure projects with duplicate ids cannot be added.
-        with pytest.raises(ProjectExistsError):
-            ProjectCRUD.create(db, project)
+    return [
+        ({"name": "updated"}, lambda db: [], does_not_raise()),
+        ({"description": "updated"}, lambda db: [], does_not_raise()),
+        (
+            {"authors": [create_author(), updated_author]},
+            lambda db: [
+                db.query(models.Author.email).count() == 2,
+                db.query(author_projects_table).count() == 2,
+            ],
+            does_not_raise(),
+        ),
+        # Delete a study.
+        (
+            {"studies": [create_study("project-1", "study-1")]},
+            lambda db: [db.query(models.Study.id).count() == 1],
+            does_not_raise(),
+        ),
+        # Update a study.
+        (
+            {"studies": [updated_study, create_study("project-1", "study-2")]},
+            lambda db: [db.query(models.Study.id).count() == 2],
+            does_not_raise(),
+        ),
+        # Add a study.
+        (
+            {
+                "studies": [
+                    create_study("project-1", f"study-{index + 1}")
+                    for index in range(3)
+                ]
+            },
+            lambda db: [db.query(models.Study.id).count() == 3],
+            does_not_raise(),
+        ),
+    ]
 
-    def test_create_read(self, db: Session):
-        """Test that a project containing studies can be created, and then
-        read back out again while maintaining the integrity of the data.
-        """
 
-        project = create_empty_project("project-1")
-        project.studies = [create_empty_study(project.id, "study-1")]
+def study_model_perturbations():
 
-        create_and_compare_models(
-            db,
-            project,
-            ProjectCRUD.create,
-            ProjectCRUD.read_all,
-            functools.partial(ProjectCRUD.read, project_id=project.id),
-            compare_projects,
-        )
+    updated_optimization = create_optimization(
+        "project-1",
+        "study-1",
+        "optimization-1",
+        [create_evaluator_target("evaluator-target-1", ["data-set-1"])],
+    )
+    updated_optimization.max_iterations += 1
 
-    def test_update_empty(self, db: Session):
-        """Test that an empty project (i.e. one without studies) can be correctly
-        updated.
-        """
+    updated_benchmark = create_benchmark(
+        "project-1",
+        "study-1",
+        "benchmark-1",
+        ["data-set-1"],
+        None,
+        create_force_field(),
+    )
+    updated_benchmark.name = "updated"
+
+    return [
+        ({"name": "updated"}, lambda db: [], does_not_raise()),
+        ({"description": "updated"}, lambda db: [], does_not_raise()),
+        # Delete an optimization.
+        (
+            {"optimizations": []},
+            lambda db: [db.query(models.Optimization.id).count() == 0],
+            does_not_raise(),
+        ),
+        # Update an optimization.
+        (
+            {"optimizations": [updated_optimization]},
+            lambda db: [db.query(models.Optimization.id).count() == 1],
+            does_not_raise(),
+        ),
+        # Add an optimization.
+        (
+            {
+                "optimizations": [
+                    create_optimization(
+                        "project-1",
+                        "study-1",
+                        f"optimization-{index + 1}",
+                        [create_evaluator_target("evaluator-target-1", ["data-set-1"])],
+                    )
+                    for index in range(2)
+                ]
+            },
+            lambda db: [db.query(models.Optimization.id).count() == 2],
+            does_not_raise(),
+        ),
+        # Delete a benchmark.
+        (
+            {"benchmarks": []},
+            lambda db: [db.query(models.Benchmark.id).count() == 0],
+            does_not_raise(),
+        ),
+        # Update a benchmark.
+        (
+            {"benchmarks": [updated_benchmark]},
+            lambda db: [db.query(models.Benchmark.id).count() == 1],
+            does_not_raise(),
+        ),
+        # Add a benchmark.
+        (
+            {
+                "benchmarks": [
+                    create_benchmark(
+                        "project-1",
+                        "study-1",
+                        f"benchmark-{index + 1}",
+                        ["data-set-1"],
+                        None,
+                        create_force_field(),
+                    )
+                    for index in range(2)
+                ]
+            },
+            lambda db: [db.query(models.Benchmark.id).count() == 2],
+            does_not_raise(),
+        ),
+    ]
+
+
+def optimization_model_perturbations():
+
+    updated_engine_delete_prior = ForceBalance(priors={"vdW/Atom/epsilon": 0.1})
+    updated_engine_update_prior = ForceBalance(
+        priors={"vdW/Atom/epsilon": 0.2, "vdW/Atom/sigma": 2.0},
+    )
+    updated_engine_add_prior = ForceBalance(
+        priors={"vdW/Atom/epsilon": 0.1, "vdW/Atom/sigma": 2.0, "vdW/Atom/r_min": 2.0},
+    )
+
+    invalid_evaluator_target = create_evaluator_target(
+        "evaluator-target-1", ["data-set-999"]
+    )
+    invalid_recharge_target = create_recharge_target(
+        "recharge-target-1", ["molecule-set-999"]
+    )
+
+    return [
+        ({"name": "updated"}, lambda db: [], does_not_raise()),
+        ({"description": "updated"}, lambda db: [], does_not_raise()),
+        ({"max_iterations": 999}, lambda db: [], does_not_raise()),
+        (
+            {"analysis_environments": [ChemicalEnvironment.Hydroxy]},
+            lambda db: [],
+            does_not_raise(),
+        ),
+        # Test updating the force field.
+        (
+            {"force_field": create_force_field("updated")},
+            lambda db: [
+                "updated" in db.query(models.ForceField.inner_content).first()[0],
+                db.query(models.ForceField.id).count() == 1,
+            ],
+            does_not_raise(),
+        ),
+        # Test updating the parameters to train.
+        (
+            {
+                "parameters_to_train": [
+                    Parameter(
+                        handler_type="vdW", smirks="[#6:1]", attribute_name="epsilon"
+                    ),
+                ]
+            },
+            lambda db: [db.query(models.Parameter.id).count() == 1],
+            does_not_raise(),
+        ),
+        (
+            {
+                "parameters_to_train": [
+                    Parameter(
+                        handler_type="vdW", smirks="[#6:1]", attribute_name="epsilon"
+                    ),
+                    Parameter(
+                        handler_type="vdW", smirks="[#6:1]", attribute_name="sigma"
+                    ),
+                    Parameter(
+                        handler_type="vdW", smirks="[#1:1]", attribute_name="sigma"
+                    ),
+                ]
+            },
+            lambda db: [db.query(models.Parameter.id).count() == 3],
+            does_not_raise(),
+        ),
+        # Test updating an engine's priors
+        (
+            {"engine": updated_engine_delete_prior},
+            lambda db: [db.query(models.ForceBalancePrior.id).count() == 1],
+            does_not_raise(),
+        ),
+        (
+            {"engine": updated_engine_update_prior},
+            lambda db: [db.query(models.ForceBalancePrior.id).count() == 2],
+            does_not_raise(),
+        ),
+        (
+            {"engine": updated_engine_add_prior},
+            lambda db: [db.query(models.ForceBalancePrior.id).count() == 3],
+            does_not_raise(),
+        ),
+        # Test deleting a target
+        (
+            {
+                "targets": [
+                    create_evaluator_target("evaluator-target-1", ["data-set-1"])
+                ]
+            },
+            lambda db: [
+                db.query(models.EvaluatorTarget.id).count() == 1,
+                db.query(models.RechargeTarget.id).count() == 0,
+            ],
+            does_not_raise(),
+        ),
+        (
+            {
+                "targets": [
+                    create_recharge_target("recharge-target-1", ["molecule-set-1"])
+                ]
+            },
+            lambda db: [
+                db.query(models.EvaluatorTarget.id).count() == 0,
+                db.query(models.RechargeTarget.id).count() == 1,
+            ],
+            does_not_raise(),
+        ),
+        # Test adding a target
+        (
+            {
+                "targets": [
+                    create_evaluator_target("evaluator-target-1", ["data-set-1"]),
+                    create_evaluator_target("evaluator-target-2", ["data-set-1"]),
+                    create_recharge_target("recharge-target-1", ["molecule-set-1"]),
+                ]
+            },
+            lambda db: [
+                db.query(models.EvaluatorTarget.id).count() == 2,
+                db.query(models.RechargeTarget.id).count() == 1,
+            ],
+            does_not_raise(),
+        ),
+        (
+            {
+                "targets": [
+                    create_evaluator_target("evaluator-target-1", ["data-set-1"]),
+                    create_recharge_target("recharge-target-1", ["molecule-set-1"]),
+                    create_recharge_target("recharge-target-2", ["molecule-set-1"]),
+                ]
+            },
+            lambda db: [
+                db.query(models.EvaluatorTarget.id).count() == 1,
+                db.query(models.RechargeTarget.id).count() == 2,
+            ],
+            does_not_raise(),
+        ),
+        # Test invalidly updating a target's training set
+        (
+            {"targets": [invalid_evaluator_target]},
+            lambda db: [],
+            pytest.raises(DataSetNotFoundError),
+        ),
+        (
+            {"targets": [invalid_recharge_target]},
+            lambda db: [],
+            pytest.raises(MoleculeSetNotFoundError),
+        ),
+    ]
+
+
+def benchmark_model_perturbations():
+
+    return [
+        ({"name": "updated"}, lambda db: [], does_not_raise()),
+        ({"description": "updated"}, lambda db: [], does_not_raise()),
+        (
+            {"analysis_environments": [ChemicalEnvironment.Hydroxy]},
+            lambda db: [],
+            does_not_raise(),
+        ),
+        # Test updating the test_sets.
+        ({"test_set_ids": ["data-set-1"]}, lambda db: [], does_not_raise()),
+        (
+            {"test_set_ids": ["data-set-2"]},
+            lambda db: [],
+            pytest.raises(DataSetNotFoundError),
+        ),
+    ]
+
+
+class TestProjectCRUD(BaseCRUDTest):
+    @classmethod
+    def crud_class(cls):
+        return ProjectCRUD
+
+    @classmethod
+    def dependencies(cls):
+        return []
+
+    @classmethod
+    def create_model(cls, include_children=False, index=1):
+
+        project = create_project(f"project-{index}")
+
+        if include_children:
+            project.studies = [
+                create_study(project.id, "study-1"),
+                create_study(project.id, "study-2"),
+            ]
+
+        return project
+
+    @classmethod
+    def model_to_read_kwargs(cls, model):
+        return {"project_id": model.id}
+
+    @classmethod
+    def model_to_read_all_kwargs(cls, model):
+        return {}
+
+    @classmethod
+    def not_found_error(cls):
+        return ProjectNotFoundError
+
+    @classmethod
+    def already_exists_error(cls):
+        return ProjectExistsError
+
+    @classmethod
+    def check_has_deleted(cls, db: Session):
+
         from nonbonded.backend.database.models.projects import author_projects_table
-
-        project = commit_project(db)
-
-        # Test simple text updates
-        updated_project = project.copy()
-        updated_project.name += " Updated"
-        updated_project.description += " Updated"
-
-        update_and_compare_model(
-            db,
-            updated_project,
-            ProjectCRUD.update,
-            functools.partial(ProjectCRUD.read, project_id=project.id),
-            compare_projects,
-        )
-
-        # Test adding a new author.
-        updated_project.authors = [
-            *updated_project.authors,
-            Author(name="Fake Name 2", email="fake@email2.com", institute="Fake"),
-        ]
-        update_and_compare_model(
-            db,
-            updated_project,
-            ProjectCRUD.update,
-            functools.partial(ProjectCRUD.read, project_id=project.id),
-            compare_projects,
-        )
-
-        # Make sure the authors list looks as expected
-        assert db.query(models.Author.email).count() == 2
-
-        # Test removing an author.
-        updated_project.authors = [create_author()]
-        update_and_compare_model(
-            db,
-            updated_project,
-            ProjectCRUD.update,
-            functools.partial(ProjectCRUD.read, project_id=project.id),
-            compare_projects,
-        )
-
-        # Make sure the author was removed from the association table
-        assert db.query(author_projects_table).count() == 1
-
-        # Test that adding an invalid author raises the correct exception.
-        bad_updated_project = updated_project.copy()
-        bad_updated_project.authors = [
-            Author(**{**create_author().dict(), "name": "Fake 2"})
-        ]
-
-        with pytest.raises(IntegrityError):
-            update_and_compare_model(
-                db,
-                bad_updated_project,
-                ProjectCRUD.update,
-                functools.partial(ProjectCRUD.read, project_id=project.id),
-                compare_projects,
-            )
-
-    def test_update_studies(self, db: Session):
-        """Test that an project studies can be correctly updated.
-        """
-
-        # Create the parent project.
-        project = commit_project(db)
-
-        # Attempt to add a new study by updating the existing project.
-        project.studies = [create_empty_study(project.id, "study-1")]
-
-        update_and_compare_model(
-            db,
-            project,
-            ProjectCRUD.update,
-            functools.partial(ProjectCRUD.read, project_id=project.id),
-            compare_projects,
-        )
-
-        assert db.query(models.Study.id).count() == 1
-
-        # Attempt to update the study through a project update.
-        project.studies[0].name = "Updated"
-
-        update_and_compare_model(
-            db,
-            project,
-            ProjectCRUD.update,
-            functools.partial(ProjectCRUD.read, project_id=project.id),
-            compare_projects,
-        )
-
-        assert StudyCRUD.query(db, project.id, "study-1").name == "Updated"
-
-        # Attempt to remove the study via project updates.
-        project.studies = []
-
-        update_and_compare_model(
-            db,
-            project,
-            ProjectCRUD.update,
-            functools.partial(ProjectCRUD.read, project_id=project.id),
-            compare_projects,
-        )
-
-        assert db.query(models.Study.id).count() == 0
-
-    def test_delete_empty(self, db: Session):
-        """Test that an empty project (i.e. one without studies) can be correctly
-        deleted.
-        """
-        from nonbonded.backend.database.models.projects import author_projects_table
-
-        project = commit_project(db)
-
-        assert db.query(models.Author.id).count() == 1
-
-        ProjectCRUD.delete(db, project.id)
-        db.commit()
 
         assert db.query(models.Project.id).count() == 0
-        assert db.query(models.Author.id).count() == 1
         assert db.query(author_projects_table).count() == 0
 
-    def test_delete(self, db: Session):
-        """Test that a projects studies also get deleted when it gets deleted.
-        """
+    @pytest.mark.parametrize(
+        "perturbation, database_checks, expected_raise", project_model_perturbations()
+    )
+    def test_update(self, db: Session, perturbation, database_checks, expected_raise):
+        super(TestProjectCRUD, self).test_update(
+            db, perturbation, database_checks, expected_raise
+        )
 
-        project, _ = commit_study(db)
+    @pytest.mark.skip("Projects do not have any dependencies.")
+    def test_missing_dependencies(
+        self, db: Session, dependencies: List[str], expected_error
+    ):
+        pass
 
-        assert db.query(models.Study.id).count() == 1
+    @pytest.mark.skip("Projects do not directly have blocking dependants.")
+    def test_delete_with_dependent(
+        self, db: Session, create_dependant, delete_dependant
+    ):
+        pass
 
-        ProjectCRUD.delete(db, project.id)
-        db.commit()
+
+class TestStudyCRUD(BaseCRUDTest):
+    @classmethod
+    def crud_class(cls):
+        return StudyCRUD
+
+    @classmethod
+    def dependencies(cls):
+        return ["project", "data-set", "test-data-set"]
+
+    @classmethod
+    def create_model(cls, include_children=False, index=1):
+
+        study = create_study("project-1", f"study-{index}")
+
+        if include_children:
+
+            study.optimizations = [
+                create_optimization(
+                    "project-1",
+                    study.id,
+                    "optimization-1",
+                    [create_evaluator_target("evaluator-target-1", ["data-set-1"])],
+                )
+            ]
+            study.benchmarks = [
+                create_benchmark(
+                    "project-1",
+                    study.id,
+                    "benchmark-1",
+                    ["data-set-1"],
+                    None,
+                    create_force_field(),
+                )
+            ]
+
+        return study
+
+    @classmethod
+    def model_to_read_kwargs(cls, model):
+        return {"project_id": model.project_id, "study_id": model.id}
+
+    @classmethod
+    def model_to_read_all_kwargs(cls, model):
+        return {"project_id": model.project_id}
+
+    @classmethod
+    def not_found_error(cls):
+        return StudyNotFoundError
+
+    @classmethod
+    def already_exists_error(cls):
+        return StudyExistsError
+
+    @classmethod
+    def check_has_deleted(cls, db: Session):
 
         assert db.query(models.Study.id).count() == 0
+        assert len(db.query(models.Project).first().studies) == 0
 
-    def test_pagination(self, db: Session):
-        """Test that the limit and skip options to read_all have been
-        implemented correctly.
-        """
+        assert db.query(models.Optimization.id).count() == 0
+        assert db.query(models.Benchmark.id).count() == 0
 
-        paginate_models(
-            db=db,
-            models_to_create=[
-                create_empty_project("project-1"),
-                create_empty_project("project-2"),
-                create_empty_project("project-3"),
+    @pytest.mark.parametrize(
+        "perturbation, database_checks, expected_raise", study_model_perturbations()
+    )
+    def test_update(self, db: Session, perturbation, database_checks, expected_raise):
+        super(TestStudyCRUD, self).test_update(
+            db, perturbation, database_checks, expected_raise
+        )
+
+    @pytest.mark.parametrize(
+        "dependencies, expected_error", [(["project"], ProjectNotFoundError)]
+    )
+    def test_missing_dependencies(
+        self, db: Session, dependencies: List[str], expected_error
+    ):
+        super(TestStudyCRUD, self).test_missing_dependencies(
+            db, dependencies, expected_error
+        )
+
+    @pytest.mark.skip("Studies do not directly have blocking dependants.")
+    def test_delete_with_dependent(
+        self, db: Session, create_dependant, delete_dependant
+    ):
+        pass
+
+
+class TestOptimizationCRUD(BaseCRUDTest):
+    @classmethod
+    def crud_class(cls):
+        return OptimizationCRUD
+
+    @classmethod
+    def dependencies(cls):
+        return ["project", "study", "data-set", "molecule-set"]
+
+    @classmethod
+    def create_model(cls, include_children=False, index=1):
+
+        optimization = create_optimization(
+            "project-1",
+            "study-1",
+            f"optimization-{index}",
+            targets=[
+                create_evaluator_target("evaluator-target-1", ["data-set-1"]),
+                create_recharge_target("recharge-target-1", ["molecule-set-1"]),
             ],
-            create_function=ProjectCRUD.create,
-            read_all_function=ProjectCRUD.read_all,
-            compare_function=compare_projects,
         )
 
-    def test_delete_not_found(self, db: Session):
-
-        with pytest.raises(ProjectNotFoundError):
-            ProjectCRUD.delete(db, "project-id")
-
-    def test_duplicate_id(self, db: Session):
-        """Make sure the database integrity tests catch
-        adding two projects with the same id in the same commit.
-        """
-
-        # Test adding duplicates in the same commit.
-        project_id = "project-1"
-        project = create_empty_project(project_id)
-
-        db_project_1 = ProjectCRUD.create(db, project)
-        db_project_2 = ProjectCRUD.create(db, project)
-
-        db.add(db_project_1)
-        db.add(db_project_2)
-
-        with pytest.raises(IntegrityError):
-            db.commit()
-
-
-class TestStudyCRUD:
-    def test_create_read_empty(self, db: Session):
-        """Test that a study can be successfully created and then
-        retrieved out again while maintaining the integrity of the data.
-        """
-
-        parent = commit_project(db)
-        study = create_empty_study(parent.id, "study-1")
-
-        create_and_compare_models(
-            db,
-            study,
-            StudyCRUD.create,
-            functools.partial(StudyCRUD.read_all, project_id=parent.id),
-            functools.partial(StudyCRUD.read, project_id=parent.id, study_id=study.id),
-            compare_studies,
-        )
-
-        # Test that adding a new study with the same id raises an exception
-        with pytest.raises(StudyExistsError):
-
-            create_and_compare_models(
-                db, study, StudyCRUD.create, None, StudyCRUD.read, compare_studies,
-            )
-
-    def test_update_empty(self, db: Session):
-        """Test that an empty study (i.e. one without optimization and benchmarks)
-        can be correctly updated.
-        """
-        _, study = commit_study(db)
-
-        # Test simple text updates
-        updated_study = study.copy()
-        updated_study.name += " Updated"
-        updated_study.description += " Updated"
-
-        update_and_compare_model(
-            db,
-            updated_study,
-            StudyCRUD.update,
-            functools.partial(
-                StudyCRUD.read, project_id=study.project_id, study_id=study.id
-            ),
-            compare_studies,
-        )
-
-    def test_update_with_children(self, db: Session):
-        """Test to make sure that the optimizations and benchmarks can be
-        added and deleted by study updates.
-        """
-
-        optimization_data_set = commit_data_set(db, "training-set")
-        benchmark_data_set = commit_data_set(db, "test-set")
-
-        project, study = commit_study(db)
-
-        read_function = functools.partial(
-            StudyCRUD.read, project_id=study.project_id, study_id=study.id
-        )
-
-        optimization = create_optimization(
-            project.id, study.id, "optimization-1", [optimization_data_set.id]
-        )
-        benchmark = create_benchmark(
-            project.id,
-            study.id,
-            "benchmark-1",
-            [benchmark_data_set.id],
-            None,
-            create_force_field(),
-        )
-
-        assert db.query(models.Optimization.id).count() == 0
-        assert db.query(models.Benchmark.id).count() == 0
-
-        # Add the optimization and benchmark via an updates.
-        study.optimizations = [optimization]
-        study.benchmarks = [benchmark]
-
-        update_and_compare_model(
-            db, study, StudyCRUD.update, read_function, compare_studies
-        )
-
-        assert db.query(models.Optimization.id).count() == 1
-        assert db.query(models.Benchmark.id).count() == 1
-
-        # Add results to the optimization to ensure the study can no longer
-        # be updated.
-        optimization_result = create_optimization_result(
-            project.id, study.id, optimization.id
-        )
-
-        db.add(OptimizationResultCRUD.create(db, optimization_result))
-        db.commit()
-
-        with pytest.raises(UnableToUpdateError):
-            update_and_compare_model(
-                db, study, StudyCRUD.update, read_function, compare_studies
-            )
-
-        # Make sure the study is ok to update once the results have been removed.
-        OptimizationResultCRUD.delete(db, project.id, study.id, optimization.id)
-
-        update_and_compare_model(
-            db, study, StudyCRUD.update, read_function, compare_studies
-        )
-
-        # Now do likewise for benchmarks.
-        benchmark_result = create_benchmark_result(
-            project.id, study.id, benchmark.id, benchmark_data_set
-        )
-
-        db.add(BenchmarkResultCRUD.create(db, benchmark_result))
-        db.commit()
-
-        with pytest.raises(UnableToUpdateError):
-            update_and_compare_model(
-                db, study, StudyCRUD.update, read_function, compare_studies
-            )
-
-        BenchmarkResultCRUD.delete(db, project.id, study.id, benchmark.id)
-        update_and_compare_model(
-            db, study, StudyCRUD.update, read_function, compare_studies
-        )
-
-        # Finally, remove both the optimization and benchmark
-        study.benchmarks = []
-        study.optimizations = []
-
-        update_and_compare_model(
-            db, study, StudyCRUD.update, read_function, compare_studies
-        )
-
-        assert db.query(models.Optimization.id).count() == 0
-        assert db.query(models.Benchmark.id).count() == 0
-
-    def test_missing_parent(self, db: Session):
-        """Test that an exception is raised when a study is added but
-        the parent project cannot be found.
-        """
-
-        study = create_empty_study("project-1", "study-1")
-
-        with pytest.raises(ProjectNotFoundError):
-
-            create_and_compare_models(
-                db, study, StudyCRUD.create, None, StudyCRUD.read, compare_studies,
-            )
-
-    def test_not_found(self, db: Session):
-        """Test that an exception is raised when a optimization could
-        not be found be it's unique id.
-        """
-
-        with pytest.raises(StudyNotFoundError):
-            StudyCRUD.read(db, " ", " ")
-
-    def test_delete_empty(self, db: Session):
-        """Test that an empty study (i.e. one without any children) can be correctly
-        deleted.
-        """
-
-        project, study = commit_study(db)
-
-        db_project = ProjectCRUD.query(db, project.id)
-        assert len(db_project.studies) == 1
-
-        StudyCRUD.delete(db, project.id, study.id)
-        db.commit()
-
-        assert db.query(models.Study.id).count() == 0
-
-        db_project = ProjectCRUD.query(db, project.id)
-        assert len(db_project.studies) == 0
-
-    def test_delete_with_children(self, db: Session):
-        """Test to make sure that deleting studies with optimizations and
-        benchmarks works as expected.
-        """
-
-        optimization_data_set = commit_data_set(db, "training-set")
-        benchmark_data_set = commit_data_set(db, "test-set")
-
-        project, study = commit_study(db)
-
-        read_function = functools.partial(
-            StudyCRUD.read, project_id=study.project_id, study_id=study.id
-        )
-
-        # Create an optimization and benchmark to delete.
-        optimization = create_optimization(
-            project.id, study.id, "optimization-1", [optimization_data_set.id]
-        )
-        benchmark = create_benchmark(
-            project.id,
-            study.id,
-            "benchmark-1",
-            [benchmark_data_set.id],
-            None,
-            create_force_field(),
-        )
-
-        assert db.query(models.Optimization.id).count() == 0
-        assert db.query(models.Benchmark.id).count() == 0
-
-        study.optimizations = [optimization]
-        study.benchmarks = [benchmark]
-
-        update_and_compare_model(
-            db, study, StudyCRUD.update, read_function, compare_studies
-        )
-
-        assert db.query(models.Optimization.id).count() == 1
-        assert db.query(models.Benchmark.id).count() == 1
-
-        compare_optimizations(
-            OptimizationCRUD.read(db, project.id, study.id, optimization.id),
-            optimization,
-        )
-        compare_benchmarks(
-            BenchmarkCRUD.read(db, project.id, study.id, benchmark.id), benchmark
-        )
-
-        # Delete the benchmark and ensure that the optimization and benchmark
-        # are also deleted.
-        StudyCRUD.delete(db, project.id, study.id)
-        db.commit()
-
-        assert db.query(models.Optimization.id).count() == 0
-        assert db.query(models.Benchmark.id).count() == 0
-
-    def test_delete_with_children_results(self, db: Session):
-        """Test to make sure that deleting studies with optimizations and
-        benchmarks which have results uploaded raises an exception.
-        """
-
-        optimization_data_set = commit_data_set(db, "training-set")
-        benchmark_data_set = commit_data_set(db, "test-set")
-
-        project = commit_project(db)
-
-        study = create_empty_study(project.id, "study-1")
-
-        # Create an optimization and benchmark to delete.
-        optimization = create_optimization(
-            project.id, study.id, "optimization-1", [optimization_data_set.id]
-        )
-        benchmark = create_benchmark(
-            project.id,
-            study.id,
-            "benchmark-1",
-            [benchmark_data_set.id],
-            None,
-            create_force_field(),
-        )
-
-        study.optimizations = [optimization]
-        study.benchmarks = [benchmark]
-
-        db.add(StudyCRUD.create(db, study))
-        db.commit()
-
-        optimization_result = create_optimization_result(
-            project.id, study.id, optimization.id
-        )
-        benchmark_result = create_benchmark_result(
-            project.id, study.id, benchmark.id, benchmark_data_set
-        )
-
-        db.add(OptimizationResultCRUD.create(db, optimization_result))
-        db.add(BenchmarkResultCRUD.create(db, benchmark_result))
-        db.commit()
-
-        with pytest.raises(UnableToDeleteError):
-            StudyCRUD.delete(db, project.id, study.id)
-
-        assert db.query(models.Optimization.id).count() == 1
-        assert db.query(models.Benchmark.id).count() == 1
-
-    def test_delete_not_found(self, db: Session):
-
-        # Try to delete a study when there is no project or study
-        with pytest.raises(StudyNotFoundError):
-            StudyCRUD.delete(db, "project-1", "study-id")
-
-        # Try to delete a study when there is only a project but no study
-        project = commit_project(db)
-
-        with pytest.raises(StudyNotFoundError):
-            StudyCRUD.delete(db, project.id, "study-id")
-
-    def test_read_data_set_study(self, db: Session):
-        """Test that an exception is raised when a optimization could
-        not be found be it's unique id.
-        """
-
-        _, study, _, expected_data_sets, _, _ = commit_benchmark(db, True)
-        expected_data_sets_by_id = {x.id: x for x in expected_data_sets.data_sets}
-
-        read_data_sets = StudyCRUD.read_all_data_sets(db, study.project_id, study.id)
-        read_data_sets_by_id = {x.id: x for x in read_data_sets.data_sets}
-
-        assert len(expected_data_sets.data_sets) == len(read_data_sets.data_sets)
-        assert {*expected_data_sets_by_id} == {*read_data_sets_by_id}
-
-        for data_set_id in expected_data_sets_by_id:
-
-            compare_data_sets(
-                expected_data_sets_by_id[data_set_id], read_data_sets_by_id[data_set_id]
-            )
-
-        with pytest.raises(StudyNotFoundError):
-            StudyCRUD.read_all_data_sets(db, " ", " ")
-
-    def test_read_data_set_study_not_found(self, db: Session):
-        """Test that an exception is raised when a study could
-        not be found while attepting to read its associated data
-        sets.
-        """
-
-        with pytest.raises(StudyNotFoundError):
-            StudyCRUD.read_all_data_sets(db, " ", " ")
-
-
-class TestOptimizationCRUD:
-    def test_create_read_no_results(self, db: Session):
-        """Test that a optimization can be successfully created and then
-        retrieved out again while maintaining the integrity of the data.
-        """
-
-        training_set_ids = [x.id for x in commit_data_set_collection(db).data_sets]
-
-        project, study = commit_study(db)
-
-        optimization = create_optimization(
-            project.id, study.id, "optimization-1", training_set_ids
-        )
-
-        create_and_compare_models(
-            db,
-            optimization,
-            OptimizationCRUD.create,
-            functools.partial(
-                OptimizationCRUD.read_all, project_id=project.id, study_id=study.id
-            ),
-            functools.partial(
-                OptimizationCRUD.read,
-                project_id=project.id,
-                study_id=study.id,
-                optimization_id=optimization.id,
-            ),
-            compare_optimizations,
-        )
-
-        # Test that adding a new optimization with the same id raises an exception
-        with pytest.raises(OptimizationExistsError):
-
-            create_and_compare_models(
-                db,
-                optimization,
-                OptimizationCRUD.create,
-                None,
-                OptimizationCRUD.read,
-                compare_optimizations,
-            )
-
-    def test_missing_data_sets(self, db: Session):
-        """Test to make sure an error is raised when the training sets
-        cannot be found when creating a new optimization.
-        """
-        project, study = commit_study(db)
-
-        optimization = create_optimization(
-            project.id, study.id, "optimization-1", ["x"]
-        )
-
-        with pytest.raises(DataSetNotFoundError):
-            create_and_compare_models(
-                db,
-                optimization,
-                OptimizationCRUD.create,
-                None,
-                OptimizationCRUD.read,
-                compare_optimizations,
-            )
-
-    def test_missing_parent(self, db: Session):
-        """Test that an exception is raised when a optimization is added but
-        the parent project or study cannot be found, or trying to read all
-        optimizations of a non-existent study.
-        """
-
-        with pytest.raises(StudyNotFoundError):
-            OptimizationCRUD.read_all(db, " ", " ")
-
-        training_set_ids = [x.id for x in commit_data_set_collection(db).data_sets]
-
-        optimization = create_optimization(
-            "project-1", "study-1", "optimization-1", training_set_ids
-        )
-
-        with pytest.raises(StudyNotFoundError):
-
-            create_and_compare_models(
-                db,
-                optimization,
-                OptimizationCRUD.create,
-                None,
-                OptimizationCRUD.read,
-                compare_optimizations,
-            )
-
-    def test_not_found(self, db: Session):
-        """Test that an exception is raised when a optimization could
-        not be found be it's unique id.
-        """
-
-        with pytest.raises(OptimizationNotFoundError):
-            OptimizationCRUD.read(db, " ", " ", " ")
-
-    def test_data_set_delete(self, db: Session):
-        """Tests that trying to delete a data set which is referenced by an
-        optimization yields to an integrity error.
-        """
-
-        _, _, optimization, data_set_collection = commit_optimization(db)
-
-        with pytest.raises(UnableToDeleteError) as error_info:
-            DataSetCRUD.delete(db, data_set_collection.data_sets[0].id)
-            db.commit()
-
-        assert "optimization" in str(error_info.value)
-
-        # After deleting the optimization, the data sets should be deletable.
-        OptimizationCRUD.delete(
-            db, optimization.project_id, optimization.study_id, optimization.id
-        )
-        db.commit()
-
-        for data_set_id in optimization.training_set_ids:
-            DataSetCRUD.delete(db, data_set_id)
-
-        db.commit()
-
-    def test_delete_no_results(self, db: Session):
-        """Test that an optimization which has not yet had results uploaded can
-        be successfully deleted and that it's children are also removed.
-        """
-        from nonbonded.backend.database.models.projects import (
-            optimization_training_table,
-        )
-
-        project, study, optimization, _ = commit_optimization(db)
-
-        assert db.query(models.Optimization.id).count() == 1
-        assert db.query(models.DataSet.id).count() == 2
-        assert db.query(models.ForceField.id).count() == 1
-        assert db.query(models.Parameter.id).count() == len(
-            optimization.parameters_to_train
-        )
-        assert db.query(models.ForceBalanceOptions.id).count() == 1
-        assert db.query(models.Denominator.id).count() == len(optimization.denominators)
-        assert db.query(models.Prior.id).count() == len(optimization.priors)
-        assert db.query(models.ChemicalEnvironment.id).count() == len(
-            optimization.analysis_environments
-        )
-        assert db.query(optimization_training_table).count() == 2
-
-        OptimizationCRUD.delete(db, project.id, study.id, optimization.id)
-        db.commit()
+        return optimization
+
+    @classmethod
+    def model_to_read_kwargs(cls, model):
+        return {
+            "project_id": model.project_id,
+            "study_id": model.study_id,
+            "sub_study_id": model.id,
+        }
+
+    @classmethod
+    def model_to_read_all_kwargs(cls, model):
+        return {"project_id": model.project_id, "study_id": model.study_id}
+
+    @classmethod
+    def not_found_error(cls):
+        return OptimizationNotFoundError
+
+    @classmethod
+    def already_exists_error(cls):
+        return OptimizationExistsError
+
+    @classmethod
+    def check_has_deleted(cls, db: Session):
 
         assert db.query(models.Optimization.id).count() == 0
         assert db.query(models.ForceField.id).count() == 0
         assert db.query(models.Parameter.id).count() == 0
-        assert db.query(models.ForceBalanceOptions.id).count() == 0
-        assert db.query(models.Denominator.id).count() == 0
-        assert db.query(models.Prior.id).count() == 0
-        assert db.query(optimization_training_table).count() == 0
+        assert db.query(models.ForceBalance.id).count() == 0
+        assert db.query(models.EvaluatorTarget.id).count() == 0
+        assert db.query(models.RechargeTarget.id).count() == 0
 
         # These should not be deleted.
-        assert db.query(models.DataSet.id).count() == 2
-        assert db.query(models.ChemicalEnvironment.id).count() == len(
-            optimization.analysis_environments
+        assert db.query(models.DataSet.id).count() == 1
+        assert db.query(models.MoleculeSet.id).count() == 1
+
+    @pytest.mark.parametrize(
+        "perturbation, database_checks, expected_raise",
+        optimization_model_perturbations(),
+    )
+    def test_update(self, db: Session, perturbation, database_checks, expected_raise):
+        super(TestOptimizationCRUD, self).test_update(
+            db, perturbation, database_checks, expected_raise
         )
 
-    def test_delete_not_found(self, db: Session):
-
-        with pytest.raises(OptimizationNotFoundError):
-            OptimizationCRUD.delete(db, "project-1", "study-id", "optimization-id")
-
-    def test_update_no_results(self, db: Session):
-        """Test that an optimization without any results uploaded
-        can be correctly updated.
-        """
-        from nonbonded.backend.database.models.projects import (
-            optimization_training_table,
+    @pytest.mark.parametrize(
+        "dependencies, expected_error",
+        [
+            (["study"], StudyNotFoundError),
+            (["data-set"], DataSetNotFoundError),
+            (["molecule-set"], MoleculeSetNotFoundError),
+        ],
+    )
+    def test_missing_dependencies(
+        self, db: Session, dependencies: List[str], expected_error
+    ):
+        super(TestOptimizationCRUD, self).test_missing_dependencies(
+            db, dependencies, expected_error
         )
 
-        _, _, optimization, _ = commit_optimization(db)
-
-        # Test simple 'on-model' updates
-        read_function = functools.partial(
-            OptimizationCRUD.read,
-            project_id=optimization.project_id,
-            study_id=optimization.study_id,
-            optimization_id=optimization.id,
-        )
-
-        updated_optimization = optimization.copy()
-        updated_optimization.name += " Updated"
-        updated_optimization.description += " Updated"
-        updated_optimization.force_balance_input.max_iterations = 2
-        updated_optimization.denominators = {"EnthalpyOfVaporization": " "}
-        updated_optimization.priors = {"vdW/Atom/sigma": 0.1}
-        updated_optimization.analysis_environments = [ChemicalEnvironment.Hydroxy]
-
-        update_and_compare_model(
-            db,
-            updated_optimization,
-            OptimizationCRUD.update,
-            read_function,
-            compare_optimizations,
-        )
-
-        # Try adding / removing training sets via updates.
-        updated_optimization.training_set_ids = [optimization.training_set_ids[0]]
-
-        assert db.query(optimization_training_table).count() == 2
-
-        update_and_compare_model(
-            db,
-            updated_optimization,
-            OptimizationCRUD.update,
-            read_function,
-            compare_optimizations,
-        )
-
-        assert db.query(optimization_training_table).count() == 1
-
-        updated_optimization.training_set_ids = optimization.training_set_ids
-
-        update_and_compare_model(
-            db,
-            updated_optimization,
-            OptimizationCRUD.update,
-            read_function,
-            compare_optimizations,
-        )
-
-        assert db.query(optimization_training_table).count() == 2
-
-        # Try adding / removing a parameter to train via updates.
-        assert db.query(models.Parameter.id).count() == 1
-
-        updated_optimization.parameters_to_train = [
-            Parameter(handler_type="vdW", smirks="[#6:1]", attribute_name="epsilon"),
-            Parameter(handler_type="vdW", smirks="[#6:1]", attribute_name="sigma"),
-        ]
-
-        update_and_compare_model(
-            db,
-            updated_optimization,
-            OptimizationCRUD.update,
-            read_function,
-            compare_optimizations,
-        )
-
-        assert db.query(models.Parameter.id).count() == 2
-
-        updated_optimization.parameters_to_train = [
-            Parameter(handler_type="vdW", smirks="[#6:1]", attribute_name="epsilon"),
-        ]
-
-        update_and_compare_model(
-            db,
-            updated_optimization,
-            OptimizationCRUD.update,
-            read_function,
-            compare_optimizations,
-        )
-
-        assert db.query(models.Parameter.id).count() == 1
-
-        # Make sure the force field to retrain can be altered, and the
-        # old one is correctly removed when a new one is used.
-        assert db.query(models.ForceField.id).count() == 1
-
-        updated_optimization.initial_force_field = create_force_field("Updated")
-        assert (
-            updated_optimization.initial_force_field.inner_content
-            not in db.query(models.ForceField.inner_content).first()[0]
-        )
-
-        update_and_compare_model(
-            db,
-            updated_optimization,
-            OptimizationCRUD.update,
-            read_function,
-            compare_optimizations,
-        )
-
-        assert db.query(models.ForceField.id).count() == 1
-        assert (
-            db.query(models.ForceField.inner_content).first()[0]
-            == updated_optimization.initial_force_field.inner_content
-        )
-
-    def test_update_missing_data_set(self, db: Session):
-        """Test that an exception is raised when an optimization is updated to
-        target a non-existent data set.
+    @pytest.mark.parametrize("with_children", [False, True])
+    def test_update_delete_with_dependant(self, db: Session, with_children: bool):
+        """Test that an optimization which has dependants can only be
+        updated / deleted once the dependants have been deleted.
         """
 
-        _, _, optimization, _ = commit_optimization(db)
-        optimization.training_set_ids = [" "]
+        # Create the model.
+        create_dependencies(db, self.dependencies())
+        model = self.create_model(True)
 
-        with pytest.raises(DataSetNotFoundError):
+        db_model = self.crud_class().create(db, model)
+        db.add(db_model)
+        db.commit()
 
-            update_and_compare_model(
+        # Create the results
+        db_result = OptimizationResultCRUD.create(
+            db,
+            create_optimization_result(
+                model.project_id,
+                model.study_id,
+                model.id,
+                [
+                    target.id
+                    for target in model.targets
+                    if isinstance(target, EvaluatorTarget)
+                ],
+                [
+                    target.id
+                    for target in model.targets
+                    if isinstance(target, RechargeTarget)
+                ],
+            ),
+        )
+        db.add(db_result)
+        db.commit()
+
+        if with_children:
+
+            db_benchmark = BenchmarkCRUD.create(
                 db,
-                optimization,
-                OptimizationCRUD.update,
-                functools.partial(
-                    OptimizationCRUD.read,
-                    project_id=optimization.project_id,
-                    study_id=optimization.study_id,
-                    optimization_id=optimization.id,
+                create_benchmark(
+                    model.project_id,
+                    model.study_id,
+                    "benchmark-1",
+                    ["data-set-1"],
+                    model.id,
+                    None,
                 ),
-                compare_optimizations,
             )
+            db.add(db_benchmark)
 
-    def test_update_delete_with_results(self, db: Session):
-        """Test that an optimization which has results uploaded can only be
-        updated / deleted once the results have been deleted.
-        """
+            db_optimization = OptimizationCRUD.create(
+                db,
+                Optimization(
+                    **create_optimization(
+                        model.project_id,
+                        model.study_id,
+                        "optimization-2",
+                        [create_evaluator_target("evaluator-target-1", ["data-set-1"])],
+                    ).dict(exclude={"force_field", "optimization_id"}),
+                    force_field=None,
+                    optimization_id="optimization-1",
+                ),
+            )
+            db.add(db_optimization)
+            db.commit()
 
-        project, study, optimization, _, _ = commit_optimization_result(db)
+        error_matches = (
+            ["results"] if not with_children else ["benchmark-1", "optimization-2"]
+        )
 
         with pytest.raises(UnableToDeleteError) as error_info:
-            OptimizationCRUD.delete(db, project.id, study.id, optimization.id)
+            OptimizationCRUD.delete(db, model.project_id, model.study_id, model.id)
 
-        assert "results" in str(error_info.value)
+        assert all(
+            error_match in str(error_info.value) for error_match in error_matches
+        )
 
         with pytest.raises(UnableToUpdateError) as error_info:
-            OptimizationCRUD.update(db, optimization)
+            OptimizationCRUD.update(db, model)
 
-        assert "results" in str(error_info.value)
-
-        # Delete the results and try again.
-        OptimizationResultCRUD.delete(db, project.id, study.id, optimization.id)
-        db.commit()
-
-        OptimizationCRUD.update(db, optimization)
-        OptimizationCRUD.delete(db, project.id, study.id, optimization.id)
-
-        db.commit()
-
-    def test_update_delete_with_benchmark(self, db: Session):
-        """Test that an optimization which is being targeted by a benchmark can
-        only be updated
-        updated once the results have been deleted.
-        """
-
-        (
-            project,
-            study,
-            benchmark,
-            data_set,
-            optimization,
-            optimization_result,
-        ) = commit_benchmark(db, True)
-
-        with pytest.raises(UnableToDeleteError) as error_info:
-            OptimizationCRUD.delete(db, project.id, study.id, optimization.id)
-
-        assert "benchmark" in str(error_info.value)
-
-        with pytest.raises(UnableToUpdateError) as error_info:
-            OptimizationCRUD.update(db, optimization)
-
-        assert "benchmark" in str(error_info.value)
-
-        # Delete the benchmark and results and try again.
-        BenchmarkCRUD.delete(db, project.id, study.id, benchmark.id)
-        db.commit()
-        OptimizationResultCRUD.delete(db, project.id, study.id, optimization.id)
-        db.commit()
-
-        OptimizationCRUD.update(db, optimization)
-        OptimizationCRUD.delete(db, project.id, study.id, optimization.id)
-
-        db.commit()
-
-    def test_update_not_found(self, db: Session):
-
-        optimization = create_optimization("a", "b", "c", ["d"])
-
-        with pytest.raises(OptimizationNotFoundError):
-            OptimizationCRUD.update(db, optimization)
-
-
-class TestBenchmarkCRUD:
-    def test_create_read_no_results(self, db: Session):
-        """Test that a benchmark can be successfully created and then
-        retrieved out again while maintaining the integrity of the data.
-        """
-
-        project, study, optimization, test_set = commit_optimization(db)
-        test_set_ids = [x.id for x in test_set.data_sets]
-
-        # Add a benchmark which targets an optimization. First check that an exception
-        # is rasied when no results have been uploaded yet.
-        benchmark = create_benchmark(
-            project.id,
-            study.id,
-            "benchmark-1",
-            test_set_ids,
-            optimization_id=optimization.id,
-            force_field=None,
+        assert all(
+            error_match in str(error_info.value) for error_match in error_matches
         )
 
-        with pytest.raises(UnableToCreateError):
-            create_and_compare_models(
-                db,
-                benchmark,
-                BenchmarkCRUD.create,
-                None,
-                BenchmarkCRUD.read,
-                compare_benchmarks,
+        # Delete the dependants and try again.
+        if with_children:
+
+            BenchmarkCRUD.delete(db, model.project_id, model.study_id, "benchmark-1")
+            OptimizationCRUD.delete(
+                db, model.project_id, model.study_id, "optimization-2"
             )
 
-        # Upload results and try again.
-        db.add(
-            OptimizationResultCRUD.create(
-                db, create_optimization_result(project.id, study.id, optimization.id)
-            )
-        )
+            db.commit()
+
+        OptimizationResultCRUD.delete(db, model.project_id, model.study_id, model.id)
         db.commit()
 
-        create_and_compare_models(
-            db,
-            benchmark,
-            BenchmarkCRUD.create,
-            functools.partial(
-                BenchmarkCRUD.read_all, project_id=project.id, study_id=study.id
-            ),
-            functools.partial(
-                BenchmarkCRUD.read,
-                project_id=project.id,
-                study_id=study.id,
-                benchmark_id=benchmark.id,
-            ),
-            compare_benchmarks,
-        )
+        OptimizationCRUD.update(db, model)
+        db.commit()
+        OptimizationCRUD.delete(db, model.project_id, model.study_id, model.id)
+        db.commit()
 
-        # Add a benchmark which targets a specific force field
-        benchmark = create_benchmark(
-            project.id,
-            study.id,
-            "benchmark-2",
-            test_set_ids,
-            optimization_id=None,
-            force_field=create_force_field(),
-        )
+    @pytest.mark.skip("This case is handled by ``test_update_delete_with_dependant``.")
+    def test_delete_with_dependent(
+        self, db: Session, create_dependant, delete_dependant
+    ):
+        pass
 
-        create_and_compare_models(
-            db,
-            benchmark,
-            BenchmarkCRUD.create,
-            functools.partial(
-                BenchmarkCRUD.read_all, project_id=project.id, study_id=study.id
-            ),
-            functools.partial(
-                BenchmarkCRUD.read,
-                project_id=project.id,
-                study_id=study.id,
-                benchmark_id=benchmark.id,
-            ),
-            compare_benchmarks,
-            n_expected_models=2,
-        )
 
-        # Test that adding a new benchmark with the same id raises an exception
-        with pytest.raises(BenchmarkExistsError):
+class TestBenchmarkCRUD(BaseCRUDTest):
+    @classmethod
+    def crud_class(cls):
+        return BenchmarkCRUD
 
-            create_and_compare_models(
-                db,
-                benchmark,
-                BenchmarkCRUD.create,
-                None,
-                BenchmarkCRUD.read,
-                compare_benchmarks,
-            )
+    @classmethod
+    def dependencies(cls):
+        return [
+            "project",
+            "study",
+            "evaluator-target",
+            "data-set",
+        ]
 
-        # Test that adding a benchmark which targets a non-existent optimization
-        # causes an exception.
-        benchmark = create_benchmark(
-            project.id,
-            study.id,
-            "benchmark-3",
-            test_set_ids,
-            optimization_id=" ",
-            force_field=None,
-        )
-
-        with pytest.raises(OptimizationNotFoundError):
-            create_and_compare_models(
-                db,
-                benchmark,
-                BenchmarkCRUD.create,
-                None,
-                BenchmarkCRUD.read,
-                compare_benchmarks,
-            )
-
-    def test_missing_data_sets(self, db: Session):
-        """Test to make sure an error is raised when the test sets
-        cannot be found when creating a new benchmark.
-        """
-        project, study = commit_study(db)
-
-        benchmark = create_benchmark(
-            project.id, study.id, "benchmark-1", ["x"], None, create_force_field()
-        )
-
-        with pytest.raises(DataSetNotFoundError):
-            create_and_compare_models(
-                db,
-                benchmark,
-                BenchmarkCRUD.create,
-                None,
-                BenchmarkCRUD.read,
-                compare_benchmarks,
-            )
-
-    def test_missing_parent(self, db: Session):
-        """Test that an exception is raised when a benchmark is added but
-        the parent project or study cannot be found, or trying to read all
-        benchmarks of a non-existent study.
-        """
-
-        with pytest.raises(StudyNotFoundError):
-            BenchmarkCRUD.read_all(db, " ", " ")
-
-        test_set_ids = [x.id for x in commit_data_set_collection(db).data_sets]
+    @classmethod
+    def create_model(cls, include_children=False, index=1):
 
         benchmark = create_benchmark(
             "project-1",
             "study-1",
-            "benchmark-1",
-            test_set_ids,
+            f"benchmark-{index}",
+            ["data-set-1"],
             None,
             create_force_field(),
         )
 
-        with pytest.raises(StudyNotFoundError):
+        return benchmark
 
-            create_and_compare_models(
-                db,
-                benchmark,
-                BenchmarkCRUD.create,
-                None,
-                BenchmarkCRUD.read,
-                compare_benchmarks,
-            )
+    @classmethod
+    def model_to_read_kwargs(cls, model):
+        return {
+            "project_id": model.project_id,
+            "study_id": model.study_id,
+            "sub_study_id": model.id,
+        }
 
-    def test_not_found(self, db: Session):
-        """Test that an exception is raised when a benchmark could
-        not be found be it's unique id.
-        """
+    @classmethod
+    def model_to_read_all_kwargs(cls, model):
+        return {"project_id": model.project_id, "study_id": model.study_id}
 
-        with pytest.raises(BenchmarkNotFoundError):
-            BenchmarkCRUD.read(db, " ", " ", " ")
+    @classmethod
+    def not_found_error(cls):
+        return BenchmarkNotFoundError
 
-    def test_data_set_delete(self, db: Session):
-        """Tests that trying to delete a data set which is referenced by a
-        benchmark yields to an integrity error.
-        """
+    @classmethod
+    def already_exists_error(cls):
+        return BenchmarkExistsError
 
-        _, _, benchmark, data_set_collection, _, _ = commit_benchmark(db, False)
-
-        with pytest.raises(UnableToDeleteError) as error_info:
-            DataSetCRUD.delete(db, data_set_collection.data_sets[0].id)
-            db.commit()
-
-        assert "benchmark" in str(error_info.value)
-
-        # After deleting the benchmark, the data sets should be deletable.
-        BenchmarkCRUD.delete(db, benchmark.project_id, benchmark.study_id, benchmark.id)
-        db.commit()
-
-        for data_set_id in benchmark.test_set_ids:
-            DataSetCRUD.delete(db, data_set_id)
-
-        db.commit()
-
-    def test_delete_no_results(self, db: Session):
-        """Test that a benchmark which has not yet had results uploaded can
-        be deleted successfully and that it's children are also removed.
-        """
-        from nonbonded.backend.database.models.projects import benchmark_test_table
-
-        project, study, benchmark, _, optimization, _ = commit_benchmark(db, True)
-
-        assert db.query(models.Benchmark.id).count() == 1
-        assert db.query(models.DataSet.id).count() == 2
-        assert db.query(models.ChemicalEnvironment.id).count() == len(
-            benchmark.analysis_environments
-        )
-        assert db.query(benchmark_test_table).count() == 2
-
-        assert (
-            len(
-                OptimizationCRUD.query(
-                    db, project.id, study.id, optimization.id
-                ).benchmarks
-            )
-            == 1
-        )
-
-        BenchmarkCRUD.delete(db, project.id, study.id, benchmark.id)
-        db.commit()
+    @classmethod
+    def check_has_deleted(cls, db: Session):
 
         assert db.query(models.Benchmark.id).count() == 0
-        assert db.query(benchmark_test_table).count() == 0
-        assert (
-            len(
-                OptimizationCRUD.query(
-                    db, project.id, study.id, optimization.id
-                ).benchmarks
-            )
-            == 0
+        # assert db.query(models.ForceField.id).count() == 0
+
+    @pytest.mark.parametrize(
+        "perturbation, database_checks, expected_raise", benchmark_model_perturbations()
+    )
+    def test_update(self, db: Session, perturbation, database_checks, expected_raise):
+        super(TestBenchmarkCRUD, self).test_update(
+            db, perturbation, database_checks, expected_raise
         )
 
-        # These should not be deleted.
-        assert db.query(models.DataSet.id).count() == 2
-        assert db.query(models.ChemicalEnvironment.id).count() == len(
-            optimization.analysis_environments
+    @pytest.mark.parametrize(
+        "dependencies, expected_error",
+        [(["study", "evaluator-target"], StudyNotFoundError)],
+    )
+    def test_missing_dependencies(
+        self, db: Session, dependencies: List[str], expected_error
+    ):
+        super(TestBenchmarkCRUD, self).test_missing_dependencies(
+            db, dependencies, expected_error
         )
 
-    def test_delete_with_force_field(self, db: Session):
-        """Test that a deleting a benchmark done upon a custom FF will
-        also delete the orphaned FF.
+    @pytest.mark.parametrize(
+        "optimization_id, create_results, expected_error",
+        [
+            ("optimization-2", True, pytest.raises(OptimizationNotFoundError)),
+            ("optimization-1", True, does_not_raise()),
+            ("optimization-1", False, pytest.raises(UnableToCreateError)),
+        ],
+    )
+    def test_create_read_with_optimization(
+        self, db: Session, optimization_id: str, create_results: bool, expected_error
+    ):
+        """Test that a benchmark can be successfully created and then
+        retrieved out again while targeting an optimization, or raises
+        the correct error when no results have been created..
         """
 
-        project, study = commit_study(db)
-        data_set = commit_data_set(db)
+        create_dependencies(db, self.dependencies())
 
-        benchmark = create_benchmark(
-            project.id,
-            study.id,
-            "benchmark-1",
-            [data_set.id],
-            None,
-            create_force_field(),
-        )
+        model = self.create_model(True)
+        model.force_field = None
+        model.optimization_id = optimization_id
 
-        assert db.query(models.ForceField.id).count() == 0
+        # Create the optimization results
+        if create_results:
 
-        db.add(BenchmarkCRUD.create(db, benchmark))
-        db.commit()
-
-        assert db.query(models.ForceField.id).count() == 1
-
-        BenchmarkCRUD.delete(db, project.id, study.id, benchmark.id)
-        db.commit()
-
-        assert db.query(models.ForceField.id).count() == 0
-
-    def test_delete_not_found(self, db: Session):
-
-        with pytest.raises(BenchmarkNotFoundError):
-            BenchmarkCRUD.delete(db, "project-1", "study-id", "benchmark-id")
-
-    def test_update_no_results(self, db: Session):
-        """Test that a benchmark without any results uploaded can
-        be correctly updated.
-        """
-        from nonbonded.backend.database.models.projects import benchmark_test_table
-
-        _, _, benchmark, _, optimization, _ = commit_benchmark(db, True)
-
-        # Test simple text updates
-        read_function = functools.partial(
-            BenchmarkCRUD.read,
-            project_id=benchmark.project_id,
-            study_id=benchmark.study_id,
-            benchmark_id=benchmark.id,
-        )
-
-        updated_benchmark = benchmark.copy()
-        updated_benchmark.name += " Updated"
-        updated_benchmark.description += " Updated"
-        updated_benchmark.analysis_environments = [ChemicalEnvironment.Ketene]
-
-        update_and_compare_model(
-            db,
-            updated_benchmark,
-            BenchmarkCRUD.update,
-            read_function,
-            compare_benchmarks,
-        )
-
-        # Try adding / removing test sets via updates.
-        updated_benchmark.test_set_ids = [benchmark.test_set_ids[0]]
-
-        assert db.query(benchmark_test_table).count() == 2
-
-        update_and_compare_model(
-            db,
-            updated_benchmark,
-            BenchmarkCRUD.update,
-            read_function,
-            compare_benchmarks,
-        )
-
-        assert db.query(benchmark_test_table).count() == 1
-
-        updated_benchmark.test_set_ids = benchmark.test_set_ids
-
-        update_and_compare_model(
-            db,
-            updated_benchmark,
-            BenchmarkCRUD.update,
-            read_function,
-            compare_benchmarks,
-        )
-
-        assert db.query(benchmark_test_table).count() == 2
-
-        # Test the the target can be swapped from an optimization
-        # to a particular force field and back again.
-        assert (
-            len(
-                OptimizationCRUD.query(
-                    db,
-                    benchmark.project_id,
-                    benchmark.study_id,
-                    benchmark.optimization_id,
-                ).benchmarks
-            )
-            == 1
-        )
-
-        updated_benchmark.force_field = create_force_field("Updated")
-        updated_benchmark.optimization_id = None
-
-        assert db.query(models.ForceField.id).count() == 2
-
-        update_and_compare_model(
-            db,
-            updated_benchmark,
-            BenchmarkCRUD.update,
-            read_function,
-            compare_benchmarks,
-        )
-
-        assert db.query(models.ForceField.id).count() == 3
-
-        assert (
-            len(
-                OptimizationCRUD.query(
-                    db,
-                    benchmark.project_id,
-                    benchmark.study_id,
-                    benchmark.optimization_id,
-                ).benchmarks
-            )
-            == 0
-        )
-
-        updated_benchmark.force_field = None
-        updated_benchmark.optimization_id = optimization.id
-
-        update_and_compare_model(
-            db,
-            updated_benchmark,
-            BenchmarkCRUD.update,
-            read_function,
-            compare_benchmarks,
-        )
-
-        assert (
-            len(
-                OptimizationCRUD.query(
-                    db,
-                    benchmark.project_id,
-                    benchmark.study_id,
-                    benchmark.optimization_id,
-                ).benchmarks
-            )
-            == 1
-        )
-
-        assert db.query(models.ForceField.id).count() == 2
-
-        # Make sure that the correct exception is raised if a benchmark is updated
-        # to target a non-existent optimization
-        with pytest.raises(OptimizationNotFoundError):
-
-            updated_benchmark.force_field = None
-            updated_benchmark.optimization_id = " "
-
-            update_and_compare_model(
+            db_result = OptimizationResultCRUD.create(
                 db,
-                updated_benchmark,
-                BenchmarkCRUD.update,
-                read_function,
-                compare_benchmarks,
-            )
-
-    def test_update_missing_data_set(self, db: Session):
-        """Test that an exception is raised when a benchmark is updated to
-        target a non-existent data set.
-        """
-
-        _, _, benchmark, _, _, _ = commit_benchmark(db, False)
-        benchmark.test_set_ids = [" "]
-
-        with pytest.raises(DataSetNotFoundError):
-
-            update_and_compare_model(
-                db,
-                benchmark,
-                BenchmarkCRUD.update,
-                functools.partial(
-                    BenchmarkCRUD.read,
-                    project_id=benchmark.project_id,
-                    study_id=benchmark.study_id,
-                    optimization_id=benchmark.id,
+                create_optimization_result(
+                    model.project_id,
+                    model.study_id,
+                    "optimization-1",
+                    ["evaluator-target-1"],
+                    [],
                 ),
-                compare_benchmarks,
+            )
+            db.add(db_result)
+            db.commit()
+
+        with expected_error:
+            self.test_create_read(db, False, model)
+
+    @pytest.mark.parametrize(
+        "optimization_id, create_results, expected_error",
+        [
+            ("optimization-2", True, pytest.raises(OptimizationNotFoundError)),
+            ("optimization-1", True, does_not_raise()),
+            ("optimization-1", False, pytest.raises(UnableToUpdateError)),
+        ],
+    )
+    def test_update_with_dependant(
+        self, db: Session, optimization_id: str, create_results: bool, expected_error
+    ):
+        """Test that a benchmark can be updated to target an optimization
+        and then back to a force field.
+        """
+
+        create_dependencies(db, self.dependencies())
+        model = self.create_model()
+
+        db.add(self.crud_class().create(db, model))
+        db.commit()
+
+        # Create the optimization results
+        if create_results:
+            db_result = OptimizationResultCRUD.create(
+                db,
+                create_optimization_result(
+                    model.project_id,
+                    model.study_id,
+                    "optimization-1",
+                    ["evaluator-target-1"],
+                    [],
+                ),
+            )
+            db.add(db_result)
+            db.commit()
+
+        # Update the model.
+        model.force_field = None
+        model.optimization_id = optimization_id
+
+        with expected_error:
+
+            update_and_compare_model(
+                db,
+                model,
+                self.crud_class().update,
+                functools.partial(
+                    self.crud_class().read, **self.model_to_read_kwargs(model)
+                ),
+                self.crud_class().db_to_model,
             )
 
-    def test_update_not_found(self, db: Session):
+        # Neither the refit force field nor the initial force field
+        # should be deleted.
+        assert db.query(models.ForceField.id).count() == 2 if create_results else 1
 
-        benchmark = create_benchmark("a", "b", "c", ["d"], None, create_force_field())
+        # Update the model back.
+        model.force_field = create_force_field()
+        model.optimization_id = None
 
-        with pytest.raises(BenchmarkNotFoundError):
-            BenchmarkCRUD.update(db, benchmark)
+        update_and_compare_model(
+            db,
+            model,
+            self.crud_class().update,
+            functools.partial(
+                self.crud_class().read, **self.model_to_read_kwargs(model)
+            ),
+            self.crud_class().db_to_model,
+        )
 
-    def test_delete_with_results(self, db: Session):
-        """Test that a benchmark which has results uploaded can only be
-        deleted once the results have been deleted.
+        assert db.query(models.ForceField.id).count() == 2 if create_results else 1
+
+    @pytest.mark.parametrize(
+        "create_results, expected_error",
+        [(False, does_not_raise()), (True, pytest.raises(UnableToDeleteError))],
+    )
+    def test_delete_with_dependent(
+        self, db: Session, create_results: bool, expected_error
+    ):
+        """Test that a benchmark cannot be deleted until its results have
+        also been deleted.
         """
 
-        project, study, benchmark, _, _, _, _ = commit_benchmark_result(db, False)
+        create_dependencies(db, self.dependencies())
+        model = self.create_model()
 
-        with pytest.raises(UnableToDeleteError):
-            BenchmarkCRUD.delete(db, project.id, study.id, benchmark.id)
-
-        # Delete the results and try again.
-        BenchmarkResultCRUD.delete(db, project.id, study.id, benchmark.id)
-        BenchmarkCRUD.delete(db, project.id, study.id, benchmark.id)
-
+        db.add(self.crud_class().create(db, model))
         db.commit()
 
-    def test_update_with_results(self, db: Session):
-        """Test that a benchmark which has results uploaded can only be
-        updated once the results have been deleted.
-        """
+        # Create the benchmark results
+        if create_results:
 
-        project, study, benchmark, _, _, _, _ = commit_benchmark_result(db, False)
+            data_set = create_data_set("data-set-1")
+            data_set.entries[0].id = 1
 
-        with pytest.raises(UnableToUpdateError):
-            BenchmarkCRUD.update(db, benchmark)
+            db_result = BenchmarkResultCRUD.create(
+                db,
+                create_benchmark_result(
+                    model.project_id, model.study_id, model.id, data_set
+                ),
+            )
+            db.add(db_result)
+            db.commit()
 
-        # Delete the results and try again.
-        BenchmarkResultCRUD.delete(db, project.id, study.id, benchmark.id)
-        BenchmarkCRUD.update(db, benchmark)
+        # Delete the model.
+        with expected_error:
+            self.crud_class().delete(db, model.project_id, model.study_id, model.id)
 
+        if not create_results:
+            return
+
+        BenchmarkResultCRUD.delete(db, model.project_id, model.study_id, model.id)
         db.commit()
+
+        self.crud_class().delete(db, model.project_id, model.study_id, model.id)
+        db.commit()
+
+        self.check_has_deleted(db)

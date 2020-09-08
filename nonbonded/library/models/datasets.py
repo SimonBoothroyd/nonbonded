@@ -1,7 +1,8 @@
+import abc
 from typing import TYPE_CHECKING, List, Optional, Type
 
 import requests
-from pydantic import Field, conlist
+from pydantic import Field, conlist, validator
 
 from nonbonded.library.config import settings
 from nonbonded.library.models import BaseORM, BaseREST
@@ -20,6 +21,20 @@ if TYPE_CHECKING:
 
 else:
     from pydantic import PositiveFloat
+
+
+class _BaseSet(BaseREST, abc.ABC):
+    """The base class for sets of measurements or molecules to train and
+    test against."""
+
+    id: IdentifierStr = Field(
+        ..., description="The unique identifier associated with the set."
+    )
+
+    description: str = Field(
+        ..., description="A description of why and how this set was chosen."
+    )
+    authors: List[Author] = Field(..., description="The authors who prepared the set.")
 
 
 class Component(BaseORM):
@@ -62,7 +77,8 @@ class DataSetEntry(BaseORM):
         ..., description="The value in the default unit for the property."
     )
     std_error: Optional[float] = Field(
-        ..., description="The std error in the default unit for the property.",
+        ...,
+        description="The std error in the default unit for the property.",
     )
 
     doi: NonEmptyStr = Field(
@@ -207,20 +223,11 @@ class DataSetEntry(BaseORM):
         return physical_property
 
 
-class DataSet(BaseREST):
+class DataSet(_BaseSet):
 
-    id: IdentifierStr = Field(
-        ..., description="The unique identifier associated with the data set."
+    entries: conlist(DataSetEntry, min_items=1) = Field(
+        ..., description="The entries in the data set."
     )
-
-    description: str = Field(
-        ..., description="A description of why and how this data set was chosen."
-    )
-    authors: List[Author] = Field(
-        ..., description="The authors who prepared the data set."
-    )
-
-    entries: List[DataSetEntry] = Field(..., description="The entries in the data set.")
 
     @classmethod
     def from_pandas(
@@ -303,8 +310,14 @@ class DataSet(BaseREST):
 class DataSetCollection(BaseORM):
 
     data_sets: List[DataSet] = Field(
-        default_factory=list, description="A collection of data sets.",
+        default_factory=list,
+        description="A collection of data sets.",
     )
+
+    @validator("data_sets")
+    def validate_entries(cls, value: List[DataSet]) -> List[DataSet]:
+        assert len(value) == len({data_set.id for data_set in value})
+        return value
 
     @classmethod
     def from_rest(cls, requests_class=requests) -> "DataSetCollection":
@@ -330,3 +343,67 @@ class DataSetCollection(BaseORM):
         evaluator_set.add_properties(*physical_properties)
 
         return evaluator_set
+
+
+class MoleculeSet(_BaseSet):
+    """The set of molecules which forms either a train or test set for
+    certain (predominantly QM based) targets.
+    """
+
+    entries: conlist(NonEmptyStr, min_items=1) = Field(
+        ..., description="The entries in the set."
+    )
+
+    @validator("entries")
+    def validate_entries(cls, v: List[str]) -> List[str]:
+        assert len(v) == len({*v})
+        return v
+
+    @classmethod
+    def _get_endpoint(cls, *, molecule_set_id: str):
+        return f"{settings.API_URL}/molsets/{molecule_set_id}"
+
+    def _post_endpoint(self):
+        return f"{settings.API_URL}/molsets/"
+
+    def _put_endpoint(self):
+        raise UnsupportedEndpointError()
+
+    def _delete_endpoint(self):
+        return f"{settings.API_URL}/molsets/{self.id}"
+
+    @classmethod
+    def from_rest(
+        cls, *, molecule_set_id: str, requests_class=requests
+    ) -> "MoleculeSet":
+        # noinspection PyTypeChecker
+        return super(MoleculeSet, cls).from_rest(
+            molecule_set_id=molecule_set_id, requests_class=requests_class
+        )
+
+
+class MoleculeSetCollection(BaseORM):
+    """A collection of sets of molecules."""
+
+    molecule_sets: List[MoleculeSet] = Field(
+        default_factory=list,
+        description="A collection of molecule sets.",
+    )
+
+    @validator("molecule_sets")
+    def validate_entries(cls, value: List[MoleculeSet]) -> List[MoleculeSet]:
+        assert len(value) == len({molecule_set.id for molecule_set in value})
+        return value
+
+    @classmethod
+    def from_rest(cls, requests_class=requests) -> "MoleculeSetCollection":
+
+        molecule_sets_request = requests_class.get(f"{settings.API_URL}/molsets/")
+        try:
+            molecule_sets_request.raise_for_status()
+        except requests.exceptions.HTTPError as error:
+            print(error.response.text)
+            raise
+
+        molecule_sets = MoleculeSetCollection.parse_raw(molecule_sets_request.text)
+        return molecule_sets

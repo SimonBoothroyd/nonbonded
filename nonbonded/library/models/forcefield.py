@@ -28,6 +28,9 @@ class Parameter(BaseORM):
         ..., description="The attribute name associated with the parameter."
     )
 
+    def __hash__(self):
+        return hash((self.handler_type, self.smirks, self.attribute_name))
+
 
 class ForceField(BaseORM):
 

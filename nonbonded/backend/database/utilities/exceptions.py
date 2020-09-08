@@ -1,4 +1,5 @@
 import abc
+from typing import Iterable
 
 from fastapi import HTTPException
 
@@ -49,6 +50,24 @@ class DataSetNotFoundError(ItemNotFound):
 class DataSetEntryNotFound(ItemNotFound):
     def __init__(self, detail: str):
         super(DataSetEntryNotFound, self).__init__(detail=detail)
+
+
+class MoleculeSetExistsError(ItemExistsError):
+    def __init__(self, molecule_set_id):
+        self.molecule_set_id = molecule_set_id
+
+        super(MoleculeSetExistsError, self).__init__(
+            f"A molecule set with id={molecule_set_id} already exists."
+        )
+
+
+class MoleculeSetNotFoundError(ItemNotFound):
+    def __init__(self, molecule_set_id):
+        self.molecule_set_id = molecule_set_id
+
+        super(MoleculeSetNotFoundError, self).__init__(
+            f"The database does not contain a molecule set with id={molecule_set_id}."
+        )
 
 
 class BenchmarkExistsError(ItemExistsError):
@@ -131,6 +150,81 @@ class OptimizationNotFoundError(ItemNotFound):
             f"The data base does not contain an optimization with id={optimization_id} "
             f"which is part of a study with id={study_id} and project with "
             f"id={project_id}."
+        )
+
+
+class TargetNotFoundError(ItemNotFound):
+    def __init__(
+        self,
+        project_id: str,
+        study_id: str,
+        optimization_id: str,
+        target_ids: Iterable[str],
+    ):
+
+        self.project_id = project_id
+        self.study_id = study_id
+        self.optimization_id = optimization_id
+
+        self.target_ids = target_ids
+
+        target_id_string = ", ".join(target_ids)
+
+        super(TargetNotFoundError, self).__init__(
+            f"Results were provided for targets with ids={target_id_string} however the "
+            f"corresponding optimization with id={optimization_id} (study id={study_id} "
+            f"and project id={project_id}) contains no such targets."
+        )
+
+
+class TargetResultNotFoundError(ItemNotFound):
+    def __init__(
+        self,
+        project_id: str,
+        study_id: str,
+        optimization_id: str,
+        target_ids: Iterable[str],
+    ):
+
+        self.project_id = project_id
+        self.study_id = study_id
+        self.optimization_id = optimization_id
+
+        self.target_ids = target_ids
+
+        target_id_string = ", ".join(target_ids)
+
+        super(TargetResultNotFoundError, self).__init__(
+            f"No results were found for the {target_id_string} targets which are "
+            f"required for the optimization with id={optimization_id} (study id="
+            f"{study_id} and project id={project_id})."
+        )
+
+
+class TargetResultTypeError(ItemNotFound):
+    def __init__(
+        self,
+        project_id: str,
+        study_id: str,
+        optimization_id: str,
+        target_id: str,
+        target_type,
+        expected_type,
+    ):
+
+        self.project_id = project_id
+        self.study_id = study_id
+        self.optimization_id = optimization_id
+
+        self.target_id = target_id
+
+        self.target_type = target_type
+        self.expected_type = expected_type
+
+        super(TargetResultTypeError, self).__init__(
+            f"A result with type {target_type.__name__} was provided for "
+            f"target={target_id}, however a type of {expected_type.__name__} was "
+            f"expected."
         )
 
 
