@@ -2,8 +2,7 @@ import abc
 import logging
 from typing import TypeVar
 
-from nonbonded.library.factories.factories import BaseRecursiveFactory
-from nonbonded.library.models.projects import Benchmark, Optimization, Project, Study
+from nonbonded.library.models.projects import Benchmark, Optimization
 
 logger = logging.getLogger(__name__)
 
@@ -11,38 +10,26 @@ T = TypeVar("T")
 S = TypeVar("S")
 
 
-class PlotFactory(BaseRecursiveFactory, abc.ABC):
-    """A factory used to generate plots of the outputs of the optimizations and
-    benchmarks in a standard directory structure.
-    """
+class PlotFactory(abc.ABC):
+    """A factory used to analyze the results of a particular sub-study."""
 
     @classmethod
     def model_type_to_factory(cls, model_type):
 
-        from nonbonded.library.factories.plots.benchmark import BenchmarkFactory
-        from nonbonded.library.factories.plots.optimization import OptimizationFactory
+        from nonbonded.library.factories.plots.benchmark import BenchmarkPlotFactory
+        from nonbonded.library.factories.plots.optimization import (
+            OptimizationPlotFactory,
+        )
 
-        if issubclass(model_type, (Project, Study)):
-            return PlotFactory
-        elif issubclass(model_type, Optimization):
-            return OptimizationFactory
+        if issubclass(model_type, Optimization):
+            return OptimizationPlotFactory
         elif issubclass(model_type, Benchmark):
-            return BenchmarkFactory
+            return BenchmarkPlotFactory
 
         raise NotImplementedError()
 
     @classmethod
-    def _generate(cls, **kwargs):
-        pass
-
-    @classmethod
-    def generate(cls, model: T):
-        """Generates plots from the output of a particular sub-study.
-
-        Parameters
-        ----------
-        model
-            The model to generate the plots for.
-        """
-
-        super(PlotFactory, cls).generate(model=model)
+    @abc.abstractmethod
+    def plot(cls):
+        """Plots the analyzed output of a sub-study."""
+        raise NotImplementedError()

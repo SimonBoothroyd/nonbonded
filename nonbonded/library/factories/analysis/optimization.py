@@ -22,7 +22,7 @@ from nonbonded.library.utilities.migration import reindex_results
 logger = logging.getLogger(__name__)
 
 
-class OptimizationFactory(AnalysisFactory):
+class OptimizationAnalysisFactory(AnalysisFactory):
     @classmethod
     def _read_objective_function(cls, target_directory) -> float:
         """Reads the value of the objective function from a ForceBalance
@@ -103,7 +103,7 @@ class OptimizationFactory(AnalysisFactory):
         )
 
     @classmethod
-    def generate(cls, model, reindex):
+    def analyze(cls, reindex):
 
         from openforcefield.typing.engines.smirnoff import ForceField as OFFForceField
 
@@ -115,7 +115,7 @@ class OptimizationFactory(AnalysisFactory):
         os.makedirs(output_directory, exist_ok=True)
 
         for target in optimization.targets:
-            os.makedirs(os.path.join(output_directory, target.id))
+            os.makedirs(os.path.join(output_directory, target.id), exist_ok=True)
 
         # Load in the refit force field (if it exists)
         refit_force_field_path = os.path.join(

@@ -108,9 +108,12 @@ class DataSetResult(BaseORM):
         cls,
         components: List[Component],
         analysis_environments: List[ChemicalEnvironment],
-    ) -> str:
+    ) -> Optional[str]:
 
         import numpy
+
+        if len(analysis_environments) == 0:
+            return None
 
         sorted_components = [*sorted(components, key=lambda x: x.smiles)]
         assigned_environments = []
@@ -134,7 +137,7 @@ class DataSetResult(BaseORM):
                     f"marked for analysis. It will be assigned a category of 'None' "
                     f"instead."
                 )
-                return "None"
+                return "Uncategorized"
 
             # Try to find the environment which appears the most times in a molecule.
             # We sort the environments to try and make the case where multiple
@@ -327,6 +330,9 @@ class DataSetResult(BaseORM):
         property_types = list(property_types.to_records(index=False))
 
         categories = results_frame["Category"].unique()
+
+        if len(categories) == 1 and categories[0] is None:
+            categories = []
 
         statistic_entries = []
 

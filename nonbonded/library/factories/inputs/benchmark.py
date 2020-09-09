@@ -7,7 +7,7 @@ from nonbonded.library.models.projects import Benchmark
 from nonbonded.library.models.results import BenchmarkResult, OptimizationResult
 
 
-class BenchmarkFactory(InputFactory):
+class BenchmarkInputFactory(InputFactory):
     """An factory used to create the directory structure and
     inputs for a particular benchmark.
     """
@@ -97,7 +97,7 @@ class BenchmarkFactory(InputFactory):
 
         from openff.evaluator.client import RequestOptions
 
-        super(BenchmarkFactory, cls)._generate(
+        super(BenchmarkInputFactory, cls)._generate(
             model=model,
             conda_environment=conda_environment,
             max_time=max_time,

@@ -28,6 +28,14 @@ class Parameter(BaseORM):
         ..., description="The attribute name associated with the parameter."
     )
 
+    def __eq__(self, other: "Parameter"):
+        return (
+            type(self) == type(other)
+            and self.handler_type == other.handler_type
+            and self.smirks == other.smirks
+            and self.attribute_name == other.attribute_name
+        )
+
     def __hash__(self):
         return hash((self.handler_type, self.smirks, self.attribute_name))
 

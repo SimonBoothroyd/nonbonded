@@ -1,8 +1,10 @@
 import logging
 import os
 
-from nonbonded.library.factories.analysis.benchmark import BenchmarkFactory
-from nonbonded.library.factories.analysis.optimization import OptimizationFactory
+from nonbonded.library.factories.analysis.benchmark import BenchmarkAnalysisFactory
+from nonbonded.library.factories.analysis.optimization import (
+    OptimizationAnalysisFactory,
+)
 from nonbonded.library.models.datasets import DataSetCollection
 from nonbonded.library.models.forcefield import ForceField
 from nonbonded.library.utilities import temporary_cd
@@ -12,10 +14,6 @@ from nonbonded.tests.utilities.factory import (
     create_evaluator_target,
     create_optimization,
 )
-
-
-def _mock_analyse_functional_groups(*_):
-    return {}
 
 
 def test_benchmark_analysis(caplog, monkeypatch):
@@ -56,7 +54,7 @@ def test_benchmark_analysis(caplog, monkeypatch):
         results.json("results.json")
 
         with caplog.at_level(logging.WARNING):
-            BenchmarkFactory.generate(benchmark, True)
+            BenchmarkAnalysisFactory.analyze(True)
 
         assert (
             "1 properties could not be estimated and so were not analyzed"
@@ -119,7 +117,7 @@ def test_optimization_analysis(monkeypatch):
             os.path.join("optimize.tmp", target.id, "iter_0000", "results.json")
         )
 
-        OptimizationFactory.generate(optimization, True)
+        OptimizationAnalysisFactory.analyze(True)
 
         assert os.path.isdir(os.path.join("analysis", "evaluator-target-1"))
         assert os.path.isfile(

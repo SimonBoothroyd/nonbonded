@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from openff.evaluator.datasets import PhysicalPropertyDataSet
 
 
-class OptimizationFactory(InputFactory):
+class OptimizationInputFactory(InputFactory):
     """A factory used to create the directory structure and
     inputs for a particular optimization.
     """
@@ -307,7 +307,7 @@ class OptimizationFactory(InputFactory):
         include_results,
     ):
 
-        super(OptimizationFactory, cls)._generate(
+        super(OptimizationInputFactory, cls)._generate(
             model=model,
             conda_environment=conda_environment,
             max_time=max_time,

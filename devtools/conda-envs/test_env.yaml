@@ -27,7 +27,7 @@ dependencies:
   - email_validator
 
     # Benchmark / optimization target dependencies
-  - forcebalance >=1.7.2
+  - forcebalance >=1.7.5
   - openforcefield
   - openff-evaluator >=0.2.0
   - openff-recharge >=0.0.1a2

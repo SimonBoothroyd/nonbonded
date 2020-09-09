@@ -31,12 +31,14 @@ def _remove_previous_files():
 
     for restart_file in restart_files:
 
-        logger.info(f"Removing {restart_file}.")
-
         if os.path.isdir(restart_file):
             shutil.rmtree(restart_file)
         elif os.path.isfile(restart_file):
             os.unlink(restart_file)
+        else:
+            continue
+
+        logger.info(f"Removing {restart_file}.")
 
 
 def _prepare_restart(optimization: Optimization):
@@ -178,6 +180,7 @@ def run_command():
 
             else:
                 _prepare_restart(optimization)
+                should_restart = True
 
         force_balance_arguments = ["ForceBalance.py", "optimize.in"]
 

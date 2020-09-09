@@ -10,9 +10,9 @@ from nonbonded.library.utilities.migration import reindex_results
 logger = logging.getLogger(__name__)
 
 
-class BenchmarkFactory(AnalysisFactory):
+class BenchmarkAnalysisFactory(AnalysisFactory):
     @classmethod
-    def generate(cls, model, reindex):
+    def analyze(cls, reindex):
 
         from openff.evaluator.client import RequestResult
 

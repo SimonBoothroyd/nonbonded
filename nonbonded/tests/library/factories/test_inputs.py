@@ -5,8 +5,8 @@ from openforcefield.typing.engines.smirnoff import ForceField as OFFForceField
 from openforcefield.typing.engines.smirnoff import vdWHandler
 
 from nonbonded.library.factories.inputs import InputFactory
-from nonbonded.library.factories.inputs.benchmark import BenchmarkFactory
-from nonbonded.library.factories.inputs.optimization import OptimizationFactory
+from nonbonded.library.factories.inputs.benchmark import BenchmarkInputFactory
+from nonbonded.library.factories.inputs.optimization import OptimizationInputFactory
 from nonbonded.library.models.forcefield import ForceField
 from nonbonded.library.models.targets import EvaluatorTarget, RechargeTarget
 from nonbonded.library.utilities import temporary_cd
@@ -82,8 +82,8 @@ def test_study_with_children(requests_mock, monkeypatch):
     def mock_generate(model, **_):
         os.makedirs(model.id, exist_ok=True)
 
-    monkeypatch.setattr(OptimizationFactory, "generate", mock_generate)
-    monkeypatch.setattr(BenchmarkFactory, "generate", mock_generate)
+    monkeypatch.setattr(OptimizationInputFactory, "generate", mock_generate)
+    monkeypatch.setattr(BenchmarkInputFactory, "generate", mock_generate)
 
     mock_get_data_set(requests_mock, create_data_set("data-set-1"))
 
@@ -171,7 +171,7 @@ def test_optimization(requests_mock, monkeypatch):
 
     with temporary_cd():
 
-        OptimizationFactory.generate(
+        OptimizationInputFactory.generate(
             optimization, "test-env", "12:34", "lilac-dask", 8000, 1, False
         )
 
@@ -249,7 +249,7 @@ def test_generate(requests_mock, monkeypatch):
 
     with temporary_cd():
 
-        BenchmarkFactory.generate(
+        BenchmarkInputFactory.generate(
             benchmark, "test-env", "12:34", "lilac-dask", 8000, 1, False
         )
 
