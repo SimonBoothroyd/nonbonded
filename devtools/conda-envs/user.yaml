@@ -1,0 +1,38 @@
+name: test
+channels:
+  - conda-forge
+  - omnia
+  - omnia/label/alpha
+dependencies:
+    # Base depends
+  - python
+  - pip
+
+    # Core dependencies
+  - click
+  - click-option-group
+  - numpy
+  - pydantic
+  - requests
+  - pandas
+  - jinja2
+  - email_validator
+
+    # Benchmark / optimization target dependencies
+  - forcebalance >=1.7.5
+  - openforcefield
+  - openff-evaluator >=0.2.0
+  - openff-recharge >=0.0.1a2
+
+    # SMILES to SVG
+  - rdkit
+
+    # Plotting
+  - seaborn
+
+    # Statistics
+  - scipy
+
+    # REST dependencies
+  - sqlalchemy
+  - sqlalchemy-utils
