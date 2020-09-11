@@ -6,7 +6,7 @@ from nonbonded.cli.projects.projects import benchmark, optimization, project, st
 
 @click.group()
 def cli():
-    pass
+    """The root group for all CLI commands."""
 
 
 cli.add_command(project)

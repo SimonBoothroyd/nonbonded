@@ -44,8 +44,28 @@ def _remove_previous_files():
 def _prepare_restart(optimization: Optimization):
     """Attempts to prepare the directory structure for a restart."""
 
-    # Begin by attempting to find the number of iterations which were
-    # successfully completed.
+    # Remove any partially finished result directories.
+    for target in optimization.targets:
+
+        iteration_directories = glob(os.path.join("optimize.tmp", target.id, "iter_*"))
+
+        expected_outputs = [
+            (iteration_directory, os.path.join(iteration_directory, "objective.p"))
+            for iteration_directory in iteration_directories
+        ]
+
+        for iteration_directory, objective_path in expected_outputs:
+
+            if os.path.isfile(objective_path):
+                continue
+
+            logger.info(
+                f"Removing the {iteration_directory} directory which was produced by "
+                f"an incomplete iteration."
+            )
+            shutil.rmtree(iteration_directory)
+
+    # Find the number of iterations which successfully completed.
     complete_iterations = optimization.max_iterations
 
     for target in optimization.targets:
@@ -58,7 +78,7 @@ def _prepare_restart(optimization: Optimization):
             for iteration in range(n_iterations)
         ]
 
-        missing_directories = {*expected_directories} - {iteration_directories}
+        missing_directories = {*expected_directories} - {*iteration_directories}
 
         if len(missing_directories) > 0:
 
@@ -86,7 +106,7 @@ def _prepare_restart(optimization: Optimization):
             f"The optimization will be restarted from iteration {complete_iterations}"
         )
 
-    # Remove any partially finished result directories.
+    # Remove any result directories where not all targets finished successfully.
     for target in optimization.targets:
 
         iteration_directories = glob(os.path.join("optimize.tmp", target.id, "iter_*"))
@@ -133,7 +153,7 @@ def _run_options():
     return [
         click.option(
             "--restart",
-            default=True,
+            default=False,
             type=click.BOOL,
             help="Whether to restart the optimization from where it left off.\nIf "
             "false any existing results will be removed / overwritten.",
@@ -173,7 +193,7 @@ def run_command():
             if not os.path.isfile("optimize.sav"):
 
                 logger.info(
-                    "No 'optimize.sav' was found. It will be assumed that the "
+                    "No 'optimize.sav' file was found. It will be assumed that the "
                     "optimization should be started from the beginning."
                 )
                 _remove_previous_files()

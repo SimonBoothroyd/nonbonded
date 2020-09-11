@@ -49,7 +49,7 @@ def create_author():
     return Author(name="Fake Name", email="fake@email.com", institute="None")
 
 
-def create_data_set(data_set_id: str):
+def create_data_set(data_set_id: str, entry_id: Optional[int] = None):
     """Creates a single author data set which contains a single
     density data entry. The entry contains two components, an
     aqueous solvent (x=1) and a methanol solute (n=1).
@@ -58,6 +58,8 @@ def create_data_set(data_set_id: str):
     ----------
     data_set_id: str
         The id to assign to the data set.
+    entry_id
+        The id to assign to the one data entry.
 
     Returns
     -------
@@ -67,7 +69,7 @@ def create_data_set(data_set_id: str):
     author = create_author()
 
     data_entry = DataSetEntry(
-        id=None,
+        id=entry_id,
         property_type="Density",
         temperature=298.15,
         pressure=101.325,

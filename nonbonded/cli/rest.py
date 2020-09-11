@@ -3,12 +3,9 @@ import click
 from nonbonded.library.utilities.logging import get_log_levels
 
 
-@click.group(
-    help="A collection of sub-commands for starting and interacting with the RESTful "
-    "API server."
-)
+@click.group(help="A collection of sub-commands for interacting with the RESTful API.")
 def rest():
-    pass
+    """The stub group for any RESTful API commands."""
 
 
 @click.command(help="Launch the main RESTful API server.")
