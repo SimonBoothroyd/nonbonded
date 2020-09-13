@@ -46,8 +46,8 @@ class BaseREST(BaseORM, abc.ABC):
         except requests.exceptions.HTTPError as error:
             logging.exception(error.response.text)
             raise
-        except Exception:
-            raise  # pragma: no cover
+        except Exception:  # pragma: no cover
+            raise
 
         return_object = self.__class__.parse_raw(request.text)
         return return_object
@@ -95,8 +95,8 @@ class BaseREST(BaseORM, abc.ABC):
         except requests.exceptions.HTTPError as error:
             logging.exception(error.response.text)
             raise
-        except Exception:
-            raise  # pragma: no cover
+        except Exception:  # pragma: no cover
+            raise
 
     @classmethod
     def from_rest(cls: Type[T], **kwargs) -> T:
@@ -111,8 +111,8 @@ class BaseREST(BaseORM, abc.ABC):
         except requests.exceptions.HTTPError as error:
             logging.exception(error.response.text)
             raise
-        except Exception:
-            raise  # pragma: no cover
+        except Exception:  # pragma: no cover
+            raise
 
         return cls.parse_raw(request.text)
 
@@ -149,7 +149,7 @@ class BaseRESTCollection(BaseORM, abc.ABC):
         except requests.exceptions.HTTPError as error:
             logging.exception(error.response.text)
             raise
-        except Exception:
-            raise  # pragma: no cover
+        except Exception:  # pragma: no cover
+            raise
 
         return cls.parse_raw(request.text)
