@@ -4,7 +4,9 @@ from sqlalchemy.orm import Session
 from nonbonded.backend.database import models
 from nonbonded.library.models.projects import (
     Benchmark,
+    BenchmarkCollection,
     Optimization,
+    OptimizationCollection,
     Project,
     ProjectCollection,
     Study,
@@ -55,7 +57,7 @@ class TestProjectEndpoints(BaseTestEndpoints):
     def test_get_all(self, rest_client: TestClient, db: Session):
 
         project = commit_project(db)
-        rest_collection = ProjectCollection.from_rest(rest_client)
+        rest_collection = ProjectCollection.from_rest(requests_class=rest_client)
 
         assert rest_collection is not None
         assert len(rest_collection.projects) == 1
@@ -168,6 +170,18 @@ class TestBenchmarkEndpoints(BaseTestEndpoints):
     def _n_db_models(cls, db: Session) -> int:
         return db.query(models.Benchmark.id).count()
 
+    def test_get_all(self, rest_client: TestClient, db: Session):
+
+        project, study, benchmark, _, _, _ = commit_benchmark(db, False)
+        rest_collection = BenchmarkCollection.from_rest(
+            project_id=project.id, study_id=study.id, requests_class=rest_client
+        )
+
+        assert rest_collection is not None
+        assert len(rest_collection.benchmarks) == 1
+
+        compare_pydantic_models(benchmark, rest_collection.benchmarks[0])
+
 
 class TestOptimizationEndpoints(BaseTestEndpoints):
     @classmethod
@@ -228,3 +242,15 @@ class TestOptimizationEndpoints(BaseTestEndpoints):
     @classmethod
     def _n_db_models(cls, db: Session) -> int:
         return db.query(models.Optimization.id).count()
+
+    def test_get_all(self, rest_client: TestClient, db: Session):
+
+        project, study, optimization, _, _ = commit_optimization(db)
+        rest_collection = OptimizationCollection.from_rest(
+            project_id=project.id, study_id=study.id, requests_class=rest_client
+        )
+
+        assert rest_collection is not None
+        assert len(rest_collection.optimizations) == 1
+
+        compare_pydantic_models(optimization, rest_collection.optimizations[0])

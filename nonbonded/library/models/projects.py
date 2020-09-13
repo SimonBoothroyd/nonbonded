@@ -7,12 +7,13 @@ import requests
 from pydantic import Field, conlist, root_validator, validator
 
 from nonbonded.library.config import settings
-from nonbonded.library.models import BaseORM, BaseREST
+from nonbonded.library.models import BaseREST
 from nonbonded.library.models.authors import Author
 from nonbonded.library.models.engines import ForceBalance
 from nonbonded.library.models.exceptions import MutuallyExclusiveError
 from nonbonded.library.models.exceptions.exceptions import DuplicateItemsError
 from nonbonded.library.models.forcefield import ForceField, Parameter
+from nonbonded.library.models.models import BaseRESTCollection
 from nonbonded.library.models.targets import OptimizationTarget
 from nonbonded.library.models.validators.string import IdentifierStr, NonEmptyStr
 from nonbonded.library.utilities.environments import ChemicalEnvironment
@@ -75,30 +76,22 @@ class SubStudy(BaseREST, abc.ABC):
         return values
 
 
-class SubStudyCollection(BaseORM, abc.ABC):
+class SubStudyCollection(BaseRESTCollection, abc.ABC):
     @classmethod
     @abc.abstractmethod
     def sub_study_type(cls):
         """The type of sub-study stored in this collection."""
 
     @classmethod
-    def from_rest(cls, project_id: str, study_id: str, requests_class=requests):
+    def _get_endpoint(cls, *, project_id: str, study_id: str):
 
-        sub_studies_request = requests_class.get(
+        return (
             f"{settings.API_URL}/projects/"
             f"{project_id}"
             f"/studies/"
             f"{study_id}"
-            f"/f{cls.sub_study_type.__name__.lower()}s/"
+            f"/{cls.sub_study_type().__name__.lower()}s/"
         )
-        try:
-            sub_studies_request.raise_for_status()
-        except requests.exceptions.HTTPError as error:
-            print(error.response.text)
-            raise
-
-        sub_studies = cls.parse_raw(sub_studies_request.text)
-        return sub_studies
 
 
 class Optimization(SubStudy):
@@ -380,7 +373,7 @@ class Study(BaseREST):
         )
 
 
-class StudyCollection(BaseORM):
+class StudyCollection(BaseRESTCollection):
 
     studies: List[Study] = Field(
         default_factory=list,
@@ -388,19 +381,8 @@ class StudyCollection(BaseORM):
     )
 
     @classmethod
-    def from_rest(cls, project_id: str, requests_class=requests) -> "StudyCollection":
-
-        studies_request = requests_class.get(
-            f"{settings.API_URL}/projects/{project_id}/studies/"
-        )
-        try:
-            studies_request.raise_for_status()
-        except requests.exceptions.HTTPError as error:
-            print(error.response.text)
-            raise
-
-        studies = StudyCollection.parse_raw(studies_request.text)
-        return studies
+    def _get_endpoint(cls, *, project_id: str):
+        return f"{settings.API_URL}/projects/{project_id}/studies/"
 
 
 class Project(BaseREST):
@@ -459,7 +441,7 @@ class Project(BaseREST):
         )
 
 
-class ProjectCollection(BaseORM):
+class ProjectCollection(BaseRESTCollection):
 
     projects: List[Project] = Field(
         default_factory=list,
@@ -467,14 +449,5 @@ class ProjectCollection(BaseORM):
     )
 
     @classmethod
-    def from_rest(cls, requests_class=requests) -> "ProjectCollection":
-
-        projects_request = requests_class.get(f"{settings.API_URL}/projects/")
-        try:
-            projects_request.raise_for_status()
-        except requests.exceptions.HTTPError as error:
-            print(error.response.text)
-            raise
-
-        projects = ProjectCollection.parse_raw(projects_request.text)
-        return projects
+    def _get_endpoint(cls, **kwargs):
+        return f"{settings.API_URL}/projects/"

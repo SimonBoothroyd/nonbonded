@@ -26,6 +26,7 @@ from nonbonded.library.models.datasets import (
     MoleculeSet,
     MoleculeSetCollection,
 )
+from nonbonded.library.utilities.exceptions import UnrecognisedPropertyType
 from nonbonded.tests.utilities.factory import create_data_set, create_molecule_set
 
 
@@ -285,6 +286,24 @@ def test_evaluator_round_trip(evaluator_data_set):
 
         evaluator_property = evaluator_properties_by_id[recreated_property.id]
         compare_evaluator_properties(evaluator_property, recreated_property)
+
+
+def test_unrecognised_property():
+
+    data_entry = create_data_set("data-set-1").entries[0]
+    data_entry.property_type = "BasePropertyType"
+
+    with pytest.raises(UnrecognisedPropertyType):
+        data_entry.to_evaluator()
+
+
+def test_pandas_string_id():
+
+    data_series = create_data_set("data-set-1").entries[0].to_series()
+    data_series["Id"] = "String"
+
+    data_entry = DataSetEntry.from_series(data_series)
+    assert data_entry.id is None
 
 
 @pytest.mark.parametrize(

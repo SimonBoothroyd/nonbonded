@@ -44,7 +44,7 @@ class TestDataSetEndpoints(BaseTestEndpoints):
     def test_get_all(self, rest_client: TestClient, db: Session):
 
         data_set = commit_data_set(db)
-        rest_data_collection = DataSetCollection.from_rest(rest_client)
+        rest_data_collection = DataSetCollection.from_rest(requests_class=rest_client)
 
         assert rest_data_collection is not None
         assert len(rest_data_collection.data_sets) == 1
@@ -78,7 +78,9 @@ class TestMoleculeSetEndpoints(BaseTestEndpoints):
     def test_get_all(self, rest_client: TestClient, db: Session):
 
         molecule_set = commit_molecule_set(db)
-        rest_molecule_collection = MoleculeSetCollection.from_rest(rest_client)
+        rest_molecule_collection = MoleculeSetCollection.from_rest(
+            requests_class=rest_client
+        )
 
         assert rest_molecule_collection is not None
         assert len(rest_molecule_collection.molecule_sets) == 1

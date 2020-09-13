@@ -7,6 +7,7 @@ from pydantic import Field, conlist, validator
 from nonbonded.library.config import settings
 from nonbonded.library.models import BaseORM, BaseREST
 from nonbonded.library.models.authors import Author
+from nonbonded.library.models.models import BaseRESTCollection
 from nonbonded.library.models.validators.string import IdentifierStr, NonEmptyStr
 from nonbonded.library.utilities.exceptions import (
     UnrecognisedPropertyType,
@@ -307,7 +308,7 @@ class DataSet(_BaseSet):
         )
 
 
-class DataSetCollection(BaseORM):
+class DataSetCollection(BaseRESTCollection):
 
     data_sets: List[DataSet] = Field(
         default_factory=list,
@@ -320,17 +321,8 @@ class DataSetCollection(BaseORM):
         return value
 
     @classmethod
-    def from_rest(cls, requests_class=requests) -> "DataSetCollection":
-
-        data_sets_request = requests_class.get(f"{settings.API_URL}/datasets/")
-        try:
-            data_sets_request.raise_for_status()
-        except requests.exceptions.HTTPError as error:
-            print(error.response.text)
-            raise
-
-        data_sets = DataSetCollection.parse_raw(data_sets_request.text)
-        return data_sets
+    def _get_endpoint(cls, **kwargs):
+        return f"{settings.API_URL}/datasets/"
 
     def to_evaluator(self) -> "PhysicalPropertyDataSet":
 
@@ -382,7 +374,7 @@ class MoleculeSet(_BaseSet):
         )
 
 
-class MoleculeSetCollection(BaseORM):
+class MoleculeSetCollection(BaseRESTCollection):
     """A collection of sets of molecules."""
 
     molecule_sets: List[MoleculeSet] = Field(
@@ -396,14 +388,5 @@ class MoleculeSetCollection(BaseORM):
         return value
 
     @classmethod
-    def from_rest(cls, requests_class=requests) -> "MoleculeSetCollection":
-
-        molecule_sets_request = requests_class.get(f"{settings.API_URL}/molsets/")
-        try:
-            molecule_sets_request.raise_for_status()
-        except requests.exceptions.HTTPError as error:
-            print(error.response.text)
-            raise
-
-        molecule_sets = MoleculeSetCollection.parse_raw(molecule_sets_request.text)
-        return molecule_sets
+    def _get_endpoint(cls, **kwargs):
+        return f"{settings.API_URL}/molsets/"

@@ -1,4 +1,5 @@
 import abc
+import logging
 from typing import Callable, Type, TypeVar
 
 import requests
@@ -43,10 +44,10 @@ class BaseREST(BaseORM, abc.ABC):
         try:
             request.raise_for_status()
         except requests.exceptions.HTTPError as error:
-            print(error.response.text)
+            logging.exception(error.response.text)
             raise
         except Exception:
-            raise
+            raise  # pragma: no cover
 
         return_object = self.__class__.parse_raw(request.text)
         return return_object
@@ -92,10 +93,10 @@ class BaseREST(BaseORM, abc.ABC):
         try:
             request.raise_for_status()
         except requests.exceptions.HTTPError as error:
-            print(error.response.text)
+            logging.exception(error.response.text)
             raise
         except Exception:
-            raise
+            raise  # pragma: no cover
 
     @classmethod
     def from_rest(cls: Type[T], **kwargs) -> T:
@@ -108,10 +109,10 @@ class BaseREST(BaseORM, abc.ABC):
         try:
             request.raise_for_status()
         except requests.exceptions.HTTPError as error:
-            print(error.response.text)
+            logging.exception(error.response.text)
             raise
         except Exception:
-            raise
+            raise  # pragma: no cover
 
         return cls.parse_raw(request.text)
 
@@ -127,3 +128,28 @@ class BaseREST(BaseORM, abc.ABC):
 
         with open(file_path, "w") as file:
             file.write(self.json())
+
+
+class BaseRESTCollection(BaseORM, abc.ABC):
+    @classmethod
+    @abc.abstractmethod
+    def _get_endpoint(cls, **kwargs):
+        raise NotImplementedError()
+
+    @classmethod
+    def from_rest(cls: Type[T], **kwargs) -> T:
+        """Attempts to retrieve an instance of this object from the RESTful API
+        based on its unique identifier(s)
+        """
+        requests_class = kwargs.pop("requests_class", requests)
+        request = requests_class.get(cls._get_endpoint(**kwargs))
+
+        try:
+            request.raise_for_status()
+        except requests.exceptions.HTTPError as error:
+            logging.exception(error.response.text)
+            raise
+        except Exception:
+            raise  # pragma: no cover
+
+        return cls.parse_raw(request.text)
