@@ -1,6 +1,8 @@
 import functools
 import logging
+from typing import List, Optional, Union
 
+from nonbonded.library.models.datasets import Component
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 
 logger = logging.getLogger(__name__)
@@ -294,3 +296,113 @@ def analyse_functional_groups(smiles):
         groups[group_environment] = int(group_count)
 
     return groups
+
+
+def components_to_category(
+    components: Union[List[str], List[Component]],
+    environments: List[ChemicalEnvironment],
+) -> Optional[str]:
+    """Attempts to assign a category to a list of components (or SMILES patterns)
+    based off of the chemical environments that they contain.
+
+    Parameters
+    ----------
+    components
+        The components to categorize.
+    environments
+        The environments to base the category off of.
+    """
+
+    import numpy
+
+    if len(environments) == 0:
+        return None
+
+    if not all(
+        isinstance(component, Component) for component in components
+    ) and not all(isinstance(component, str) for component in components):
+
+        raise TypeError(
+            "The components must either all be `Component` objects or all SMILES "
+            "patterns."
+        )
+
+    components = [
+        component
+        if isinstance(component, Component)
+        else Component(smiles=component, mole_fraction=1.0)
+        for component in components
+    ]
+
+    sorted_components = [*sorted(components, key=lambda x: x.smiles)]
+    assigned_environments = []
+
+    for component in sorted_components:
+
+        # Determine which environments are present in this component.
+        component_environments = analyse_functional_groups(component.smiles)
+        # Filter out any environments which we are not interested in.
+        component_environments = {
+            x: y for x, y in component_environments.items() if x in environments
+        }
+
+        if len(component_environments) == 0:
+            logger.info(
+                f"The substance with SMILES={[x.smiles for x in components]} "
+                f"could not be assigned a category. More than likely one or more "
+                f"of the components contains only environments which were not "
+                f"marked for analysis. It will be assigned a category of "
+                f"'Uncategorized' instead."
+            )
+            return "Uncategorized"
+
+        # Try to find the environment which appears the most times in a molecule.
+        # We sort the environments to try and make the case where multiple
+        # environments appear with the same frequency deterministic.
+        component_environment_keys = sorted(
+            component_environments.keys(), key=lambda x: x.value
+        )
+
+        most_common_environment = "None"
+        most_occurrences = -1
+
+        for key in component_environment_keys:
+
+            if component_environments[key] > most_occurrences:
+                most_common_environment = key.value
+                most_occurrences = component_environments[key]
+
+        assigned_environments.append(most_common_environment)
+
+    # Sort the assignments to try and make the categories deterministic.
+    sorted_assigned_environments = [*sorted(assigned_environments)]
+    category = ""
+
+    for index, assigned_environment in enumerate(sorted_assigned_environments):
+
+        if index == 0:
+            category = assigned_environment
+            continue
+
+        previous_environment = sorted_assigned_environments[index - 1]
+
+        previous_component = sorted_components[
+            assigned_environments.index(previous_environment)
+        ]
+        current_component = sorted_components[
+            assigned_environments.index(assigned_environment)
+        ]
+
+        if numpy.isclose(
+            previous_component.mole_fraction, 1.0 / len(components), rtol=0.1
+        ) and numpy.isclose(
+            current_component.mole_fraction, 1.0 / len(components), rtol=0.1
+        ):
+            category = f"{category} ~ {assigned_environment}"
+
+        elif previous_component.mole_fraction < current_component.mole_fraction:
+            category = f"{category} < {assigned_environment}"
+        else:
+            category = f"{category} > {assigned_environment}"
+
+    return category

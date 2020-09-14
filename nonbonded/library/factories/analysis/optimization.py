@@ -1,4 +1,5 @@
 import errno
+import json
 import logging
 import os
 from collections import defaultdict
@@ -14,9 +15,11 @@ from nonbonded.library.models.results import (
     EvaluatorTargetResult,
     OptimizationResult,
     RechargeTargetResult,
+    Statistic,
 )
 from nonbonded.library.models.targets import EvaluatorTarget, RechargeTarget
-from nonbonded.library.statistics.statistics import StatisticType
+from nonbonded.library.statistics.statistics import StatisticType, bootstrap_residuals
+from nonbonded.library.utilities.checkmol import components_to_category
 from nonbonded.library.utilities.migration import reindex_results
 
 logger = logging.getLogger(__name__)
@@ -45,6 +48,30 @@ class OptimizationAnalysisFactory(AnalysisFactory):
         objective_statistics = lp_load(objective_file_path)
 
         return objective_statistics["X"]
+
+    @classmethod
+    def _load_refit_force_field(cls) -> ForceField:
+        """Load in the refit force field."""
+
+        from openforcefield.typing.engines.smirnoff.forcefield import (
+            ForceField as OFFForceField,
+        )
+
+        refit_force_field_path = os.path.join(
+            "result", "optimize", "force-field.offxml"
+        )
+
+        if not os.path.isfile(refit_force_field_path):
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), refit_force_field_path
+            )
+
+        refit_force_field_off = OFFForceField(
+            refit_force_field_path, allow_cosmetic_attributes=True
+        )
+        refit_force_field = ForceField.from_openff(refit_force_field_off)
+
+        return refit_force_field
 
     @classmethod
     def _analyze_evaluator_target(
@@ -92,20 +119,61 @@ class OptimizationAnalysisFactory(AnalysisFactory):
     @classmethod
     def _analyze_recharge_target(
         cls,
-        target: EvaluatorTarget,
+        optimization: Optimization,
+        target: RechargeTarget,
         target_directory: str,
     ) -> Optional[RechargeTargetResult]:
+
+        residuals_path = os.path.join(target_directory, "residuals.json")
+
+        if not os.path.isfile(residuals_path):
+            return None
+
+        # Load in the residuals
+        with open(residuals_path) as file:
+            squared_residuals = json.load(file)
+
+        # Categorize the smiles
+        smiles_per_category = defaultdict(list)
+
+        smiles_per_category[None] = [*squared_residuals]
+
+        for smiles in squared_residuals:
+
+            category = components_to_category(
+                [smiles], optimization.analysis_environments
+            )
+            smiles_per_category[category].append(smiles)
+
+        # Compute RMSE statistics for this target.
+        statistic_entries = []
+
+        for category in smiles_per_category:
+
+            category_residuals = [
+                squared_residuals[smiles] for smiles in smiles_per_category[category]
+            ]
+
+            rmse, rmse_std, rmse_ci = bootstrap_residuals(category_residuals)
+
+            statistic_entry = Statistic(
+                statistic_type=StatisticType.RMSE,
+                category=category,
+                value=rmse,
+                lower_95_ci=rmse_ci[0],
+                upper_95_ci=rmse_ci[1],
+            )
+            statistic_entries.append(statistic_entry)
 
         objective_function = cls._read_objective_function(target_directory)
 
         return RechargeTargetResult(
             objective_function=target.weight * objective_function,
+            statistic_entries=statistic_entries,
         )
 
     @classmethod
     def analyze(cls, reindex):
-
-        from openforcefield.typing.engines.smirnoff import ForceField as OFFForceField
 
         # Load in the definition of the optimization to optimize.
         optimization = Optimization.parse_file("optimization.json")
@@ -118,32 +186,18 @@ class OptimizationAnalysisFactory(AnalysisFactory):
             os.makedirs(os.path.join(output_directory, target.id), exist_ok=True)
 
         # Load in the refit force field (if it exists)
-        refit_force_field_path = os.path.join(
-            "result", "optimize", "force-field.offxml"
-        )
-
-        if not os.path.isfile(refit_force_field_path):
-
-            raise FileNotFoundError(
-                errno.ENOENT, os.strerror(errno.ENOENT), refit_force_field_path
-            )
-
-        refit_force_field_off = OFFForceField(
-            refit_force_field_path, allow_cosmetic_attributes=True
-        )
-        refit_force_field = ForceField.from_openff(refit_force_field_off)
+        refit_force_field = cls._load_refit_force_field()
 
         # Determine the number of optimization iterations.
-        n_iterations = len(
-            glob(
-                os.path.join(
-                    "optimize.tmp", optimization.targets[0].id, "iter_*", "results.json"
-                )
-            )
-        )
+        target_n_iterations = [
+            len(glob(os.path.join("optimize.tmp", target.id, "iter_*", "objective.p")))
+            for target in optimization.targets
+        ]
+
+        n_iterations = min(target_n_iterations)
 
         if n_iterations == 0:
-            raise ValueError(
+            raise RuntimeError(
                 "No iteration results could be found, even though a refit force field "
                 "was. Make sure not to delete the `optimize.tmp` directory after the "
                 "optimization has completed."
@@ -171,7 +225,7 @@ class OptimizationAnalysisFactory(AnalysisFactory):
                     )
                 elif isinstance(target, RechargeTarget):
                     target_result = cls._analyze_recharge_target(
-                        target, iteration_directory
+                        optimization, target, iteration_directory
                     )
                 else:
                     raise NotImplementedError()

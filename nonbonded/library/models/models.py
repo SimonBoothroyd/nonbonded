@@ -14,6 +14,19 @@ class BaseORM(BaseModel, abc.ABC):
     class Config:
         orm_mode = True
 
+    def to_file(self, file_path: str):
+        """JSON serializes this object and saves the output to the specified
+        file path.
+
+        Parameters
+        ----------
+        file_path: str
+            The path to save the JSON serialized object to.
+        """
+
+        with open(file_path, "w") as file:
+            file.write(self.json())
+
 
 class BaseREST(BaseORM, abc.ABC):
     @classmethod
@@ -115,19 +128,6 @@ class BaseREST(BaseORM, abc.ABC):
             raise
 
         return cls.parse_raw(request.text)
-
-    def to_file(self, file_path: str):
-        """JSON serializes this object and saves the output to the specified
-        file path.
-
-        Parameters
-        ----------
-        file_path: str
-            The path to save the JSON serialized object to.
-        """
-
-        with open(file_path, "w") as file:
-            file.write(self.json())
 
 
 class BaseRESTCollection(BaseORM, abc.ABC):

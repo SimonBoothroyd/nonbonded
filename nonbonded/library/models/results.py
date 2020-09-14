@@ -8,16 +8,11 @@ from typing_extensions import Literal
 
 from nonbonded.library.config import settings
 from nonbonded.library.models import BaseORM, BaseREST
-from nonbonded.library.models.datasets import (
-    Component,
-    DataSet,
-    DataSetCollection,
-    DataSetEntry,
-)
+from nonbonded.library.models.datasets import DataSet, DataSetCollection, DataSetEntry
 from nonbonded.library.models.forcefield import ForceField
 from nonbonded.library.models.validators.string import IdentifierStr, NonEmptyStr
 from nonbonded.library.statistics.statistics import StatisticType, compute_statistics
-from nonbonded.library.utilities.checkmol import analyse_functional_groups
+from nonbonded.library.utilities.checkmol import components_to_category
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 from nonbonded.library.utilities.exceptions import UnsupportedEndpointError
 
@@ -104,93 +99,6 @@ class DataSetResult(BaseORM):
     )
 
     @classmethod
-    def _components_to_category(
-        cls,
-        components: List[Component],
-        analysis_environments: List[ChemicalEnvironment],
-    ) -> Optional[str]:
-
-        import numpy
-
-        if len(analysis_environments) == 0:
-            return None
-
-        sorted_components = [*sorted(components, key=lambda x: x.smiles)]
-        assigned_environments = []
-
-        for component in sorted_components:
-
-            # Determine which environments are present in this component.
-            component_environments = analyse_functional_groups(component.smiles)
-            # Filter out any environments which we are not interested in.
-            component_environments = {
-                x: y
-                for x, y in component_environments.items()
-                if x in analysis_environments
-            }
-
-            if len(component_environments) == 0:
-                logger.info(
-                    f"The substance with components={[x.smiles for x in components]} "
-                    f"could not be assigned a category. More than likely one or more "
-                    f"of the components contains only environments which were not "
-                    f"marked for analysis. It will be assigned a category of 'None' "
-                    f"instead."
-                )
-                return "Uncategorized"
-
-            # Try to find the environment which appears the most times in a molecule.
-            # We sort the environments to try and make the case where multiple
-            # environments appear with the same frequency deterministic.
-            component_environment_keys = sorted(
-                component_environments.keys(), key=lambda x: x.value
-            )
-
-            most_common_environment = "None"
-            most_occurrences = -1
-
-            for key in component_environment_keys:
-
-                if component_environments[key] > most_occurrences:
-                    most_common_environment = key.value
-                    most_occurrences = component_environments[key]
-
-            assigned_environments.append(most_common_environment)
-
-        # Sort the assignments to try and make the categories deterministic.
-        sorted_assigned_environments = [*sorted(assigned_environments)]
-        category = ""
-
-        for index, assigned_environment in enumerate(sorted_assigned_environments):
-
-            if index == 0:
-                category = assigned_environment
-                continue
-
-            previous_environment = sorted_assigned_environments[index - 1]
-
-            previous_component = sorted_components[
-                assigned_environments.index(previous_environment)
-            ]
-            current_component = sorted_components[
-                assigned_environments.index(assigned_environment)
-            ]
-
-            if numpy.isclose(
-                previous_component.mole_fraction, 1.0 / len(components), rtol=0.1
-            ) and numpy.isclose(
-                current_component.mole_fraction, 1.0 / len(components), rtol=0.1
-            ):
-                category = f"{category} ~ {assigned_environment}"
-
-            elif previous_component.mole_fraction < current_component.mole_fraction:
-                category = f"{category} < {assigned_environment}"
-            else:
-                category = f"{category} > {assigned_environment}"
-
-        return category
-
-    @classmethod
     def _evaluator_to_results_entries(
         cls,
         reference_data_set: Union[DataSet, DataSetCollection],
@@ -247,7 +155,7 @@ class DataSetResult(BaseORM):
                 estimated_std_error=estimated_entry.uncertainty.to(
                     default_units
                 ).magnitude,
-                category=cls._components_to_category(
+                category=components_to_category(
                     reference_entry.components, analysis_environments
                 ),
             )

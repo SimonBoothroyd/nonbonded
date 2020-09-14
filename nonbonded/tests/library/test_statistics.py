@@ -1,6 +1,10 @@
 import numpy
 
-from nonbonded.library.statistics.statistics import StatisticType, compute_statistics
+from nonbonded.library.statistics.statistics import (
+    StatisticType,
+    bootstrap_residuals,
+    compute_statistics,
+)
 
 N_DATA_POINTS = 1000
 N_ITERATIONS = 1000
@@ -79,3 +83,17 @@ def test_mse():
     )
 
     assert numpy.isclose(statistic_values[StatisticType.MSE], 0.0, rtol=0.05)
+
+
+def test_bootstrap_residuals():
+    """Test that the statistics module returns the 'correct' RMSE
+    to within some noise given a set of noisy estimated values."""
+
+    expected_std = numpy.random.rand() + 1.0
+
+    estimated_values = numpy.random.normal(0.0, expected_std, N_DATA_POINTS)
+    squared_residuals = estimated_values ** 2
+
+    (rmse, _, _) = bootstrap_residuals(squared_residuals, 0.95, N_ITERATIONS)
+
+    assert numpy.isclose(rmse, expected_std, rtol=0.1)

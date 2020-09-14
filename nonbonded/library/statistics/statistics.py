@@ -1,4 +1,7 @@
 from enum import Enum
+from typing import Iterable, Tuple
+
+import numpy
 
 
 class StatisticType(Enum):
@@ -157,6 +160,67 @@ def _compute_bootstrapped_statistics(
         )
 
     return means, standard_errors, confidence_intervals
+
+
+def bootstrap_residuals(
+    squared_residuals: Iterable[float],
+    percentile: float = 0.95,
+    bootstrap_iterations: int = 1000,
+) -> Tuple[float, float, Tuple[float, float]]:
+    """A general method for computing the RMSE and associated confidence intervals
+    given a list of squared residuals.
+
+    Parameters
+    ----------
+    squared_residuals
+        The list of squared residuals - i.e. (ref - calc)^2
+    percentile
+        The confidence interval percentile.
+    bootstrap_iterations
+        The number of bootstrap intervals.
+
+    Returns
+    -------
+        The average RMSE, the STD error on the RMSE and the confidence
+        intervals (as defined by the provided ``percentile``).
+    """
+
+    square_residuals = numpy.array(squared_residuals)
+
+    # Compute the mean RMSE
+    mean = numpy.sqrt(square_residuals.sum() / len(square_residuals))
+
+    # Generate the bootstrapped statistics samples.
+    sample_count = len(square_residuals)
+    sample_statistics = numpy.zeros((bootstrap_iterations, 1))
+
+    for sample_index in range(bootstrap_iterations):
+
+        samples_indices = numpy.random.randint(
+            low=0, high=sample_count, size=sample_count
+        )
+
+        sample_square_residuals = square_residuals[samples_indices]
+
+        sample_statistics[sample_index] = numpy.sqrt(
+            sample_square_residuals.sum() / len(sample_square_residuals)
+        )
+
+    # Compute the SEM
+    standard_error = numpy.std(sample_statistics, axis=0)[0]
+
+    # Compute the confidence intervals.
+    lower_percentile_index = int(bootstrap_iterations * (1 - percentile) / 2)
+    upper_percentile_index = int(bootstrap_iterations * (1 + percentile) / 2)
+
+    sorted_samples = numpy.sort(sample_statistics[:, 0])
+
+    confidence_intervals = (
+        sorted_samples[lower_percentile_index],
+        sorted_samples[upper_percentile_index],
+    )
+
+    return mean, standard_error, confidence_intervals
 
 
 def compute_statistics(
