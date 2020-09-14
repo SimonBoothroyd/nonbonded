@@ -14,8 +14,9 @@ class BenchmarkInputFactory(InputFactory):
 
     @classmethod
     def _retrieve_force_field(cls, benchmark: Benchmark):
-        """Retrieve the force field to benchmark from the RESTful API and
-        store it in the current directory."""
+        """Retrieve the force field to benchmark and store it in the current
+        directory.
+        """
 
         from openff.evaluator.forcefield import ForceFieldSource
         from openforcefield.typing.engines.smirnoff.forcefield import (
@@ -57,10 +58,7 @@ class BenchmarkInputFactory(InputFactory):
         evaluator_set.json("test-set.json")
 
     @classmethod
-    def _retrieve_results(
-        cls,
-        benchmark: Benchmark,
-    ):
+    def _retrieve_results(cls, benchmark: Benchmark):
         """Retrieves the full results for a benchmark.
 
         Parameters

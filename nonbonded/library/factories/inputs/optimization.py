@@ -28,9 +28,9 @@ class OptimizationInputFactory(InputFactory):
     """
 
     @classmethod
-    def _retrieve_force_field(cls, optimization: Optimization):
-        """Retrieve the force field to train from the RESTful API, adds the ForceBalance
-        cosmetic attributes, and stores it in the correct ``forcefield`` directory.
+    def _prepare_force_field(cls, optimization: Optimization):
+        """Adds the required ForceBalance cosmetic attributes and stores the force field
+        to refit it in the correct ``forcefield`` directory.
         """
 
         force_field_directory = "forcefield"
@@ -324,7 +324,7 @@ class OptimizationInputFactory(InputFactory):
             file.write(model.json())
 
         # Retrieve the force field.
-        cls._retrieve_force_field(model)
+        cls._prepare_force_field(model)
 
         # Create the options.in file.
         cls._generate_force_balance_input(model)

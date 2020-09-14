@@ -113,9 +113,12 @@ def test_analyze_evaluator_target_missing(tmpdir):
         "project-1", "study-1", "optimization-1", [target]
     )
 
-    assert OptimizationAnalysisFactory._analyze_evaluator_target(
-        optimization=optimization, target=target, target_directory="", reindex=True
-    ) is None
+    assert (
+        OptimizationAnalysisFactory._analyze_evaluator_target(
+            optimization=optimization, target=target, target_directory="", reindex=True
+        )
+        is None
+    )
 
 
 def test_analyze_recharge_target(tmpdir):
@@ -169,9 +172,12 @@ def test_analyze_recharge_target_missing(tmpdir):
         "project-1", "study-1", "optimization-1", [target]
     )
 
-    assert OptimizationAnalysisFactory._analyze_recharge_target(
-        optimization=optimization, target=target, target_directory=""
-    ) is None
+    assert (
+        OptimizationAnalysisFactory._analyze_recharge_target(
+            optimization=optimization, target=target, target_directory=""
+        )
+        is None
+    )
 
 
 def test_optimization_analysis(monkeypatch, force_field):

@@ -1,7 +1,16 @@
-from typing import List, Union
+from typing import TYPE_CHECKING, List, Union
 
-from pydantic import BaseModel, Field, PositiveInt
+from pydantic import BaseModel, Field
 from typing_extensions import Literal
+
+if TYPE_CHECKING:
+    from openff.evaluator import backends
+    from openff.evaluator.backends import dask
+
+    PositiveInt = int
+
+else:
+    from pydantic import PositiveInt
 
 
 class ComputeResources(BaseModel):
@@ -13,7 +22,7 @@ class ComputeResources(BaseModel):
         1, description="The number of GPUs to request per calculation worker."
     )
 
-    def to_evaluator(self):
+    def to_evaluator(self) -> "backends.ComputeResources":
 
         from openff.evaluator import backends
 
@@ -36,7 +45,7 @@ class QueueWorkerResources(ComputeResources):
         "and MM the number of minutes",
     )
 
-    def to_evaluator(self):
+    def to_evaluator(self) -> "backends.QueueWorkerResources":
 
         from openff.evaluator import backends, unit
 
@@ -81,7 +90,7 @@ class DaskHPCClusterConfig(BaseModel):
         "activating a python environment, or loading an environment module",
     )
 
-    def to_evaluator(self):
+    def to_evaluator(self) -> "dask.DaskLSFBackend":
 
         from openff.evaluator.backends import dask
 
