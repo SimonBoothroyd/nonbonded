@@ -5,13 +5,11 @@ import numpy
 import pytest
 from forcebalance.nifty import lp_dump
 from openff.evaluator.client import RequestResult
-from openforcefield.typing.engines.smirnoff import ForceField as OFFForceField
 
 from nonbonded.library.factories.analysis.optimization import (
     OptimizationAnalysisFactory,
 )
 from nonbonded.library.models.datasets import DataSetCollection
-from nonbonded.library.models.forcefield import ForceField
 from nonbonded.library.models.results import (
     EvaluatorTargetResult,
     OptimizationResult,
@@ -25,18 +23,6 @@ from nonbonded.tests.utilities.factory import (
     create_optimization,
     create_recharge_target,
 )
-
-
-@pytest.fixture(scope="module")
-def smirnoff_force_field():
-    return OFFForceField(
-        '<SMIRNOFF version="0.3" aromaticity_model="OEAroModel_MDL"></SMIRNOFF>'
-    )
-
-
-@pytest.fixture(scope="module")
-def force_field(smirnoff_force_field):
-    return ForceField.from_openff(smirnoff_force_field)
 
 
 def test_read_objective_function(tmpdir):
