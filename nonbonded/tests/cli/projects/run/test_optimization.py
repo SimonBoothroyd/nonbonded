@@ -1,5 +1,6 @@
 import logging
 import os
+import subprocess
 from glob import glob
 
 import pytest
@@ -203,6 +204,7 @@ def test_run_command(restart: bool, create_save: bool, runner, monkeypatch):
 
     monkeypatch.setattr(run, "_remove_previous_files", lambda: print("REMOVE"))
     monkeypatch.setattr(run, "_prepare_restart", lambda *args: print("PREPARE"))
+    monkeypatch.setattr(subprocess, "check_call", lambda *args, **kwargs: None)
 
     optimization = create_optimization(
         "project-1",

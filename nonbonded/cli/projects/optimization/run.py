@@ -1,9 +1,9 @@
 import logging
 import os
 import shutil
+import subprocess
 from contextlib import contextmanager
 from glob import glob
-from subprocess import check_call
 from typing import Optional
 
 import click
@@ -210,7 +210,7 @@ def run_command():
         with _launch_required_services(optimization, server_config):
 
             with open("force_balance.log", "w") as file:
-                check_call(force_balance_arguments, stderr=file, stdout=file)
+                subprocess.check_call(force_balance_arguments, stderr=file, stdout=file)
 
     return generate_click_command(
         click.command(
