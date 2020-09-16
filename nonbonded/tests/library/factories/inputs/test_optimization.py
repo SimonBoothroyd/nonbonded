@@ -7,14 +7,10 @@ from openff.evaluator.attributes import UNDEFINED
 from openff.evaluator.datasets import PhysicalPropertyDataSet
 from openff.evaluator.properties import Density
 from openforcefield.typing.engines.smirnoff import ForceField as OFFForceField
-from openforcefield.typing.engines.smirnoff import vdWHandler
-from openforcefield.typing.engines.smirnoff.parameters import (
-    ChargeIncrementModelHandler,
-)
 
 from nonbonded.library.factories.inputs.optimization import OptimizationInputFactory
 from nonbonded.library.models.datasets import DataSetCollection, MoleculeSetCollection
-from nonbonded.library.models.forcefield import ForceField, Parameter
+from nonbonded.library.models.forcefield import Parameter
 from nonbonded.library.models.projects import Optimization
 from nonbonded.library.models.results import OptimizationResult
 from nonbonded.library.utilities import temporary_cd
@@ -33,37 +29,6 @@ from nonbonded.tests.utilities.mock import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-@pytest.fixture(scope="module")
-def force_field() -> ForceField:
-    from simtk import unit
-
-    off_force_field = OFFForceField(
-        '<SMIRNOFF version="0.3" aromaticity_model="OEAroModel_MDL"></SMIRNOFF>'
-    )
-
-    vdw_handler = vdWHandler(**{"version": "0.3"})
-    vdw_handler.add_parameter(
-        parameter_kwargs={
-            "smirks": "[#6:1]",
-            "epsilon": 1.0 * unit.kilojoules_per_mole,
-            "sigma": 1.0 * unit.angstrom,
-        }
-    )
-    off_force_field.register_parameter_handler(vdw_handler)
-
-    charge_handler = ChargeIncrementModelHandler(**{"version": "0.3"})
-    charge_handler.add_parameter(
-        parameter_kwargs={
-            "smirks": "[#6:1]-[#6:2]",
-            "charge_increment1": 1.0 * unit.elementary_charge,
-            "charge_increment2": -1.0 * unit.elementary_charge,
-        }
-    )
-    off_force_field.register_parameter_handler(charge_handler)
-
-    return ForceField.from_openff(off_force_field)
 
 
 @pytest.fixture()
@@ -96,14 +61,16 @@ class TestOptimizationInputFactory:
             )
         )
 
-        OptimizationInputFactory._prepare_force_field(optimization)
+        with temporary_cd():
 
-        assert os.path.isfile(os.path.join("forcefield", "force-field.offxml"))
+            OptimizationInputFactory._prepare_force_field(optimization)
 
-        off_force_field = OFFForceField(
-            os.path.join("forcefield", "force-field.offxml"),
-            allow_cosmetic_attributes=True,
-        )
+            assert os.path.isfile(os.path.join("forcefield", "force-field.offxml"))
+
+            off_force_field = OFFForceField(
+                os.path.join("forcefield", "force-field.offxml"),
+                allow_cosmetic_attributes=True,
+            )
 
         vdw_handler = off_force_field.get_parameter_handler("vdW")
         assert len(vdw_handler.parameters) == 1

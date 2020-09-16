@@ -23,15 +23,6 @@ from nonbonded.tests.utilities.mock import (
 
 
 @pytest.fixture()
-def force_field() -> ForceField:
-    return ForceField(
-        inner_content=(
-            '<SMIRNOFF version="0.3" ' 'aromaticity_model="OEAroModel_MDL"></SMIRNOFF>'
-        )
-    )
-
-
-@pytest.fixture()
 def benchmark(force_field) -> Benchmark:
 
     return create_benchmark(
