@@ -1,153 +1,223 @@
 import os
+import re
+import warnings
 from typing import Dict, List
+
+import numpy
+from typing_extensions import Literal
 
 from nonbonded.library.models.datasets import DataSet, DataSetEntry
 from nonbonded.library.models.projects import Benchmark
 from nonbonded.library.models.results import BenchmarkResult
 from nonbonded.library.plotting.utilities import plot_scatter, property_type_to_title
+from nonbonded.library.statistics.statistics import StatisticType
+from nonbonded.library.utilities.string import camel_to_kebab_case
 
-# def plot_statistic(statistic_types, output_directory):
-#
-#     statistic_types = [x.value for x in statistic_types]
-#
-#     summary_data_path = os.path.join("statistics", "all_statistics.csv")
-#
-#     summary_data = pandas.read_csv(summary_data_path)
-#     summary_data = summary_data.sort_values("Study")
-#     summary_data = summary_data[summary_data["Statistic"].isin(statistic_types)]
-#
-#     study_names = list(sorted({*summary_data["Study"]}))
-#
-#     palette = seaborn.color_palette(n_colors=len(study_names))
-#
-#     plot = seaborn.FacetGrid(
-#         summary_data,
-#         col="Property",
-#         row="Statistic",
-#         size=4.0,
-#         aspect=1.0,
-#         sharey=True,
-#     )
-#     plot.map_dataframe(
-#         plot_bar_with_custom_ci,
-#         f"Study",
-#         f"Value",
-#         f"Lower 95% CI",
-#         f"Upper 95% CI",
-#         color=palette,
-#     )
-#
-#     plot.set_titles("{row_name}|{col_name}")
-#
-#     for i, axes_row in enumerate(plot.axes):
-#
-#         for j, axes_col in enumerate(axes_row):
-#
-#             row, col = axes_col.get_title().split("|")
-#
-#             if i == 0:
-#                 axes_col.set_title(col.strip())
-#             else:
-#                 axes_col.set_title("")
-#
-#             if j == 0:
-#                 axes_col.set_ylabel(f"${row.strip()}$")
-#
-#             axes_col.set_xticklabels([])
-#
-#     plot.add_legend()
-#
-#     plot.savefig(os.path.join(output_directory, "statistics.png"))
-#
-#
-# def plot_statistic_per_environment(
-#     property_types,
-#     statistic_types,
-#     output_directory,
-#     per_composition=False,
-#     reference_study=None
-# ):
-#
-#     if per_composition:
-#         per_environment_data_path = os.path.join("statistics", "per_composition.csv")
-#     else:
-#         per_environment_data_path = os.path.join("statistics", "per_environment.csv")
-#
-#     per_environment_data = pandas.read_csv(per_environment_data_path)
-#
-#     statistic_types = [x.value for x in statistic_types]
-#
-#     study_names = list(sorted({*per_environment_data["Study"]}))
-#
-#     for property_type, substance_type in property_types:
-#
-#         property_title = property_to_title(property_type, substance_type)
-#
-#         property_data = per_environment_data[
-#             per_environment_data["Property"] == property_title
-#         ]
-#         property_data = property_data[property_data["Statistic"].isin(statistic_types)]
-#
-#         if reference_study is not None:
-#
-#             reference_data = property_data[property_data["Study"] == reference_study]
-#             # property_data = property_data[property_data["Study"] != reference_study]
-#
-#             joined_data = pandas.merge(
-#                 property_data,
-#                 reference_data,
-#                 on=["Property", "Statistic", "Environment"],
-#                 suffixes=("", "_0"),
-#             )
-#
-#             property_data = joined_data[joined_data["Value"] >= joined_data["Value_0"]]
-#
-#         palette = seaborn.color_palette(n_colors=len(study_names))
-#
-#         plot = seaborn.FacetGrid(
-#             property_data,
-#             col="Property",
-#             row="Statistic",
-#             height=4.0,
-#             aspect=4.0,
-#             sharey=False,
-#         )
-#         plot.map_dataframe(
-#             plot_categories_with_custom_ci,
-#             "Environment",
-#             f"Value",
-#             "Study",
-#             f"Lower 95% CI",
-#             f"Upper 95% CI",
-#             color=palette,
-#         )
-#
-#         plot.add_legend()
-#
-#         plot.set_titles("{row_name}|{col_name}")
-#
-#         for i, axes_row in enumerate(plot.axes):
-#
-#             for j, axes_col in enumerate(axes_row):
-#
-#                 row, col = axes_col.get_title().split("|")
-#
-#                 if i == 0:
-#                     axes_col.set_title(col.strip())
-#                 else:
-#                     axes_col.set_title("")
-#
-#                 if j == 0:
-#                     axes_col.set_ylabel(f"${row.strip()}$")
-#
-#         file_name = property_to_file_name(property_type, substance_type)
-#
-#         if reference_study is not None:
-#             file_name = f"{file_name}_{reference_study}"
-#
-#         plot.savefig(
-#             os.path.join(output_directory, f"{file_name}_statistics_per_env.png")
-#         )
+
+def plot_overall_statistics(
+    benchmarks: List[Benchmark],
+    benchmark_results: List[BenchmarkResult],
+    statistic_type: StatisticType,
+    output_directory: str,
+    file_type: Literal["png", "pdf"] = "png",
+):
+    import pandas
+    import seaborn
+    from matplotlib import pyplot
+
+    benchmark_names = sorted(benchmark.name for benchmark in benchmarks)
+
+    plot_data = pandas.DataFrame(
+        [
+            {
+                "Name": benchmark.name,
+                "Data Type": f"{statistic.property_type}-{statistic.n_components}",
+                "Value": statistic.value,
+                "Lower CI": numpy.abs(statistic.lower_95_ci - statistic.value),
+                "Upper CI": numpy.abs(statistic.upper_95_ci - statistic.value),
+            }
+            for benchmark, benchmark_result in zip(benchmarks, benchmark_results)
+            for statistic in benchmark_result.data_set_result.statistic_entries
+            if statistic.statistic_type == statistic_type and statistic.category is None
+        ]
+    )
+
+    # Extract the unique data types (e.g. property types) which will be plotted
+    # in separate figures.
+    data_types = plot_data["Data Type"].unique()
+
+    for data_type in data_types:
+
+        type_plot_data = plot_data[plot_data["Data Type"] == data_type]
+
+        with seaborn.axes_style("white"):
+
+            figure, axis = pyplot.subplots(
+                figsize=(max(4.0, len(benchmark_names) * 0.8), 4.0)
+            )
+
+            # Plot the error bars and marker for each benchmark.
+            for index, benchmark_name in enumerate(benchmark_names):
+
+                benchmark_plot_data = type_plot_data[
+                    type_plot_data["Name"] == benchmark_name
+                ]
+
+                axis.errorbar(
+                    index,
+                    benchmark_plot_data["Value"],
+                    yerr=[
+                        benchmark_plot_data["Lower CI"],
+                        benchmark_plot_data["Upper CI"],
+                    ],
+                    label=benchmark_name,
+                    capsize=5.0,
+                    capthick=1.5,
+                    linestyle="none",
+                    marker="o",
+                )
+
+            # Add axis names
+            axis.set_xticks(
+                [-0.5, *range(0, len(benchmark_names)), len(benchmark_names) - 0.5]
+            )
+            axis.set_xticklabels([None] + benchmark_names + [None], rotation=90)
+            axis.set_ylabel(f"${statistic_type.value}$")
+
+        data_name = camel_to_kebab_case(data_type)
+        statistic_name = re.sub(r"[\W_]+", "", statistic_type.value).lower()
+
+        # Save the figure.
+        figure.savefig(
+            os.path.join(
+                output_directory,
+                f"overall-{statistic_name}-{data_name}.{file_type}",
+            ),
+            bbox_inches="tight",
+        )
+        pyplot.close(figure)
+
+
+def plot_categorized_statistics(
+    benchmarks: List[Benchmark],
+    benchmark_results: List[BenchmarkResult],
+    output_directory: str,
+    file_type: Literal["png", "pdf"] = "png",
+):
+    import pandas
+    import seaborn
+    from matplotlib import pyplot
+
+    # Reshape the statistics into a uniform data frame.
+    data_rows = [
+        {
+            "Data Type": f"{statistic.property_type}-{statistic.n_components}",
+            "Name": benchmark.name,
+            "Value": statistic.value,
+            "Lower CI": numpy.abs(statistic.lower_95_ci - statistic.value),
+            "Upper CI": numpy.abs(statistic.upper_95_ci - statistic.value),
+            "Category": statistic.category,
+        }
+        for benchmark, result in zip(benchmarks, benchmark_results)
+        for statistic in result.data_set_result.statistic_entries
+        if statistic.statistic_type == StatisticType.RMSE
+        and statistic.category is not None
+    ]
+
+    plot_data = pandas.DataFrame(data_rows)
+
+    # Extract the unique data types (e.g. property types) which will be plotted
+    # in separate figures.
+    data_types = plot_data["Data Type"].unique()
+
+    for data_type in data_types:
+
+        # Extract a data frame containing only the data type which should
+        # be included in this figure.
+        type_plot_data = plot_data[plot_data["Data Type"] == data_type]
+
+        def category_sort_key(category_string: str):
+
+            splitter = (
+                "<"
+                if "<" in category_string
+                else "~"
+                if "~" in category_string
+                else ">"
+                if ">" in category_string
+                else None
+            )
+
+            if splitter is None:
+                return category_string, None, None
+
+            splitter_ordering = {"<": 0, "~": 1, ">": 2}
+            split_string = category_string.split(splitter)
+
+            return (
+                split_string[0].strip(),
+                split_string[1].strip(),
+                splitter_ordering[splitter],
+            )
+
+        categories = sorted(
+            type_plot_data["Category"].unique(), key=category_sort_key, reverse=True
+        )
+        category_indices = [x * 2 for x in range(1, len(categories) + 1)]
+
+        n_categories = len(categories)
+
+        with seaborn.axes_style("white"):
+
+            figure, axis = pyplot.subplots(figsize=(5.0, 1.5 + (0.5 * n_categories)))
+
+            shifts = numpy.linspace(-0.5, 0.5, len(benchmarks))
+
+            # Plot the data for each benchmark.
+            for index, benchmark in enumerate(benchmarks):
+
+                benchmark_plot_data = type_plot_data[
+                    type_plot_data["Name"] == benchmark.name
+                ]
+
+                # Plot the error bars and with the circle marker on top.
+                axis.barh(
+                    benchmark_plot_data["Category"]
+                    .replace(categories, category_indices)
+                    .values
+                    - shifts[index],
+                    benchmark_plot_data["Value"],
+                    xerr=[
+                        benchmark_plot_data["Lower CI"],
+                        benchmark_plot_data["Upper CI"],
+                    ],
+                    height=1.0 / (len(benchmarks) - 1),
+                    # capsize=5.0,
+                    # capthick=1.5,
+                    # linestyle="none",
+                    # marker="o",
+                    label=benchmark.name,
+                )
+
+            # Add a simple legend.
+            axis.legend()
+
+            # Add title and axis names
+            axis.set_yticks(category_indices)
+            axis.set_yticklabels(categories)
+
+            axis.set_xlim(left=0.0)
+            axis.set_xlabel("RMSE")
+
+        # Save the figure.
+        figure.savefig(
+            os.path.join(
+                output_directory,
+                f"categorized-rmse-{camel_to_kebab_case(data_type)}.{file_type}",
+            ),
+            bbox_inches="tight",
+        )
+        pyplot.close(figure)
 
 
 def plot_results(
@@ -155,7 +225,10 @@ def plot_results(
     benchmark_results: List[BenchmarkResult],
     data_sets: List[DataSet],
     output_directory: str,
+    file_type: Literal["png", "pdf"] = "png",
+    highlight_categories: List[str] = None,
 ):
+
     import pandas
     import seaborn
     from matplotlib import pyplot
@@ -164,34 +237,45 @@ def plot_results(
         entry.id: entry for data_set in data_sets for entry in data_set.entries
     }
 
-    # Refactor the data into a pandas data frame.
+    # Re-shape the data into a pandas data frame for easier plotting.
     data_rows = []
 
     for benchmark, benchmark_result in zip(benchmarks, benchmark_results):
 
-        for results_entry in benchmark_result.analysed_result.results_entries:
+        for result_entry in benchmark_result.data_set_result.result_entries:
 
-            reference_data_point = reference_data_points[results_entry.reference_id]
+            reference_data_point = reference_data_points[result_entry.reference_id]
 
             reference_value = reference_data_point.value
             reference_std = reference_data_point.std_error
 
-            estimated_value = results_entry.estimated_value
-            estimated_std = results_entry.estimated_std_error
+            estimated_value = result_entry.estimated_value
+            estimated_std = result_entry.estimated_std_error
 
-            category = results_entry.category
+            # For now trim down the number of different categories and
+            # shorten certain category names.
+            category = re.sub("[<>~]", "+", result_entry.category).replace(
+                "Carboxylic Acid Ester", "Ester"
+            )
+
+            # Handle the highlighting of particular categories if requested.
+            if highlight_categories is None or (
+                len(highlight_categories) != 0 and category not in highlight_categories
+            ):
+                category = "None"
 
             property_type = (
-                f"{reference_data_point.property_type} "
+                f"{reference_data_point.property_type}-"
                 f"{len(reference_data_point.components)}"
             )
 
+            # Generate a meaningful title for the plot.
             property_title = property_type_to_title(
                 reference_data_point.property_type, len(reference_data_point.components)
             )
 
             data_row = {
-                "Benchmark Id": benchmark.id,
+                "Benchmark Id": benchmark.name,
                 "Property Type": property_type,
                 "Property Title": property_title,
                 "Estimated Value": estimated_value,
@@ -204,44 +288,70 @@ def plot_results(
 
     results_frame = pandas.DataFrame(data_rows)
 
-    categories = sorted(results_frame["Category"].unique())
+    # Determine the unique categories and property types in the plot.
+    categories = ["None", *sorted({*results_frame["Category"].unique()} - {"None"})]
     property_types = results_frame["Property Type"].unique()
 
-    palette = seaborn.color_palette("Set1", len(categories))
+    # Choose a colorblind friendly palette.
+    palette = seaborn.color_palette("colorblind", n_colors=len(categories))
 
+    # Grey out any non-highlighted points if a particular set of categories should
+    # be highlighted.
+    if highlight_categories is not None:
+
+        palette.pop(0)
+        palette.insert(0, (0.6, 0.6, 0.6, 0.2))
+
+    # Plot each property type separately.
     for property_type in property_types:
 
         plot_frame = results_frame[results_frame["Property Type"] == property_type]
 
-        plot = seaborn.FacetGrid(
-            plot_frame,
-            col="Benchmark Id",
-            sharex="row",
-            sharey="row",
-            hue_order=categories,
-            palette=palette,
-            size=4.0,
-            aspect=0.8,
-        )
-        plot.map_dataframe(
-            plot_scatter,
-            "Estimated Value",
-            "Reference Value",
-            "Reference Std",
-            "Estimated Std",
-            "Category",
-            categories,
-            color=palette,
-            marker="o",
-            linestyle="None",
-        )
+        # Catch seaborn warnings about numpy nan masks.
+        with warnings.catch_warnings():
 
+            warnings.simplefilter("ignore", UserWarning)
+
+            plot = seaborn.FacetGrid(
+                plot_frame,
+                col="Benchmark Id",
+                sharex="row",
+                sharey="row",
+                hue_order=categories,
+                palette=palette,
+                height=4.0,
+                aspect=0.8,
+            )
+            plot.map_dataframe(
+                plot_scatter,
+                "Estimated Value",
+                "Reference Value",
+                "Reference Std",
+                "Estimated Std",
+                "Category",
+                categories,
+                color=palette,
+                marker="o",
+                linestyle="None",
+            )
+
+        # Add a legend showing only the highlighted categories.
+        plot_categories = sorted(
+            x for x in plot_frame["Category"].unique() if x != "None"
+        )
+        plot.add_legend(label_order=plot_categories)
+
+        # Add a title to each sub-plot.
         plot.set_titles("{col_name}")
-        plot.add_legend()
-
         pyplot.subplots_adjust(top=0.85)
 
+        # Give the full plot a title.
         property_title = plot_frame["Property Title"].unique()[0]
         plot.fig.suptitle(property_title)
 
-        plot.savefig(os.path.join(output_directory, f"{property_type}.png"))
+        plot.savefig(
+            os.path.join(
+                output_directory,
+                f"{camel_to_kebab_case(property_type)}-scatter.{file_type}",
+            )
+        )

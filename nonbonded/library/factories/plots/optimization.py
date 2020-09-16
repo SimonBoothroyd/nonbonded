@@ -1,5 +1,8 @@
 import logging
 import os
+from typing import List
+
+from typing_extensions import Literal
 
 from nonbonded.library.factories.plots import PlotFactory
 from nonbonded.library.models.projects import Optimization
@@ -15,37 +18,49 @@ logger = logging.getLogger(__name__)
 
 class OptimizationPlotFactory(PlotFactory):
     @classmethod
-    def plot(cls):
+    def _load_sub_study(cls, directory):
 
-        # Load in the optimization and the results.
-        optimization = Optimization.parse_file("optimization.json")
-
-        optimization_result = OptimizationResult.parse_file(
-            os.path.join("analysis", "optimization-results.json")
+        optimization = Optimization.parse_file(
+            os.path.join(directory, "optimization.json")
         )
 
-        # Create an output directory
-        output_directory = "plots"
-        os.makedirs(output_directory, exist_ok=True)
+        optimization_result = OptimizationResult.parse_file(
+            os.path.join(directory, "analysis", "optimization-results.json")
+        )
+
+        return optimization, optimization_result
+
+    @classmethod
+    def _plot(
+        cls,
+        directories: List[str],
+        sub_studies: List[Optimization],
+        results: List[OptimizationResult],
+        file_type: Literal["png", "pdf"],
+    ):
 
         # Plot the percentage change in the final vs initial parameters.
         plot_parameter_changes(
-            [optimization],
-            [optimization_result],
+            sub_studies,
+            results,
             "absolute",
             False,
-            output_directory,
-            "pdf",
+            "",
+            file_type,
         )
 
         # Plot the objective function per iteration
         plot_objective_per_iteration(
-            [optimization],
-            [optimization_result],
+            sub_studies,
+            results,
             True,
-            output_directory,
-            "pdf",
+            "",
+            file_type,
         )
 
         # Plot the change in RMSE of the training data.
-        plot_rmse_change(optimization_result, output_directory, "pdf")
+        for optimization, result in zip(sub_studies, results):
+
+            os.makedirs(optimization.id, exist_ok=True)
+
+            plot_rmse_change(result, optimization.id, file_type)

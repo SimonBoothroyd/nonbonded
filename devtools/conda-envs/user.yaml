@@ -28,7 +28,7 @@ dependencies:
   - rdkit
 
     # Plotting
-  - seaborn
+  - seaborn >= 0.11
 
     # Statistics
   - scipy
