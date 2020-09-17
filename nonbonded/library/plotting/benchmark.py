@@ -21,6 +21,22 @@ def plot_overall_statistics(
     output_directory: str,
     file_type: Literal["png", "pdf"] = "png",
 ):
+    """Plots an overview of how each benchmark performed against each type of property
+    included in the training set.
+
+    Parameters
+    ----------
+    benchmarks
+        The benchmarks which have been performed.
+    benchmark_results
+        The analyzed outputs of the benchmarks.
+    statistic_type
+        The type of statistic to plot.
+    output_directory
+        The directory in which to save the plot.
+    file_type
+        The file type to use for the plots.
+    """
     import pandas
     import seaborn
     from matplotlib import pyplot
@@ -31,7 +47,9 @@ def plot_overall_statistics(
         [
             {
                 "Name": benchmark.name,
-                "Data Type": f"{statistic.property_type}-{statistic.n_components}",
+                "Data Type": property_type_to_title(
+                    statistic.property_type, statistic.n_components
+                ),
                 "Value": statistic.value,
                 "Lower CI": numpy.abs(statistic.lower_95_ci - statistic.value),
                 "Upper CI": numpy.abs(statistic.upper_95_ci - statistic.value),
@@ -42,68 +60,93 @@ def plot_overall_statistics(
         ]
     )
 
-    # Extract the unique data types (e.g. property types) which will be plotted
-    # in separate figures.
-    data_types = plot_data["Data Type"].unique()
+    # Extract the unique data types (e.g. property types).
+    data_types = sorted(plot_data["Data Type"].unique())
 
-    for data_type in data_types:
+    # Create the plot.
+    plot = seaborn.FacetGrid(
+        data=plot_data,
+        col="Data Type",
+        hue="Name",
+        sharey=False,
+        height=4.0,
+        aspect=0.5 + len(data_types) * 0.05,
+        col_order=data_types,
+    )
+
+    for data_index, data_type in enumerate(data_types):
 
         type_plot_data = plot_data[plot_data["Data Type"] == data_type]
+        axis = plot.facet_axis(0, data_index)
 
-        with seaborn.axes_style("white"):
+        # Plot the error bars and marker for each benchmark.
+        for index, benchmark_name in enumerate(benchmark_names):
 
-            figure, axis = pyplot.subplots(
-                figsize=(max(4.0, len(benchmark_names) * 0.8), 4.0)
+            benchmark_plot_data = type_plot_data[
+                type_plot_data["Name"] == benchmark_name
+            ]
+
+            axis.errorbar(
+                index,
+                benchmark_plot_data["Value"],
+                yerr=[
+                    benchmark_plot_data["Lower CI"],
+                    benchmark_plot_data["Upper CI"],
+                ],
+                label=benchmark_name,
+                capsize=5.0,
+                capthick=1.5,
+                linestyle="none",
+                marker="o",
+                markersize=10.0,
+                markerfacecolor="none",
+                color=seaborn.color_palette(n_colors=1)[0],
             )
 
-            # Plot the error bars and marker for each benchmark.
-            for index, benchmark_name in enumerate(benchmark_names):
+        # Add axis names
+        axis.set_xticks(range(0, len(benchmark_names)))
+        axis.set_xticklabels(benchmark_names, rotation=90)
+        axis.set_xlim(-0.5, len(benchmark_names) - 0.5)
 
-                benchmark_plot_data = type_plot_data[
-                    type_plot_data["Name"] == benchmark_name
-                ]
-
-                axis.errorbar(
-                    index,
-                    benchmark_plot_data["Value"],
-                    yerr=[
-                        benchmark_plot_data["Lower CI"],
-                        benchmark_plot_data["Upper CI"],
-                    ],
-                    label=benchmark_name,
-                    capsize=5.0,
-                    capthick=1.5,
-                    linestyle="none",
-                    marker="o",
-                )
-
-            # Add axis names
-            axis.set_xticks(
-                [-0.5, *range(0, len(benchmark_names)), len(benchmark_names) - 0.5]
-            )
-            axis.set_xticklabels([None] + benchmark_names + [None], rotation=90)
+        if data_index == 0:
             axis.set_ylabel(f"${statistic_type.value}$")
 
-        data_name = camel_to_kebab_case(data_type)
-        statistic_name = re.sub(r"[\W_]+", "", statistic_type.value).lower()
+    statistic_name = re.sub(r"[\W_]+", "", statistic_type.value).lower()
 
-        # Save the figure.
-        figure.savefig(
-            os.path.join(
-                output_directory,
-                f"overall-{statistic_name}-{data_name}.{file_type}",
-            ),
-            bbox_inches="tight",
-        )
-        pyplot.close(figure)
+    # Set the column titles
+    plot.set_titles("{col_name}")
+
+    # Save the figure.
+    plot.savefig(
+        os.path.join(
+            output_directory,
+            f"overall-{statistic_name}.{file_type}",
+        ),
+        bbox_inches="tight",
+    )
+    pyplot.close(plot.fig)
 
 
-def plot_categorized_statistics(
+def plot_categorized_rmse(
     benchmarks: List[Benchmark],
     benchmark_results: List[BenchmarkResult],
     output_directory: str,
     file_type: Literal["png", "pdf"] = "png",
 ):
+    """Plots the RMSE in each benchmarked property partitioned by the assigned
+    statistics category.
+
+    Parameters
+    ----------
+    benchmarks
+        The benchmarks which have been performed.
+    benchmark_results
+        The analyzed outputs of the benchmarks.
+    output_directory
+        The directory in which to save the plots.
+    file_type
+        The file type to use for the plots.
+    """
     import pandas
     import seaborn
     from matplotlib import pyplot
@@ -129,6 +172,8 @@ def plot_categorized_statistics(
     # Extract the unique data types (e.g. property types) which will be plotted
     # in separate figures.
     data_types = plot_data["Data Type"].unique()
+
+    os.makedirs(os.path.join(output_directory, "categorized-rmse"), exist_ok=True)
 
     for data_type in data_types:
 
@@ -192,10 +237,6 @@ def plot_categorized_statistics(
                         benchmark_plot_data["Upper CI"],
                     ],
                     height=1.0 / (len(benchmarks) - 1),
-                    # capsize=5.0,
-                    # capthick=1.5,
-                    # linestyle="none",
-                    # marker="o",
                     label=benchmark.name,
                 )
 
@@ -207,20 +248,23 @@ def plot_categorized_statistics(
             axis.set_yticklabels(categories)
 
             axis.set_xlim(left=0.0)
+            axis.set_ylim(0.5, (len(categories) + 1) * 2.0 - 0.5)
+
             axis.set_xlabel("RMSE")
 
         # Save the figure.
         figure.savefig(
             os.path.join(
                 output_directory,
-                f"categorized-rmse-{camel_to_kebab_case(data_type)}.{file_type}",
+                "categorized-rmse",
+                f"{camel_to_kebab_case(data_type)}.{file_type}",
             ),
             bbox_inches="tight",
         )
         pyplot.close(figure)
 
 
-def plot_results(
+def plot_scatter_results(
     benchmarks: List[Benchmark],
     benchmark_results: List[BenchmarkResult],
     data_sets: List[DataSet],
@@ -228,7 +272,26 @@ def plot_results(
     file_type: Literal["png", "pdf"] = "png",
     highlight_categories: List[str] = None,
 ):
+    """Plots the estimated value of each benchmarks property against the reference
+    value.
 
+    Parameters
+    ----------
+    benchmarks
+        The benchmarks which have been performed.
+    benchmark_results
+        The analyzed outputs of the benchmarks.
+    data_sets
+        The reference data sets benchmarked against.
+    output_directory
+        The directory in which to save the plots.
+    file_type
+        The file type to use for the plots.
+    highlight_categories
+        Particular categories (e.g. ``"Alcohol > Ester"``) to highlight on the plot.
+        If ``None`` all points will be colored the same. If an empty list then each
+        category will be colored separately.
+    """
     import pandas
     import seaborn
     from matplotlib import pyplot
@@ -303,6 +366,8 @@ def plot_results(
         palette.insert(0, (0.6, 0.6, 0.6, 0.2))
 
     # Plot each property type separately.
+    os.makedirs(os.path.join(output_directory, "scatter-plots"), exist_ok=True)
+
     for property_type in property_types:
 
         plot_frame = results_frame[results_frame["Property Type"] == property_type]
@@ -335,6 +400,24 @@ def plot_results(
                 linestyle="None",
             )
 
+            min_limit = numpy.min(
+                [
+                    numpy.minimum(axis.get_xlim(), axis.get_ylim())
+                    for axis in plot.axes.ravel()
+                ]
+            )
+            max_limit = numpy.max(
+                [
+                    numpy.maximum(axis.get_xlim(), axis.get_ylim())
+                    for axis in plot.axes.ravel()
+                ]
+            )
+
+            for axis in plot.axes.ravel():
+
+                axis.set_xlim(min_limit, max_limit)
+                axis.set_ylim(min_limit, max_limit)
+
         # Add a legend showing only the highlighted categories.
         plot_categories = sorted(
             x for x in plot_frame["Category"].unique() if x != "None"
@@ -352,6 +435,7 @@ def plot_results(
         plot.savefig(
             os.path.join(
                 output_directory,
-                f"{camel_to_kebab_case(property_type)}-scatter.{file_type}",
+                "scatter-plots",
+                f"{camel_to_kebab_case(property_type)}.{file_type}",
             )
         )

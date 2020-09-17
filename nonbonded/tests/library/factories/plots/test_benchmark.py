@@ -31,11 +31,9 @@ def test_plot(force_field, monkeypatch):
     )
 
     # Mock the already tested plotting methods.
-    monkeypatch.setattr(
-        benchmark_module, "plot_categorized_statistics", lambda *args: None
-    )
+    monkeypatch.setattr(benchmark_module, "plot_categorized_rmse", lambda *args: None)
     monkeypatch.setattr(benchmark_module, "plot_overall_statistics", lambda *args: None)
-    monkeypatch.setattr(benchmark_module, "plot_results", lambda *args: None)
+    monkeypatch.setattr(benchmark_module, "plot_scatter_results", lambda *args: None)
 
     if "nonbonded.library.factories.plots.benchmark" in sys.modules:
         sys.modules.pop("nonbonded.library.factories.plots.benchmark")

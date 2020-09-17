@@ -9,9 +9,9 @@ from nonbonded.library.models.datasets import DataSetCollection
 from nonbonded.library.models.projects import Benchmark
 from nonbonded.library.models.results import BenchmarkResult
 from nonbonded.library.plotting.benchmark import (
-    plot_categorized_statistics,
+    plot_categorized_rmse,
     plot_overall_statistics,
-    plot_results,
+    plot_scatter_results,
 )
 from nonbonded.library.statistics.statistics import StatisticType
 
@@ -56,7 +56,7 @@ class BenchmarkPlotFactory(PlotFactory):
             plot_overall_statistics(sub_studies, results, statistic_type, "", file_type)
 
         # Plot statistics about each category
-        plot_categorized_statistics(sub_studies, results, "", file_type)
+        plot_categorized_rmse(sub_studies, results, "", file_type)
 
         # Plot the results as a scatter plot.
-        plot_results(sub_studies, results, [*data_sets.values()], "", file_type)
+        plot_scatter_results(sub_studies, results, [*data_sets.values()], "", file_type)

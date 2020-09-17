@@ -10,6 +10,7 @@ from nonbonded.library.models.projects import Optimization
 from nonbonded.library.models.results import OptimizationResult
 from nonbonded.library.plotting.optimization import (
     _extract_parameter_value,
+    _parameter_attribute_to_title,
     plot_objective_per_iteration,
     plot_parameter_changes,
     plot_rmse_change,
@@ -91,6 +92,29 @@ def test_extract_parameter_value(smirnoff_force_field):
         Parameter(handler_type="vdW", smirks="[#6:1]", attribute_name="epsilon"),
     )
     assert numpy.isclose(value, 1.0 / 4.184)
+
+
+@pytest.mark.parametrize(
+    "parameter, expected",
+    [
+        (
+            Parameter(handler_type="vdW", smirks="[#6:1]", attribute_name="missing"),
+            "missing",
+        ),
+        (
+            Parameter(handler_type="vdW", smirks="[#6:1]", attribute_name="sigma"),
+            r"$\sigma$",
+        ),
+        (
+            Parameter(
+                handler_type="vdW", smirks="[#6:1]", attribute_name="charge_increment2"
+            ),
+            r"$q_{2}$",
+        ),
+    ],
+)
+def test_parameter_attribute_to_title(parameter, expected):
+    assert _parameter_attribute_to_title(parameter) == expected
 
 
 @pytest.mark.parametrize("mode", ["percent", "absolute"])

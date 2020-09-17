@@ -8,9 +8,9 @@ from nonbonded.library.models.forcefield import ForceField
 from nonbonded.library.models.projects import Benchmark
 from nonbonded.library.models.results import BenchmarkResult
 from nonbonded.library.plotting.benchmark import (
-    plot_categorized_statistics,
+    plot_categorized_rmse,
     plot_overall_statistics,
-    plot_results,
+    plot_scatter_results,
 )
 from nonbonded.library.statistics.statistics import StatisticType
 from nonbonded.tests.utilities.factory import (
@@ -72,11 +72,13 @@ def test_plot_overall_statistics(
         file_type,
     )
 
-    assert os.path.isfile(os.path.join(tmpdir, f"overall-rmse-density-2.{file_type}"))
+    assert os.path.isfile(
+        os.path.join(tmpdir, f"overall-rmse.{file_type}")
+    )
 
 
 @pytest.mark.parametrize("file_type", ["png", "pdf"])
-def test_plot_categorized_statistics(
+def test_plot_categorized_rmse(
     benchmarks_and_results,
     file_type: Literal["png", "pdf"],
     tmpdir,
@@ -84,7 +86,7 @@ def test_plot_categorized_statistics(
 
     benchmarks, results = benchmarks_and_results
 
-    plot_categorized_statistics(
+    plot_categorized_rmse(
         benchmarks,
         results,
         tmpdir,
@@ -92,12 +94,12 @@ def test_plot_categorized_statistics(
     )
 
     assert os.path.isfile(
-        os.path.join(tmpdir, f"categorized-rmse-density-2.{file_type}")
+        os.path.join(tmpdir, "categorized-rmse", f"density-2.{file_type}")
     )
 
 
 @pytest.mark.parametrize("file_type", ["png", "pdf"])
-def test_plot_results(
+def test_plot_scatter_results(
     benchmarks_and_results,
     file_type: Literal["png", "pdf"],
     tmpdir,
@@ -105,7 +107,7 @@ def test_plot_results(
 
     benchmarks, results = benchmarks_and_results
 
-    plot_results(
+    plot_scatter_results(
         benchmarks,
         results,
         [create_data_set("data-set-1", 1)],
@@ -113,4 +115,6 @@ def test_plot_results(
         file_type,
     )
 
-    assert os.path.isfile(os.path.join(tmpdir, f"density-2-scatter.{file_type}"))
+    assert os.path.isfile(
+        os.path.join(tmpdir, "scatter-plots", f"density-2.{file_type}")
+    )

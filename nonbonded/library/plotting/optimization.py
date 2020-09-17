@@ -1,4 +1,5 @@
 import os
+import re
 from collections import defaultdict
 from typing import TYPE_CHECKING, List
 
@@ -74,6 +75,43 @@ def _extract_parameter_value(
     return value.value_in_unit(_default_parameter_unit(parameter))
 
 
+def _parameter_attribute_to_title(parameter: Parameter) -> str:
+    """Maps a parameter attribute into a human and ``matplotlib`` friendly plot title
+    where possible.
+
+    Parameters
+    ----------
+    parameter
+        The parameter which contains the attribute to map.
+
+    Returns
+    -------
+        A fitting title.
+    """
+
+    attribute_symbols = {
+        "epsilon": r"\varepsilon",
+        "sigma": r"\sigma",
+        "rmin_half": r"\dfrac{r_{min}}{2}",
+        "charge_increment": "q",
+    }
+
+    indexless_attribute = re.sub(r"\d", "", parameter.attribute_name)
+
+    if indexless_attribute not in attribute_symbols:
+        return parameter.attribute_name
+
+    if parameter.attribute_name in attribute_symbols:
+        return f"${attribute_symbols[parameter.attribute_name]}$"
+
+    symbol = attribute_symbols[indexless_attribute]
+
+    title = re.sub(r"(\d+)", r"_{\1}", parameter.attribute_name)
+    title = title.replace(indexless_attribute, symbol)
+
+    return f"${title}$"
+
+
 def plot_parameter_changes(
     optimizations: List[Optimization],
     optimization_results: List[OptimizationResult],
@@ -135,11 +173,14 @@ def plot_parameter_changes(
 
             unit = _default_parameter_unit(parameter).get_symbol()
 
+            if unit == "A":
+                unit = "Å"
+
             data_row = {
                 "Name": optimizations[optimization_index].name,
                 "Handler": parameter.handler_type,
                 "SMIRKS": parameter.smirks,
-                "Attribute": f"{parameter.attribute_name} ({unit})",
+                "Attribute": f"{_parameter_attribute_to_title(parameter)} ({unit})",
                 r"$\Delta$": absolute_change,
                 r"% $\Delta$": percentage_change,
             }
@@ -254,6 +295,9 @@ def plot_objective_per_iteration(
         style=style,
         height=4.0,
         legend="full" if show_legend else False,
+    )
+    seaborn.lineplot(
+        data=plot_data, x="Iteration", y="Objective Function", hue=hue, legend=False
     )
 
     plot.savefig(os.path.join(output_directory, f"objective-function.{file_type}"))
