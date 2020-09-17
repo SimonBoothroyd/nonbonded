@@ -72,9 +72,7 @@ def test_plot_overall_statistics(
         file_type,
     )
 
-    assert os.path.isfile(
-        os.path.join(tmpdir, f"overall-rmse.{file_type}")
-    )
+    assert os.path.isfile(os.path.join(tmpdir, f"overall-rmse.{file_type}"))
 
 
 @pytest.mark.parametrize("file_type", ["png", "pdf"])
