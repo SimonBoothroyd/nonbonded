@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from nonbonded.cli.projects.analysis import analyse_command
+from nonbonded.cli.projects.analysis import analyze_command
 from nonbonded.cli.projects.plots import plot_command
 from nonbonded.cli.projects.retrieve import retrieve_command
 from nonbonded.cli.projects.upload import upload_command
@@ -73,7 +73,7 @@ def test_analyze(model_type, runner, monkeypatch):
     model_factory = AnalysisFactory.model_type_to_factory(model_type)
     monkeypatch.setattr(model_factory, "analyze", empty_function)
 
-    result = runner.invoke(analyse_command(model_type))
+    result = runner.invoke(analyze_command(model_type))
 
     if result.exit_code != 0:
         raise result.exception

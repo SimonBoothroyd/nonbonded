@@ -1,6 +1,6 @@
 import click
 
-from nonbonded.cli.projects.analysis import analyse_command
+from nonbonded.cli.projects.analysis import analyze_command
 from nonbonded.cli.projects.benchmark.run import run_command as run_benchmark
 from nonbonded.cli.projects.optimization.run import run_command as run_optimization
 from nonbonded.cli.projects.plots import plot_command
@@ -31,7 +31,7 @@ def optimization():
 
 
 optimization.add_command(retrieve_command(Optimization))
-optimization.add_command(analyse_command(Optimization))
+optimization.add_command(analyze_command(Optimization))
 optimization.add_command(plot_command(Optimization))
 optimization.add_command(upload_command(Optimization))
 optimization.add_command(run_optimization())
@@ -43,7 +43,7 @@ def benchmark():
 
 
 benchmark.add_command(retrieve_command(Benchmark))
-benchmark.add_command(analyse_command(Benchmark))
+benchmark.add_command(analyze_command(Benchmark))
 benchmark.add_command(plot_command(Benchmark))
 benchmark.add_command(upload_command(Benchmark))
 benchmark.add_command(run_benchmark())

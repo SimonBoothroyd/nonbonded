@@ -28,7 +28,7 @@ def _analyse_options() -> List[click.option]:
     ]
 
 
-def analyse_command(model_type: Type[Union[Optimization, Benchmark]]):
+def analyze_command(model_type: Type[Union[Optimization, Benchmark]]):
     def base_function(**kwargs):
 
         model_factory = AnalysisFactory.model_type_to_factory(model_type)
@@ -39,7 +39,7 @@ def analyse_command(model_type: Type[Union[Optimization, Benchmark]]):
     )
 
     return generate_click_command(
-        click.command("analyse", help=f"Analyzes the output of {model_string}."),
+        click.command("analyze", help=f"Analyzes the output of {model_string}."),
         [*_analyse_options()],
         base_function,
     )
