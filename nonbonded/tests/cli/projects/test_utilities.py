@@ -28,4 +28,9 @@ from nonbonded.library.models.projects import Benchmark, Optimization, Project, 
     ],
 )
 def test_extract_identifiers(model_type, identifier_kwargs):
-    assert extract_identifiers(model_type, {**identifier_kwargs}) == identifier_kwargs
+    assert extract_identifiers(model_type, {**identifier_kwargs}) == {
+        identifier_name.replace("benchmark", "sub_study").replace(
+            "optimization", "sub_study"
+        ): identifier
+        for identifier_name, identifier in identifier_kwargs.items()
+    }

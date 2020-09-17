@@ -12,18 +12,18 @@ def extract_identifiers(
     a particular model type.
     """
 
-    expected_identifiers = ["project_id"]
+    expected_identifiers = [("project_id", "project_id")]
 
     if not issubclass(model_type, Project):
-        expected_identifiers.append("study_id")
-    if issubclass(model_type, Optimization):
-        expected_identifiers.append("optimization_id")
+        expected_identifiers.append(("study_id", "study_id"))
     if issubclass(model_type, Benchmark):
-        expected_identifiers.append("benchmark_id")
+        expected_identifiers.append(("sub_study_id", "benchmark_id"))
+    if issubclass(model_type, Optimization):
+        expected_identifiers.append(("sub_study_id", "optimization_id"))
 
     identifiers = {
-        expected_identifier: kwargs.pop(expected_identifier)
-        for expected_identifier in expected_identifiers
+        identifier_name: kwargs.pop(expected_identifier)
+        for identifier_name, expected_identifier in expected_identifiers
     }
 
     return identifiers

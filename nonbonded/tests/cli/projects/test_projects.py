@@ -54,7 +54,10 @@ def test_retrieve(model_type, identifier_kwargs, runner, monkeypatch):
     monkeypatch.setattr(model_type, "from_rest", empty_function)
 
     arguments = [
-        (f"--{argument_name.replace('_', '-')}", argument_value)
+        (
+            f"--{argument_name.replace('sub_study', model_type.__name__.lower()).replace('_', '-')}",
+            argument_value,
+        )
         for argument_name, argument_value in extract_identifiers(
             model_type, {**identifier_kwargs}
         ).items()
