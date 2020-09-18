@@ -109,41 +109,7 @@ def test_remove_previous_files():
         assert len(glob("*")) == 0
 
 
-def test_prepare_restart_missing_directories():
-
-    optimization = create_optimization(
-        "project-1",
-        "study-1",
-        "optimization-1",
-        [create_recharge_target("recharge-target", ["molecule-set-1"])],
-    )
-
-    with temporary_cd():
-
-        os.makedirs(os.path.join("optimize.tmp", "recharge-target", "iter_0001"))
-
-        with open(
-            os.path.join("optimize.tmp", "recharge-target", "iter_0001", "objective.p"),
-            "w",
-        ) as file:
-            file.write("")
-
-        with pytest.raises(RuntimeError) as error_info:
-            _prepare_restart(optimization)
-
-        expected_missing_directory = os.path.join(
-            "optimize.tmp", "recharge-target", "iter_0000"
-        )
-
-        expected_message = (
-            "The following output directories of the recharge-target could not be "
-            f"found:\n{expected_missing_directory}"
-        )
-
-        assert str(error_info.value) == expected_message
-
-
-def test_prepare_restart_remove_unfinished(caplog):
+def test_prepare_restart_finished(caplog):
 
     optimization = create_optimization(
         "project-1",
@@ -165,12 +131,13 @@ def test_prepare_restart_remove_unfinished(caplog):
         ]
 
         for directory in directories:
+
             os.makedirs(directory)
 
-        for directory in directories[0:-1]:
+            for file_name in ["mvals.txt", "forcefield.offxml", "objective.p"]:
 
-            with open(os.path.join(directory, "objective.p"), "w") as file:
-                file.write("")
+                with open(os.path.join(directory, file_name), "w") as file:
+                    file.write("")
 
         assert len(glob(os.path.join("optimize.tmp", "recharge-target-1", "*"))) == 2
         assert len(glob(os.path.join("optimize.tmp", "recharge-target-2", "*"))) == 2
@@ -178,22 +145,86 @@ def test_prepare_restart_remove_unfinished(caplog):
         with caplog.at_level(logging.INFO):
             _prepare_restart(optimization)
 
-        assert len(glob(os.path.join("optimize.tmp", "recharge-target-1", "*"))) == 1
-        assert len(glob(os.path.join("optimize.tmp", "recharge-target-2", "*"))) == 1
+        assert len(glob(os.path.join("optimize.tmp", "recharge-target-1", "*"))) == 2
+        assert len(glob(os.path.join("optimize.tmp", "recharge-target-2", "*"))) == 2
 
-        expected_message = (
-            f"Removing the {directories[3]} directory which was produced by an "
-            "incomplete iteration."
+        assert (
+            "2 iterations had previously been completed. The optimization will be "
+            "restarted from iteration 0002"
+        ) in caplog.text
+
+
+@pytest.mark.parametrize("partial_restart", [False, True])
+def test_prepare_restart_unfinished(partial_restart, caplog):
+
+    optimization = create_optimization(
+        "project-1",
+        "study-1",
+        "optimization-1",
+        [
+            create_recharge_target("recharge-target-1", ["molecule-set-1"]),
+            create_recharge_target("recharge-target-2", ["molecule-set-1"]),
+        ],
+    )
+
+    with temporary_cd():
+
+        directories = [
+            os.path.join("optimize.tmp", "recharge-target-1", "iter_0000"),
+            os.path.join("optimize.tmp", "recharge-target-2", "iter_0000"),
+            os.path.join("optimize.tmp", "recharge-target-1", "iter_0001"),
+            os.path.join("optimize.tmp", "recharge-target-2", "iter_0001"),
+        ]
+
+        for index, directory in enumerate(directories):
+
+            os.makedirs(directory)
+
+            expected_files = ["mvals.txt"]
+
+            if index < 3:
+                expected_files.append("objective.p")
+            if index < (3 if not partial_restart else 4):
+                expected_files.append("forcefield.offxml")
+
+            for file_name in expected_files:
+
+                with open(os.path.join(directory, file_name), "w") as file:
+                    file.write("")
+
+        assert len(glob(os.path.join("optimize.tmp", "recharge-target-1", "*"))) == 2
+        assert len(glob(os.path.join("optimize.tmp", "recharge-target-2", "*"))) == 2
+
+        with caplog.at_level(logging.INFO):
+            _prepare_restart(optimization)
+
+        expected_directories = 2 if partial_restart else 1
+
+        assert (
+            len(glob(os.path.join("optimize.tmp", "recharge-target-1", "*")))
+            == expected_directories
         )
-        unexpected_message = (
-            f"Removing the {directories[1]} directory which was produced by an "
-            "incomplete iteration."
+        assert (
+            len(glob(os.path.join("optimize.tmp", "recharge-target-2", "*")))
+            == expected_directories
         )
 
-        assert expected_message in caplog.text
-        assert unexpected_message not in caplog.text
+        if not partial_restart:
+            assert (
+                f"Removing the {directories[2]} directory which was not expected to be "
+                f"present"
+            ) in caplog.text
+            assert (
+                f"Removing the {directories[3]} directory which was not expected to be "
+                f"present"
+            ) in caplog.text
+        else:
+            assert "Removing the" not in caplog.text
 
-        assert "1 iterations had previously been completed." in caplog.text
+        assert (
+            "1 iterations had previously been completed. The optimization will be "
+            f"restarted from iteration {'0000' if not partial_restart else '0001'}"
+        ) in caplog.text
 
 
 @pytest.mark.parametrize("restart", [False, True])

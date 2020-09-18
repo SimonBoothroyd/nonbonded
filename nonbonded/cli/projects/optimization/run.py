@@ -44,81 +44,87 @@ def _remove_previous_files():
 def _prepare_restart(optimization: Optimization):
     """Attempts to prepare the directory structure for a restart."""
 
-    # Remove any partially finished result directories.
-    for target in optimization.targets:
+    all_targets_complete = True
 
-        iteration_directories = glob(os.path.join("optimize.tmp", target.id, "iter_*"))
+    n_completed_iterations = 0
+    restart_from_incomplete = False
 
-        expected_outputs = [
-            (iteration_directory, os.path.join(iteration_directory, "objective.p"))
-            for iteration_directory in iteration_directories
-        ]
+    for iteration in range(optimization.max_iterations):
 
-        for iteration_directory, objective_path in expected_outputs:
+        iteration_string = "iter_" + str(iteration).zfill(4)
 
-            if os.path.isfile(objective_path):
-                continue
-
-            logger.info(
-                f"Removing the {iteration_directory} directory which was produced by "
-                f"an incomplete iteration."
-            )
-            shutil.rmtree(iteration_directory)
-
-    # Find the number of iterations which successfully completed.
-    complete_iterations = optimization.max_iterations
-
-    for target in optimization.targets:
-
-        iteration_directories = glob(os.path.join("optimize.tmp", target.id, "iter_*"))
-        n_iterations = len(iteration_directories)
-
-        expected_directories = [
-            os.path.join("optimize.tmp", target.id, "iter_" + str(iteration).zfill(4))
-            for iteration in range(n_iterations)
-        ]
-
-        missing_directories = {*expected_directories} - {*iteration_directories}
-
-        if len(missing_directories) > 0:
-
-            missing_string = "\n".join(missing_directories)
-
-            raise RuntimeError(
-                f"The following output directories of the {target.id} could not be "
-                f"found:\n{missing_string}"
-            )
-
-        final_directory = os.path.join(
-            "optimize.tmp", target.id, "iter_" + str(n_iterations - 1).zfill(4)
+        # Determine if all target have completed for this iteration.
+        targets_complete = all(
+            [
+                os.path.isfile(
+                    os.path.join(
+                        "optimize.tmp", target.id, iteration_string, "objective.p"
+                    )
+                )
+                for target in optimization.targets
+            ]
         )
 
-        if not os.path.isfile(os.path.join(final_directory, "objective.p")):
-            # Remove the last directory if it did not contain an 'objective.p' file.
-            n_iterations -= 1
+        if targets_complete:
 
-        complete_iterations = min(complete_iterations, n_iterations)
+            n_completed_iterations += 1
+            continue
 
-    if complete_iterations > 0:
+        if any(
+            not os.path.isdir(os.path.join("optimize.tmp", target.id, iteration_string))
+            for target in optimization.targets
+        ):
+            break
+
+        all_targets_complete = False
+
+        # Given that the previous iteration completed, check whether there is enough
+        # information to restart from this iteration. Namely, do the expected 'mvals.txt'
+        # and 'forcefield.offxml' files exist.
+        restart_from_incomplete = all(
+            all(
+                os.path.isfile(
+                    os.path.join("optimize.tmp", target.id, iteration_string, file_name)
+                )
+                for file_name in ["mvals.txt", "forcefield.offxml"]
+            )
+            for target in optimization.targets
+        )
+
+        break
+
+    all_targets_complete = n_completed_iterations > 0 and all_targets_complete
+
+    restart_iteration = n_completed_iterations + (
+        0 if restart_from_incomplete or all_targets_complete else -1
+    )
+
+    # Remove any directories which should not exist under normal circumstances.
+    expected_directories = [
+        os.path.join("optimize.tmp", target.id, "iter_" + str(iteration).zfill(4))
+        for target in optimization.targets
+        for iteration in range(restart_iteration + 1)
+    ]
+
+    found_directories = glob(os.path.join("optimize.tmp", "*", "iter_*"))
+
+    for unexpected_directory in {*found_directories} - {*expected_directories}:
 
         logger.info(
-            f"{complete_iterations} iterations had previously been completed. "
-            f"The optimization will be restarted from iteration {complete_iterations}"
+            f"Removing the {unexpected_directory} directory which was not expected to "
+            f"be present and may cause issues when restarting. This directory should "
+            f"not have existed in normal circumstances."
         )
+        shutil.rmtree(unexpected_directory)
 
-    # Remove any result directories where not all targets finished successfully.
-    for target in optimization.targets:
+    # Print a message to the user about any restart.
+    if n_completed_iterations > 0 or restart_from_incomplete:
 
-        iteration_directories = glob(os.path.join("optimize.tmp", target.id, "iter_*"))
-        expected_directories = [
-            os.path.join("optimize.tmp", target.id, "iter_" + str(iteration).zfill(4))
-            for iteration in range(complete_iterations)
-        ]
-
-        extra_directories = {*iteration_directories} - {*expected_directories}
-
-        for extra_directory in extra_directories:
-            shutil.rmtree(extra_directory)
+        logger.info(
+            f"{n_completed_iterations} iterations had previously been completed. "
+            f"The optimization will be restarted from iteration "
+            f"{str(restart_iteration).zfill(4)}"
+        )
 
 
 @contextmanager
