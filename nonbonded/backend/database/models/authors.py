@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import Query
+from sqlalchemy.orm import Query, Session
 
 from nonbonded.backend.database.models import Base, UniqueMixin
 
@@ -15,13 +15,15 @@ class Author(UniqueMixin, Base):
     institute = Column(String, nullable=False)
 
     @classmethod
-    def unique_hash(cls, name, email, institute):
-        return name, email, institute
+    def _hash(cls, db_instance: "Author"):
+        return hash((db_instance.name, db_instance.email, db_instance.institute))
 
     @classmethod
-    def unique_filter(cls, query: Query, name, email, institute):
+    def _query(cls, db: Session, db_instance: "Author") -> Query:
+
         return (
-            query.filter(Author.name == name)
-            .filter(Author.email == email)
-            .filter(Author.institute == institute)
+            db.query(Author)
+            .filter(Author.name == db_instance.name)
+            .filter(Author.email == db_instance.email)
+            .filter(Author.institute == db_instance.institute)
         )

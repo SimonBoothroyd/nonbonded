@@ -140,7 +140,9 @@ class SubStudyCRUD(abc.ABC):
                 )
             ),
             analysis_environments=[
-                models.ChemicalEnvironment.as_unique(db, id=x.value)
+                models.ChemicalEnvironment.unique(
+                    db, models.ChemicalEnvironment(id=x.value)
+                )
                 for x in sub_study.analysis_environments
             ],
         )
@@ -179,8 +181,11 @@ class SubStudyCRUD(abc.ABC):
                 db_force_field=(
                     None
                     if sub_study.force_field is None
-                    else models.ForceField.as_unique(
-                        db, inner_content=sub_study.force_field.inner_content
+                    else models.ForceField.unique(
+                        db,
+                        models.ForceField(
+                            inner_content=sub_study.force_field.inner_content
+                        ),
                     )
                 ),
             )
@@ -239,8 +244,8 @@ class SubStudyCRUD(abc.ABC):
         db_sub_study.force_field = (
             None
             if sub_study.force_field is None
-            else models.ForceField.as_unique(
-                db, inner_content=sub_study.force_field.inner_content
+            else models.ForceField.unique(
+                db, models.ForceField(inner_content=sub_study.force_field.inner_content)
             )
         )
 
@@ -254,7 +259,9 @@ class SubStudyCRUD(abc.ABC):
             ForceFieldCRUD.delete(db, original_force_field)
 
         db_sub_study.analysis_environments = [
-            models.ChemicalEnvironment.as_unique(db, id=x.value)
+            models.ChemicalEnvironment.unique(
+                db, models.ChemicalEnvironment(id=x.value)
+            )
             for x in sub_study.analysis_environments
         ]
 

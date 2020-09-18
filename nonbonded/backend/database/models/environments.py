@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String
-from sqlalchemy.orm import Query
+from sqlalchemy.orm import Query, Session
 
 from nonbonded.backend.database.models import Base, UniqueMixin
 
@@ -10,9 +10,11 @@ class ChemicalEnvironment(UniqueMixin, Base):
     id = Column(String, primary_key=True, index=True, unique=True)
 
     @classmethod
-    def unique_hash(cls, id):
-        return id
+    def _hash(cls, db_instance: "ChemicalEnvironment"):
+        return hash(db_instance.id)
 
     @classmethod
-    def unique_filter(cls, query: Query, id):
-        return query.filter(ChemicalEnvironment.id == id)
+    def _query(cls, db: Session, db_instance: "ChemicalEnvironment") -> Query:
+        return db.query(ChemicalEnvironment).filter(
+            ChemicalEnvironment.id == db_instance.id
+        )

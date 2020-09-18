@@ -7,7 +7,7 @@ from nonbonded.library.models import forcefield
 class ParameterCRUD:
     @staticmethod
     def create(db: Session, parameter: forcefield.Parameter) -> models.Parameter:
-        db_parameter = models.Parameter.as_unique(db, **parameter.dict())
+        db_parameter = models.Parameter.unique(db, models.Parameter(**parameter.dict()))
         return db_parameter
 
 
