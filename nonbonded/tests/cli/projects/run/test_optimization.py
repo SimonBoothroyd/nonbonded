@@ -134,7 +134,7 @@ def test_prepare_restart_finished(caplog):
 
             os.makedirs(directory)
 
-            for file_name in ["mvals.txt", "forcefield.offxml", "objective.p"]:
+            for file_name in ["mvals.txt", "force-field.offxml", "objective.p"]:
 
                 with open(os.path.join(directory, file_name), "w") as file:
                     file.write("")
@@ -185,7 +185,7 @@ def test_prepare_restart_unfinished(partial_restart, caplog):
             if index < 3:
                 expected_files.append("objective.p")
             if index < (3 if not partial_restart else 4):
-                expected_files.append("forcefield.offxml")
+                expected_files.append("force-field.offxml")
 
             for file_name in expected_files:
 

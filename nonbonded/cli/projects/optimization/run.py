@@ -80,13 +80,13 @@ def _prepare_restart(optimization: Optimization):
 
         # Given that the previous iteration completed, check whether there is enough
         # information to restart from this iteration. Namely, do the expected 'mvals.txt'
-        # and 'forcefield.offxml' files exist.
+        # and 'force-field.offxml' files exist.
         restart_from_incomplete = all(
             all(
                 os.path.isfile(
                     os.path.join("optimize.tmp", target.id, iteration_string, file_name)
                 )
-                for file_name in ["mvals.txt", "forcefield.offxml"]
+                for file_name in ["mvals.txt", "force-field.offxml"]
             )
             for target in optimization.targets
         )
