@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import Query
+from sqlalchemy.orm import Query, Session
 
 from nonbonded.backend.database.models import Base, UniqueMixin
 
@@ -15,15 +15,18 @@ class Parameter(UniqueMixin, Base):
     attribute_name = Column(String, nullable=False)
 
     @classmethod
-    def unique_hash(cls, handler_type, smirks, attribute_name):
-        return handler_type, smirks, attribute_name
+    def _hash(cls, db_instance: "Parameter"):
+        return hash(
+            (db_instance.handler_type, db_instance.smirks, db_instance.attribute_name)
+        )
 
     @classmethod
-    def unique_filter(cls, query: Query, handler_type, smirks, attribute_name):
+    def _query(cls, db: Session, db_instance: "Parameter") -> Query:
         return (
-            query.filter(Parameter.handler_type == handler_type)
-            .filter(Parameter.smirks == smirks)
-            .filter(Parameter.attribute_name == attribute_name)
+            db.query(Parameter)
+            .filter(Parameter.handler_type == db_instance.handler_type)
+            .filter(Parameter.smirks == db_instance.smirks)
+            .filter(Parameter.attribute_name == db_instance.attribute_name)
         )
 
 
@@ -35,9 +38,11 @@ class ForceField(UniqueMixin, Base):
     inner_content = Column(String, nullable=False)
 
     @classmethod
-    def unique_hash(cls, inner_content):
-        return inner_content
+    def _hash(cls, db_instance: "ForceField"):
+        return hash(db_instance.inner_content)
 
     @classmethod
-    def unique_filter(cls, query: Query, inner_content):
-        return query.filter(ForceField.inner_content == inner_content)
+    def _query(cls, db: Session, db_instance: "ForceField") -> Query:
+        return db.query(ForceField).filter(
+            ForceField.inner_content == db_instance.inner_content
+        )

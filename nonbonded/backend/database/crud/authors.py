@@ -12,5 +12,5 @@ class AuthorCRUD:
     @staticmethod
     def create(db: Session, author: authors.Author) -> models.Author:
 
-        db_author = models.Author.as_unique(db, **author.dict())
+        db_author = models.Author.unique(db, models.Author(**author.dict()))
         return db_author

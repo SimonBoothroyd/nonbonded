@@ -496,8 +496,11 @@ class OptimizationResultCRUD(ResultCRUD):
                 for db_target in db_parent.recharge_targets
                 for iteration in sub_study_result.target_results
             ],
-            refit_force_field=models.ForceField.as_unique(
-                db, inner_content=sub_study_result.refit_force_field.inner_content
+            refit_force_field=models.ForceField.unique(
+                db,
+                models.ForceField(
+                    inner_content=sub_study_result.refit_force_field.inner_content
+                ),
             ),
         )
 

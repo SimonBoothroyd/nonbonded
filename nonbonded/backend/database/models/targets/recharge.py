@@ -8,7 +8,7 @@ from sqlalchemy import (
     Table,
     UniqueConstraint,
 )
-from sqlalchemy.orm import Query, relationship
+from sqlalchemy.orm import Query, Session, relationship
 
 from nonbonded.backend.database.models import Base, UniqueMixin
 from nonbonded.backend.database.models.targets import OptimizationTarget
@@ -72,13 +72,15 @@ class RechargeESPSettings(Base, UniqueMixin):
     method = Column(String, nullable=False)
 
     @classmethod
-    def unique_hash(cls, basis: str, method: str) -> int:
-        return hash((basis, method))
+    def _hash(cls, db_instance: "RechargeESPSettings"):
+        return hash((db_instance.basis, db_instance.method))
 
     @classmethod
-    def unique_filter(cls, query: Query, basis: str, method: str) -> Query:
-        return query.filter(RechargeESPSettings.basis == basis).filter(
-            RechargeESPSettings.method == method
+    def _query(cls, db: Session, db_instance: "RechargeESPSettings") -> Query:
+        return (
+            db.query(RechargeESPSettings)
+            .filter(RechargeESPSettings.basis == db_instance.basis)
+            .filter(RechargeESPSettings.method == db_instance.method)
         )
 
 
@@ -95,18 +97,22 @@ class RechargeConformerSettings(Base, UniqueMixin):
     max_conformers = Column(Integer, nullable=False)
 
     @classmethod
-    def unique_hash(cls, method: str, sampling_mode: str, max_conformers: int) -> int:
-        return hash((method, sampling_mode, max_conformers))
+    def _hash(cls, db_instance: "RechargeConformerSettings"):
+        return hash(
+            (db_instance.method, db_instance.sampling_mode, db_instance.max_conformers)
+        )
 
     @classmethod
-    def unique_filter(
-        cls, query: Query, method: str, sampling_mode: str, max_conformers: int
-    ) -> Query:
-
+    def _query(cls, db: Session, db_instance: "RechargeConformerSettings") -> Query:
         return (
-            query.filter(RechargeConformerSettings.method == method)
-            .filter(RechargeConformerSettings.sampling_mode == sampling_mode)
-            .filter(RechargeConformerSettings.max_conformers == max_conformers)
+            db.query(RechargeConformerSettings)
+            .filter(RechargeConformerSettings.method == db_instance.method)
+            .filter(
+                RechargeConformerSettings.sampling_mode == db_instance.sampling_mode
+            )
+            .filter(
+                RechargeConformerSettings.max_conformers == db_instance.max_conformers
+            )
         )
 
 

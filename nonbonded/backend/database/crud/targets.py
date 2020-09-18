@@ -115,7 +115,6 @@ class RechargeTargetCRUD:
                 )
             )
 
-        # noinspection PyUnresolvedReferences
         db_target = models.RechargeTarget(
             identifier=target.id,
             weight=target.weight,
@@ -130,13 +129,14 @@ class RechargeTargetCRUD:
                     **target.esp_settings.pcm_settings.dict()
                 )
             ),
-            esp_settings=models.RechargeESPSettings.as_unique(
+            esp_settings=models.RechargeESPSettings.unique(
                 db,
-                basis=target.esp_settings.basis,
-                method=target.esp_settings.method,
+                models.RechargeESPSettings(
+                    basis=target.esp_settings.basis, method=target.esp_settings.method
+                ),
             ),
-            conformer_settings=models.RechargeConformerSettings.as_unique(
-                db, **target.conformer_settings.dict()
+            conformer_settings=models.RechargeConformerSettings.unique(
+                db, models.RechargeConformerSettings(**target.conformer_settings.dict())
             ),
             property=target.property,
         )
