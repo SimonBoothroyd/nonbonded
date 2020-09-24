@@ -71,9 +71,13 @@ class RechargeESPSettings(Base, UniqueMixin):
     basis = Column(String, nullable=False)
     method = Column(String, nullable=False)
 
+    psi4_dft_grid_settings = Column(String, nullable=False)
+
     @classmethod
     def _hash(cls, db_instance: "RechargeESPSettings"):
-        return hash((db_instance.basis, db_instance.method))
+        return hash(
+            (db_instance.basis, db_instance.method, db_instance.psi4_dft_grid_settings)
+        )
 
     @classmethod
     def _query(cls, db: Session, db_instance: "RechargeESPSettings") -> Query:
@@ -81,6 +85,10 @@ class RechargeESPSettings(Base, UniqueMixin):
             db.query(RechargeESPSettings)
             .filter(RechargeESPSettings.basis == db_instance.basis)
             .filter(RechargeESPSettings.method == db_instance.method)
+            .filter(
+                RechargeESPSettings.psi4_dft_grid_settings
+                == db_instance.psi4_dft_grid_settings
+            )
         )
 
 

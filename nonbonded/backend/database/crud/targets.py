@@ -1,5 +1,5 @@
 from openff.recharge.conformers import ConformerSettings
-from openff.recharge.esp import ESPSettings, PCMSettings
+from openff.recharge.esp import DFTGridSettings, ESPSettings, PCMSettings
 from openff.recharge.grids import GridSettings
 from sqlalchemy.orm import Session
 
@@ -132,7 +132,9 @@ class RechargeTargetCRUD:
             esp_settings=models.RechargeESPSettings.unique(
                 db,
                 models.RechargeESPSettings(
-                    basis=target.esp_settings.basis, method=target.esp_settings.method
+                    basis=target.esp_settings.basis,
+                    method=target.esp_settings.method,
+                    psi4_dft_grid_settings=target.esp_settings.psi4_dft_grid_settings.value,
                 ),
             ),
             conformer_settings=models.RechargeConformerSettings.unique(
@@ -153,6 +155,9 @@ class RechargeTargetCRUD:
             esp_settings=ESPSettings(
                 basis=db_target.esp_settings.basis,
                 method=db_target.esp_settings.method,
+                psi4_dft_grid_settings=DFTGridSettings(
+                    db_target.esp_settings.psi4_dft_grid_settings
+                ),
                 grid_settings=GridSettings(
                     type=db_target.grid_settings.type,
                     spacing=db_target.grid_settings.spacing,
