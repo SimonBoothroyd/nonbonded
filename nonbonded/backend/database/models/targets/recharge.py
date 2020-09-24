@@ -64,7 +64,7 @@ class RechargePCMSettings(Base):
 class RechargeESPSettings(Base, UniqueMixin):
 
     __tablename__ = "recharge_esp_settings"
-    __table_args__ = (UniqueConstraint("basis", "method"),)
+    __table_args__ = (UniqueConstraint("basis", "method", "psi4_dft_grid_settings"),)
 
     id = Column(Integer, primary_key=True, index=True)
 
