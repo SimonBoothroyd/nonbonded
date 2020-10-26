@@ -75,5 +75,6 @@ name {{target.id}}
 type Recharge_SMIRNOFF
 weight {{target.weight}}
 recharge_esp_store esp-store.sqlite
+recharge_property {{target.property}}
 $end
 {%- endfor %}
