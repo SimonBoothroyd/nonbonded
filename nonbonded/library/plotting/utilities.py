@@ -1,3 +1,6 @@
+from typing import Optional, Tuple
+
+
 def property_type_to_title(property_type: str, n_components: int):
 
     from openff.evaluator import properties, unit
@@ -62,4 +65,44 @@ def plot_scatter(x, y, x_err, y_err, hue, hue_order, **kwargs):
 
     pyplot.gca().plot(
         [0, 1], [0, 1], transform=pyplot.gca().transAxes, color="darkgrey"
+    )
+
+
+def sort_categories_key(category: str) -> Tuple[str, Optional[str], Optional[int]]:
+    """A function which may be used as the key when sorting a list of categories.
+    This function assumes categories are based on chemical environments and
+    compositions (up to a maximum of two components).
+
+    Parameters
+    ----------
+    category
+        The category to map to a sortable key.
+
+    Returns
+    -------
+        A tuple containing at least the primary category key. For categories
+        encoding a binary mixture, the tuple also the category key of the second
+        component and an integer describing the type of composition (i.e. less than,
+        equal or greater than).
+    """
+    splitter = (
+        "<"
+        if "<" in category
+        else "~"
+        if "~" in category
+        else ">"
+        if ">" in category
+        else None
+    )
+
+    if splitter is None:
+        return category, None, None
+
+    splitter_ordering = {"<": 0, "~": 1, ">": 2}
+    split_string = category.split(splitter)
+
+    return (
+        split_string[0].strip(),
+        split_string[1].strip(),
+        splitter_ordering[splitter],
     )

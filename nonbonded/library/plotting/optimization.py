@@ -13,7 +13,7 @@ from nonbonded.library.models.results import (
     OptimizationResult,
     TargetResultType,
 )
-from nonbonded.library.plotting.utilities import plot_categories
+from nonbonded.library.plotting.utilities import plot_categories, sort_categories_key
 from nonbonded.library.statistics.statistics import StatisticType
 from nonbonded.library.utilities.string import camel_to_kebab_case
 
@@ -168,7 +168,11 @@ def plot_parameter_changes(
 
             original_value, refit_value = parameters[parameter][optimization_index]
 
-            percentage_change = (refit_value - original_value) / original_value * 100.0
+            percentage_change = (
+                0.0
+                if numpy.isclose(original_value, 0.0)
+                else (refit_value - original_value) / original_value * 100.0
+            )
             absolute_change = refit_value - original_value
 
             unit = _default_parameter_unit(parameter).get_symbol()
@@ -304,13 +308,29 @@ def plot_objective_per_iteration(
     pyplot.close(plot.fig)
 
 
-def _plot_target_rmse_change(
-    target_id: str,
-    initial_result: TargetResultType,
-    final_result: TargetResultType,
+def plot_target_rmse(
+    target_results: List[TargetResultType],
+    target_labels: List[str],
+    file_prefix: str,
     output_directory: str,
     file_type: Literal["png", "pdf"] = "png",
 ):
+    """Plots the RMSE for each of the specified targets and for each data type
+    contained within the target results.
+
+    Parameters
+    ----------
+    target_results
+        The target results to plot.
+    target_labels
+        The label associated with each target result.
+    file_prefix
+        The prefix to append to the file name of each produced plot.
+    output_directory
+        The directory in which to save the plots.
+    file_type
+        The file type to use for the plots.
+    """
     import pandas
     import seaborn
     from matplotlib import pyplot
@@ -323,52 +343,36 @@ def _plot_target_rmse_change(
             else None
         )
 
-    # Gather the initial statistics
-    initial_statistics = {
-        (statistic_to_key(statistic), statistic.category): statistic
-        for statistic in initial_result.statistic_entries
-        if statistic.category is not None
-        and statistic.statistic_type == StatisticType.RMSE
+    # Gather the statistics
+    statistics_per_label = {
+        label: {
+            (statistic_to_key(statistic), statistic.category): statistic
+            for statistic in target_result.statistic_entries
+            if statistic.category is not None
+            and statistic.statistic_type == StatisticType.RMSE
+        }
+        for label, target_result in zip(target_labels, target_results)
     }
-    final_statistics = {
-        (statistic_to_key(statistic), statistic.category): statistic
-        for statistic in final_result.statistic_entries
-        if statistic.category is not None
-        and statistic.statistic_type == StatisticType.RMSE
-    }
-
-    assert {*initial_statistics} == {*final_statistics}
 
     # Reshape the statistics into a uniform data frame.
     data_rows = []
 
-    for statistic_key in initial_statistics:
+    for label, statistics in statistics_per_label.items():
 
-        initial_statistic = initial_statistics[statistic_key]
-        final_statistic = final_statistics[statistic_key]
+        for statistic_key, statistic in statistics.items():
 
-        data_type, category = statistic_key
+            data_type, category = statistic_key
 
-        data_row = {
-            "Data Type": data_type,
-            "Initial Value": initial_statistic.value,
-            "Initial Lower CI": numpy.abs(
-                initial_statistic.lower_95_ci - initial_statistic.value
-            ),
-            "Initial Upper CI": numpy.abs(
-                initial_statistic.upper_95_ci - initial_statistic.value
-            ),
-            "Final Value": final_statistic.value,
-            "Final Lower CI": numpy.abs(
-                final_statistic.lower_95_ci - final_statistic.value
-            ),
-            "Final Upper CI": numpy.abs(
-                final_statistic.upper_95_ci - final_statistic.value
-            ),
-            "Category": category,
-        }
+            data_row = {
+                "Label": label,
+                "Data Type": data_type,
+                "Value": statistic.value,
+                "Lower CI": numpy.abs(statistic.lower_95_ci - statistic.value),
+                "Upper CI": numpy.abs(statistic.upper_95_ci - statistic.value),
+                "Category": category,
+            }
 
-        data_rows.append(data_row)
+            data_rows.append(data_row)
 
     plot_data = pandas.DataFrame(data_rows)
 
@@ -376,63 +380,63 @@ def _plot_target_rmse_change(
     # in separate figures.
     data_types = plot_data["Data Type"].unique()
 
+    # Select a set of colors for each label
+    color_palette = (
+        ["skyblue", "limegreen"] + []
+        if len(target_labels) < 3
+        else seaborn.color_palette(n_colors=len(target_labels) - 2)
+    )
+    colors = {label: color_palette[index] for index, label in enumerate(target_labels)}
+
     for data_type in data_types:
 
         # Extract a data frame containing only the data type which should
         # be included in this figure.
         type_plot_data = plot_data[plot_data["Data Type"] == data_type]
-        n_categories = len(type_plot_data["Category"].unique())
+
+        categories = sorted(
+            type_plot_data["Category"].unique(), key=sort_categories_key, reverse=True
+        )
+        category_indices = [x * 2 for x in range(1, len(categories) + 1)]
+
+        labels = type_plot_data["Label"].unique()
 
         with seaborn.axes_style("white"):
 
-            figure, axis = pyplot.subplots(figsize=(5.0, 1.5 + (0.5 * n_categories)))
+            figure, axis = pyplot.subplots(figsize=(5.0, 1.5 + (0.5 * len(categories))))
 
-            # Plot the error bars and then plot the RMSE circle marker on top.
-            axis.errorbar(
-                type_plot_data["Initial Value"],
-                type_plot_data.index,
-                xerr=[
-                    type_plot_data["Initial Lower CI"],
-                    type_plot_data["Initial Upper CI"],
-                ],
-                color="skyblue",
-                capsize=5.0,
-                capthick=1.5,
-                linestyle="none",
-            )
-            axis.errorbar(
-                type_plot_data["Final Value"],
-                type_plot_data.index,
-                xerr=[
-                    type_plot_data["Final Lower CI"],
-                    type_plot_data["Final Upper CI"],
-                ],
-                color="limegreen",
-                capsize=5.0,
-                capthick=1.5,
-                linestyle="none",
-            )
-            axis.scatter(
-                type_plot_data["Initial Value"],
-                type_plot_data.index,
-                color="skyblue",
-                label="Initial",
-            )
-            axis.scatter(
-                type_plot_data["Final Value"],
-                type_plot_data.index,
-                color="limegreen",
-                label="Final",
-            )
+            # Plot data for each label.
+            for label in labels:
+
+                label_plot_data = type_plot_data[type_plot_data["Label"] == label]
+
+                axis.errorbar(
+                    label_plot_data["Value"],
+                    label_plot_data["Category"]
+                    .replace(categories, category_indices)
+                    .values,
+                    xerr=[
+                        label_plot_data["Lower CI"],
+                        label_plot_data["Upper CI"],
+                    ],
+                    color=colors[label],
+                    capsize=5.0,
+                    capthick=1.5,
+                    linestyle="none",
+                    marker="o",
+                    label=label,
+                )
 
             # Add a simple legend.
             axis.legend()
 
             # Add title and axis names
-            axis.set_yticks(type_plot_data.index)
-            axis.set_yticklabels(type_plot_data["Category"])
+            axis.set_yticks(category_indices)
+            axis.set_yticklabels(categories)
 
             axis.set_xlim(left=0.0)
+            axis.set_ylim(0.5, (len(categories) + 1) * 2.0 - 0.5)
+
             axis.set_xlabel("RMSE")
 
         data_name = "-" if data_type is None else f"-{camel_to_kebab_case(data_type)}-"
@@ -441,7 +445,7 @@ def _plot_target_rmse_change(
         figure.savefig(
             os.path.join(
                 output_directory,
-                f"{target_id}{data_name}rmse.{file_type}",
+                f"{file_prefix}{data_name}rmse.{file_type}",
             ),
             bbox_inches="tight",
         )
@@ -485,6 +489,10 @@ def plot_rmse_change(
 
         final_result = optimization_result.target_results[final_iteration][target_id]
 
-        _plot_target_rmse_change(
-            target_id, initial_result, final_result, output_directory, file_type
+        plot_target_rmse(
+            [initial_result, final_result],
+            ["Initial", "Final"],
+            target_id,
+            output_directory,
+            file_type,
         )

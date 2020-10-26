@@ -9,7 +9,11 @@ from typing_extensions import Literal
 from nonbonded.library.models.datasets import DataSet, DataSetEntry
 from nonbonded.library.models.projects import Benchmark
 from nonbonded.library.models.results import BenchmarkResult
-from nonbonded.library.plotting.utilities import plot_scatter, property_type_to_title
+from nonbonded.library.plotting.utilities import (
+    plot_scatter,
+    property_type_to_title,
+    sort_categories_key,
+)
 from nonbonded.library.statistics.statistics import StatisticType
 from nonbonded.library.utilities.string import camel_to_kebab_case
 
@@ -181,32 +185,8 @@ def plot_categorized_rmse(
         # be included in this figure.
         type_plot_data = plot_data[plot_data["Data Type"] == data_type]
 
-        def category_sort_key(category_string: str):
-
-            splitter = (
-                "<"
-                if "<" in category_string
-                else "~"
-                if "~" in category_string
-                else ">"
-                if ">" in category_string
-                else None
-            )
-
-            if splitter is None:
-                return category_string, None, None
-
-            splitter_ordering = {"<": 0, "~": 1, ">": 2}
-            split_string = category_string.split(splitter)
-
-            return (
-                split_string[0].strip(),
-                split_string[1].strip(),
-                splitter_ordering[splitter],
-            )
-
         categories = sorted(
-            type_plot_data["Category"].unique(), key=category_sort_key, reverse=True
+            type_plot_data["Category"].unique(), key=sort_categories_key, reverse=True
         )
         category_indices = [x * 2 for x in range(1, len(categories) + 1)]
 
