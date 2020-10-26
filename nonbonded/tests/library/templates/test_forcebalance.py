@@ -89,12 +89,14 @@ def force_balance_expectation() -> str:
             "type Recharge_SMIRNOFF",
             "weight 0.8",
             "recharge_esp_store esp-store.sqlite",
+            "recharge_property esp",
             "$end",
             "$target",
             "name recharge-target-2",
             "type Recharge_SMIRNOFF",
             "weight 1.0",
             "recharge_esp_store esp-store.sqlite",
+            "recharge_property esp",
             "$end",
         ]
     )
