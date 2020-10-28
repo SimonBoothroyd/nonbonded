@@ -371,6 +371,12 @@ class SubStudyResult(BaseREST, abc.ABC):
 
 class BenchmarkResult(SubStudyResult):
 
+    model_version: Literal[0] = Field(
+        0,
+        description="The current version of this model. Models with different version "
+        "numbers are incompatible.",
+    )
+
     data_set_result: DataSetResult = Field(
         ..., description="The analysed results of the benchmark"
     )
@@ -443,6 +449,12 @@ TargetResultType = Union[EvaluatorTargetResult, RechargeTargetResult]
 
 
 class OptimizationResult(SubStudyResult):
+
+    model_version: Literal[0] = Field(
+        0,
+        description="The current version of this model. Models with different version "
+        "numbers are incompatible.",
+    )
 
     target_results: Dict[conint(ge=0), Dict[IdentifierStr, TargetResultType]] = Field(
         ...,

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, List, Optional, Union
 
 import requests
 from pydantic import Field, conlist, root_validator, validator
+from typing_extensions import Literal
 
 from nonbonded.library.config import settings
 from nonbonded.library.models import BaseREST
@@ -95,6 +96,12 @@ class SubStudyCollection(BaseRESTCollection, abc.ABC):
 
 
 class Optimization(SubStudy):
+
+    model_version: Literal[0] = Field(
+        0,
+        description="The current version of this model. Models with different version "
+        "numbers are incompatible.",
+    )
 
     engine: Union[ForceBalance] = Field(
         ...,
@@ -227,6 +234,12 @@ class OptimizationCollection(SubStudyCollection):
 
 class Benchmark(SubStudy):
 
+    model_version: Literal[0] = Field(
+        0,
+        description="The current version of this model. Models with different version "
+        "numbers are incompatible.",
+    )
+
     test_set_ids: conlist(IdentifierStr, min_items=1) = Field(
         ...,
         description="The unique identifiers of the data sets to use as part of the "
@@ -303,6 +316,12 @@ class BenchmarkCollection(SubStudyCollection):
 
 
 class Study(BaseREST):
+
+    model_version: Literal[0] = Field(
+        0,
+        description="The current version of this model. Models with different version "
+        "numbers are incompatible.",
+    )
 
     id: IdentifierStr = Field(..., description="The unique id assigned to this study.")
     project_id: IdentifierStr = Field(..., description="The id of the parent project.")
@@ -386,6 +405,12 @@ class StudyCollection(BaseRESTCollection):
 
 
 class Project(BaseREST):
+
+    model_version: Literal[0] = Field(
+        0,
+        description="The current version of this model. Models with different version "
+        "numbers are incompatible.",
+    )
 
     id: IdentifierStr = Field(..., description="The unique id assigned to the project.")
 

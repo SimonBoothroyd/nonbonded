@@ -33,7 +33,9 @@ class EvaluatorTargetCRUD:
         # noinspection PyTypeChecker
         db_target = models.EvaluatorTarget(
             identifier=target.id,
-            **target.dict(exclude={"id", "denominators", "data_set_ids"}),
+            **target.dict(
+                exclude={"id", "denominators", "data_set_ids", "model_version"}
+            ),
             training_sets=data_sets,
             denominators=[
                 models.EvaluatorDenominator(property_type=key, value=value)

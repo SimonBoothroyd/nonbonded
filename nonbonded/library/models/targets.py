@@ -34,6 +34,12 @@ class EvaluatorTarget(OptimizationTarget):
     """A fitting target which uses the ``openff-evaluator`` framework to train
     force field parameters against experimental physical property data."""
 
+    model_version: Literal[0] = Field(
+        0,
+        description="The current version of this model. Models with different version "
+        "numbers are incompatible.",
+    )
+
     data_set_ids: conlist(IdentifierStr, min_items=1) = Field(
         ...,
         description="The unique identifiers of the physical property data sets to "
@@ -91,6 +97,12 @@ class EvaluatorTarget(OptimizationTarget):
 class RechargeTarget(OptimizationTarget):
     """A fitting target which uses the ``openff-recharge`` framework to train
     bond charge correction parameters against QM electrostatic potential data."""
+
+    model_version: Literal[0] = Field(
+        0,
+        description="The current version of this model. Models with different version "
+        "numbers are incompatible.",
+    )
 
     molecule_set_ids: conlist(IdentifierStr, min_items=1) = Field(
         ...,
