@@ -74,11 +74,11 @@ def compare_properties(
 
     assert numpy.isclose(
         data_set_entry.value,
-        evaluator_property.value.to(evaluator_property.default_unit()).magnitude,
+        evaluator_property.value.to(data_set_entry.units).magnitude,
     )
     assert numpy.isclose(
         data_set_entry.std_error,
-        evaluator_property.uncertainty.to(evaluator_property.default_unit()).magnitude,
+        evaluator_property.uncertainty.to(data_set_entry.units).magnitude,
     )
 
     assert numpy.isclose(

@@ -1,9 +1,11 @@
 from typing import Optional, Tuple
 
+from nonbonded.library.models.datasets import DataSetEntry
+
 
 def property_type_to_title(property_type: str, n_components: int):
 
-    from openff.evaluator import properties, unit
+    from openff.evaluator import unit
 
     abbreviations = {
         "Density": r"\rho",
@@ -14,8 +16,7 @@ def property_type_to_title(property_type: str, n_components: int):
         "SolvationFreeEnergy": r"G_{solv}",
     }
 
-    property_class = getattr(properties, property_type)
-    property_unit = property_class.default_unit()
+    property_unit = unit.Unit(DataSetEntry.default_units()[property_type])
 
     unit_string = (
         "" if property_unit == unit.dimensionless else f" ({property_unit:~P})"
