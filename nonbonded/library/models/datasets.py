@@ -262,6 +262,12 @@ class DataSetEntry(BaseORM):
 
 class DataSet(_BaseSet):
 
+    model_version: Literal[0] = Field(
+        0,
+        description="The current version of this model. Models with different version "
+        "numbers are incompatible.",
+    )
+
     entries: conlist(DataSetEntry, min_items=1) = Field(
         ..., description="The entries in the data set."
     )
@@ -376,6 +382,12 @@ class MoleculeSet(_BaseSet):
     """The set of molecules which forms either a train or test set for
     certain (predominantly QM based) targets.
     """
+
+    model_version: Literal[0] = Field(
+        0,
+        description="The current version of this model. Models with different version "
+        "numbers are incompatible.",
+    )
 
     entries: conlist(NonEmptyStr, min_items=1) = Field(
         ..., description="The entries in the set."
