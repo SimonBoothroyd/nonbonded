@@ -127,6 +127,8 @@ class DataSetResult(BaseORM):
         results_entries = []
         results_rows = []
 
+        internal_units = DataSetEntry.default_units()
+
         for identifier in reference_entries_by_id:
 
             if identifier not in estimated_entries_by_id:
@@ -146,14 +148,13 @@ class DataSetResult(BaseORM):
             assert reference_entry.property_type == estimated_entry.__class__.__name__
             assert len(reference_entry.components) == len(estimated_entry.substance)
 
-            property_class = estimated_entry.__class__
-            default_units = property_class.default_unit()
+            internal_unit = internal_units[reference_entry.property_type]
 
             results_entry = DataSetResultEntry(
                 reference_id=reference_entry.id,
-                estimated_value=estimated_entry.value.to(default_units).magnitude,
+                estimated_value=estimated_entry.value.to(internal_unit).magnitude,
                 estimated_std_error=estimated_entry.uncertainty.to(
-                    default_units
+                    internal_unit
                 ).magnitude,
                 category=components_to_category(
                     reference_entry.components, analysis_environments

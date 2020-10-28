@@ -1,8 +1,9 @@
 import abc
-from typing import TYPE_CHECKING, List, Optional, Type
+from typing import TYPE_CHECKING, Dict, List, Optional, Type
 
 import requests
 from pydantic import Field, conlist, validator
+from typing_extensions import Literal
 
 from nonbonded.library.config import settings
 from nonbonded.library.models import BaseORM, BaseREST
@@ -58,7 +59,14 @@ class DataSetEntry(BaseORM):
 
     id: Optional[int] = Field(None, description="The unique id assigned to this entry")
 
-    property_type: NonEmptyStr = Field(
+    property_type: Literal[
+        "Density",
+        "ExcessMolarVolume",
+        "DielectricConstant",
+        "EnthalpyOfMixing",
+        "EnthalpyOfVaporization",
+        "SolvationFreeEnergy",
+    ] = Field(
         ...,
         description="The type of property that this value corresponds to. This should "
         "correspond to an `openff.evaluator.properties` property class name.",
@@ -90,6 +98,29 @@ class DataSetEntry(BaseORM):
         ...,
         description="The components in the systems for which the measurement was made.",
     )
+
+    @property
+    def units(self) -> str:
+        return self.default_units()[self.property_type]
+
+    @classmethod
+    def default_units(cls) -> Dict[str, str]:
+        """Returns a dictionary of the default unit for each supported property type.
+
+        Returns
+        -------
+            A dictionary with keys of the supported property types and values their
+            associated units.
+        """
+
+        return {
+            "Density": "g / ml",
+            "ExcessMolarVolume": "cm ** 3 / mol",
+            "DielectricConstant": "",
+            "EnthalpyOfMixing": "kJ / mol",
+            "EnthalpyOfVaporization": "kJ / mol",
+            "SolvationFreeEnergy": "kJ / mol",
+        }
 
     @classmethod
     def from_series(cls, data_row: "pandas.Series") -> "DataSetEntry":
@@ -139,12 +170,13 @@ class DataSetEntry(BaseORM):
     def to_series(self) -> "pandas.Series":
 
         import pandas
-        from openff.evaluator import properties
+        from openff.evaluator import properties, unit
 
-        pint_unit = getattr(properties, self.property_type).default_unit()
+        expected_unit = getattr(properties, self.property_type).default_unit()
+        internal_unit = unit.Unit(self.units)
 
-        value_header = f"{self.property_type} Value ({pint_unit:~})"
-        std_error_header = f"{self.property_type} Uncertainty ({pint_unit:~})"
+        value_header = f"{self.property_type} Value ({expected_unit:~})"
+        std_error_header = f"{self.property_type} Uncertainty ({expected_unit:~})"
 
         data_row = {
             "Id": self.id,
@@ -152,8 +184,12 @@ class DataSetEntry(BaseORM):
             "Pressure (kPa)": self.pressure,
             "Phase": self.phase,
             "N Components": len(self.components),
-            value_header: self.value,
-            std_error_header: self.std_error,
+            value_header: (self.value * internal_unit).to(expected_unit).magnitude,
+            std_error_header: (
+                self.std_error
+                if self.std_error is None
+                else (self.std_error * internal_unit).to(expected_unit).magnitude
+            ),
             "Source": self.doi,
         }
 
@@ -207,16 +243,16 @@ class DataSetEntry(BaseORM):
                 exact_amount = substances.ExactAmount(component.exact_amount)
                 substance.add_component(off_component, exact_amount)
 
-        pint_unit = getattr(properties, self.property_type).default_unit()
+        internal_unit = unit.Unit(self.units)
 
         physical_property = property_class(
             thermodynamic_state=thermodynamic_state,
             phase=phase,
             substance=substance,
-            value=self.value * pint_unit,
+            value=self.value * internal_unit,
             uncertainty=UNDEFINED
             if self.std_error is None
-            else self.std_error * pint_unit,
+            else self.std_error * internal_unit,
             source=MeasurementSource(doi=self.doi),
         )
         physical_property.id = str(self.id)
@@ -252,11 +288,10 @@ class DataSet(_BaseSet):
         assert all(hasattr(properties, x) for x in property_units.keys())
         assert all(unit.Unit(x) is not None for x in property_units.values())
 
+        internal_units = DataSetEntry.default_units()
+
         for property_type, property_unit in property_units.items():
-            property_class = getattr(properties, property_type)
-            assert (
-                f"{property_class.default_unit():~}" == f"{unit.Unit(property_unit):~}"
-            )
+            assert internal_units[property_type] == property_unit
 
         data_set = cls(
             id=identifier,
