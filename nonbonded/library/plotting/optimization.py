@@ -375,6 +375,9 @@ def plot_target_rmse(
             data_rows.append(data_row)
 
     plot_data = pandas.DataFrame(data_rows)
+    
+    if len(plot_data) == 0:
+        return
 
     # Extract the unique data types (e.g. property types) which will be plotted
     # in separate figures.
