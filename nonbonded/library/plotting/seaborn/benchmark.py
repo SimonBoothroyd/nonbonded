@@ -1,18 +1,21 @@
 import os
 import re
 import warnings
-from typing import Dict, List
+from typing import List
 
 import numpy
 from typing_extensions import Literal
 
-from nonbonded.library.models.datasets import DataSet, DataSetEntry
+from nonbonded.library.models.datasets import DataSet
 from nonbonded.library.models.projects import Benchmark
 from nonbonded.library.models.results import BenchmarkResult
-from nonbonded.library.plotting.utilities import (
+from nonbonded.library.plotting.seaborn.utilities import (
     plot_scatter,
-    property_type_to_title,
     sort_categories_key,
+)
+from nonbonded.library.plotting.utilities import (
+    combine_data_set_results,
+    property_type_to_title,
 )
 from nonbonded.library.statistics.statistics import StatisticType
 from nonbonded.library.utilities.string import camel_to_kebab_case
@@ -276,60 +279,20 @@ def plot_scatter_results(
     import seaborn
     from matplotlib import pyplot
 
-    reference_data_points: Dict[int, DataSetEntry] = {
-        entry.id: entry for data_set in data_sets for entry in data_set.entries
-    }
-
     # Re-shape the data into a pandas data frame for easier plotting.
-    data_rows = []
+    results_frame = combine_data_set_results(data_sets, benchmarks, benchmark_results)
 
-    for benchmark, benchmark_result in zip(benchmarks, benchmark_results):
+    # Handle the highlighting of particular categories if requested.
+    if highlight_categories is None:
+        results_frame["Category"] = "None"
 
-        for result_entry in benchmark_result.data_set_result.result_entries:
+    elif len(highlight_categories) > 0:
 
-            reference_data_point = reference_data_points[result_entry.reference_id]
-
-            reference_value = reference_data_point.value
-            reference_std = reference_data_point.std_error
-
-            estimated_value = result_entry.estimated_value
-            estimated_std = result_entry.estimated_std_error
-
-            # For now trim down the number of different categories and
-            # shorten certain category names.
-            category = re.sub("[<>~]", "+", result_entry.category).replace(
-                "Carboxylic Acid Ester", "Ester"
-            )
-
-            # Handle the highlighting of particular categories if requested.
-            if highlight_categories is None or (
-                len(highlight_categories) != 0 and category not in highlight_categories
-            ):
-                category = "None"
-
-            property_type = (
-                f"{reference_data_point.property_type}-"
-                f"{len(reference_data_point.components)}"
-            )
-
-            # Generate a meaningful title for the plot.
-            property_title = property_type_to_title(
-                reference_data_point.property_type, len(reference_data_point.components)
-            )
-
-            data_row = {
-                "Benchmark Id": benchmark.name,
-                "Property Type": property_type,
-                "Property Title": property_title,
-                "Estimated Value": estimated_value,
-                "Estimated Std": estimated_std,
-                "Reference Value": reference_value,
-                "Reference Std": reference_std,
-                "Category": category,
-            }
-            data_rows.append(data_row)
-
-    results_frame = pandas.DataFrame(data_rows)
+        results_frame["Category"] = pandas.np.where(
+            ~results_frame["Category"].isin(highlight_categories),
+            "None",
+            results_frame["Category"],
+        )
 
     # Determine the unique categories and property types in the plot.
     categories = ["None", *sorted({*results_frame["Category"].unique()} - {"None"})]
@@ -359,7 +322,7 @@ def plot_scatter_results(
 
             plot = seaborn.FacetGrid(
                 plot_frame,
-                col="Benchmark Id",
+                col="Benchmark Name",
                 sharex="row",
                 sharey="row",
                 hue_order=categories,

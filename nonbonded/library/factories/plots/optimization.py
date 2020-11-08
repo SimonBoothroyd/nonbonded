@@ -7,7 +7,7 @@ from typing_extensions import Literal
 from nonbonded.library.factories.plots import PlotFactory
 from nonbonded.library.models.projects import Optimization
 from nonbonded.library.models.results import OptimizationResult
-from nonbonded.library.plotting.optimization import (
+from nonbonded.library.plotting.seaborn.optimization import (
     plot_objective_per_iteration,
     plot_parameter_changes,
     plot_rmse_change,

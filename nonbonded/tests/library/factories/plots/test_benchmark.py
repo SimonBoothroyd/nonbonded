@@ -12,7 +12,7 @@ from nonbonded.tests.utilities.factory import (
 
 def test_plot(force_field, monkeypatch):
 
-    from nonbonded.library.plotting import benchmark as benchmark_module
+    from nonbonded.library.plotting.seaborn import benchmark as benchmark_module
 
     # Mock the required file inputs
     data_set = create_data_set("data-set-1", 1)

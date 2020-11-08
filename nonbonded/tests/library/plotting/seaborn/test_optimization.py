@@ -1,88 +1,17 @@
 import os
-from typing import List, Tuple
 
 import numpy
 import pytest
 from typing_extensions import Literal
 
-from nonbonded.library.models.forcefield import ForceField, Parameter
-from nonbonded.library.models.projects import Optimization
-from nonbonded.library.models.results import OptimizationResult
-from nonbonded.library.plotting.optimization import (
+from nonbonded.library.models.forcefield import Parameter
+from nonbonded.library.plotting.seaborn.optimization import (
     _extract_parameter_value,
     _parameter_attribute_to_title,
     plot_objective_per_iteration,
     plot_parameter_changes,
     plot_rmse_change,
 )
-from nonbonded.tests.utilities.factory import (
-    create_evaluator_target,
-    create_optimization,
-    create_optimization_result,
-    create_recharge_target,
-)
-
-
-@pytest.fixture()
-def optimizations_and_results(
-    smirnoff_force_field,
-) -> Tuple[List[Optimization], List[OptimizationResult]]:
-
-    optimization_1 = create_optimization(
-        "project-1",
-        "study-1",
-        "optimization-1",
-        [
-            create_evaluator_target("evaluator-target-1", ["data-set-1"]),
-            create_recharge_target("recharge-target-1", ["molecule-set-1"]),
-        ],
-    )
-    optimization_1.name = "Optimization 1"
-    optimization_1.force_field = ForceField.from_openff(smirnoff_force_field)
-    optimization_2 = create_optimization(
-        "project-1",
-        "study-1",
-        "optimization-2",
-        [
-            create_evaluator_target("evaluator-target-1", ["data-set-1"]),
-            create_recharge_target("recharge-target-1", ["molecule-set-1"]),
-        ],
-    )
-    optimization_2.force_field = ForceField.from_openff(smirnoff_force_field)
-    optimization_2.name = "Optimization 2"
-
-    smirnoff_force_field.get_parameter_handler("vdW").parameters["[#6:1]"].epsilon *= 2
-    smirnoff_force_field.get_parameter_handler("vdW").parameters["[#6:1]"].sigma *= 3
-
-    optimization_result_1 = create_optimization_result(
-        "project-1",
-        "study-1",
-        "optimization-1",
-        ["evaluator-target-1"],
-        ["recharge-target-1"],
-    )
-    optimization_result_1.refit_force_field = ForceField.from_openff(
-        smirnoff_force_field
-    )
-
-    smirnoff_force_field.get_parameter_handler("vdW").parameters["[#6:1]"].epsilon /= 4
-    smirnoff_force_field.get_parameter_handler("vdW").parameters["[#6:1]"].sigma /= 6
-
-    optimization_result_2 = create_optimization_result(
-        "project-1",
-        "study-1",
-        "optimization-2",
-        ["evaluator-target-1"],
-        ["recharge-target-1"],
-    )
-    optimization_result_2.refit_force_field = ForceField.from_openff(
-        smirnoff_force_field
-    )
-
-    return (
-        [optimization_1, optimization_2],
-        [optimization_result_1, optimization_result_2],
-    )
 
 
 def test_extract_parameter_value(smirnoff_force_field):
