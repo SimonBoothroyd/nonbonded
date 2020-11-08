@@ -13,7 +13,7 @@ from nonbonded.tests.utilities.factory import (
 
 def test_plot(force_field, monkeypatch):
 
-    from nonbonded.library.plotting import optimization as optimization_module
+    from nonbonded.library.plotting.seaborn import optimization as optimization_module
 
     # Mock the required file inputs
     data_set = create_data_set("data-set-1", 1)

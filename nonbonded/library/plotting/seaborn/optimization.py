@@ -13,7 +13,10 @@ from nonbonded.library.models.results import (
     OptimizationResult,
     TargetResultType,
 )
-from nonbonded.library.plotting.utilities import plot_categories, sort_categories_key
+from nonbonded.library.plotting.seaborn.utilities import (
+    plot_categories,
+    sort_categories_key,
+)
 from nonbonded.library.statistics.statistics import StatisticType
 from nonbonded.library.utilities.string import camel_to_kebab_case
 

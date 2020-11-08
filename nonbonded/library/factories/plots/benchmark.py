@@ -8,7 +8,7 @@ from nonbonded.library.factories.plots import PlotFactory
 from nonbonded.library.models.datasets import DataSetCollection
 from nonbonded.library.models.projects import Benchmark
 from nonbonded.library.models.results import BenchmarkResult
-from nonbonded.library.plotting.benchmark import (
+from nonbonded.library.plotting.seaborn.benchmark import (
     plot_categorized_rmse,
     plot_overall_statistics,
     plot_scatter_results,
