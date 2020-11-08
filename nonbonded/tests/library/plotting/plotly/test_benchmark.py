@@ -1,5 +1,3 @@
-from plotly.io import write_json
-
 from nonbonded.library.plotting.plotly.benchmark import (
     plot_overall_statistics,
     plot_scatter_results,
