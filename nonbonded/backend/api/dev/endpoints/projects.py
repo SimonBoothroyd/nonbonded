@@ -39,9 +39,14 @@ class ProjectEndpoints(BaseCRUDEndpoint):
     @staticmethod
     @router.get("/", response_model=ProjectCollection)
     async def get_all(
-        skip: int = 0, limit: int = 100, db: Session = Depends(depends.get_db)
+        skip: int = 0,
+        limit: int = 100,
+        children: bool = True,
+        db: Session = Depends(depends.get_db),
     ):
-        db_projects = ProjectCRUD.read_all(db, skip=skip, limit=limit)
+        db_projects = ProjectCRUD.read_all(
+            db, skip=skip, limit=limit, include_children=children
+        )
         return ProjectCollection(projects=db_projects)
 
     @staticmethod
