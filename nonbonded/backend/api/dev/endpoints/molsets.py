@@ -25,8 +25,11 @@ class MoleculeSetEndpoints(BaseCRUDEndpoint):
         db: Session = Depends(depends.get_db),
         skip: int = 0,
         limit: int = 100,
+        children: bool = True,
     ):
-        db_molecule_sets = MoleculeSetCRUD.read_all(db, skip=skip, limit=limit)
+        db_molecule_sets = MoleculeSetCRUD.read_all(
+            db, skip=skip, limit=limit, include_children=children
+        )
         return {"molecule_sets": db_molecule_sets}
 
     @staticmethod

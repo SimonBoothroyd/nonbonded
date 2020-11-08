@@ -25,8 +25,11 @@ class DataSetEndpoints(BaseCRUDEndpoint):
         db: Session = Depends(depends.get_db),
         skip: int = 0,
         limit: int = 100,
+        children: bool = True,
     ):
-        db_data_sets = DataSetCRUD.read_all(db, skip=skip, limit=limit)
+        db_data_sets = DataSetCRUD.read_all(
+            db, skip=skip, limit=limit, include_children=children
+        )
         return {"data_sets": db_data_sets}
 
     @staticmethod

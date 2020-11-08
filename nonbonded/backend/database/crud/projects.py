@@ -893,10 +893,12 @@ class ProjectCRUD:
         return db_project
 
     @staticmethod
-    def read_all(db: Session, skip: int = 0, limit: int = 100):
+    def read_all(
+        db: Session, skip: int = 0, limit: int = 100, include_children: bool = True
+    ):
 
         db_projects = db.query(models.Project).offset(skip).limit(limit).all()
-        return [ProjectCRUD.db_to_model(x) for x in db_projects]
+        return [ProjectCRUD.db_to_model(x, include_children) for x in db_projects]
 
     @staticmethod
     def read(db: Session, project_id: str):
@@ -960,7 +962,23 @@ class ProjectCRUD:
         db.delete(db_project)
 
     @staticmethod
-    def db_to_model(db_project: models.Project) -> projects.Project:
+    def db_to_model(
+        db_project: models.Project, include_children: bool = True
+    ) -> projects.Project:
+        """Maps a database project model to its pydantic counterpart.
+
+        Parameters
+        ----------
+        db_project
+            The database project model.
+        include_children
+            Whether to attach the child studies to the returned model. If false,
+            the studies list will be empty on the returned model.
+
+        Returns
+        -------
+            The pydantic version of the model.
+        """
 
         # noinspection PyTypeChecker
         project = projects.Project(
@@ -968,7 +986,9 @@ class ProjectCRUD:
             name=db_project.name,
             description=db_project.description,
             authors=db_project.authors,
-            studies=[StudyCRUD.db_to_model(x) for x in db_project.studies],
+            studies=[]
+            if not include_children
+            else [StudyCRUD.db_to_model(x) for x in db_project.studies],
         )
 
         return project

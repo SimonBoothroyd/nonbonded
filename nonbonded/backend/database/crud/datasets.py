@@ -72,11 +72,12 @@ class DataSetCRUD:
         return db_data_set
 
     @staticmethod
-    def read_all(db: Session, skip: int = 0, limit: int = 100):
+    def read_all(
+        db: Session, skip: int = 0, limit: int = 100, include_children: bool = True
+    ):
 
         data_sets = db.query(models.DataSet).offset(skip).limit(limit).all()
-
-        return [DataSetCRUD.db_to_model(x) for x in data_sets]
+        return [DataSetCRUD.db_to_model(x, include_children) for x in data_sets]
 
     @staticmethod
     def read(db: Session, data_set_id: str):
@@ -86,7 +87,7 @@ class DataSetCRUD:
         if db_data_set is None:
             raise DataSetNotFoundError(data_set_id)
 
-        return DataSetCRUD.db_to_model(db_data_set)
+        return DataSetCRUD.db_to_model(db_data_set, True)
 
     @staticmethod
     def create(db: Session, data_set: datasets.DataSet) -> models.DataSet:
@@ -105,15 +106,17 @@ class DataSetCRUD:
         return db_data_set
 
     @staticmethod
-    def db_to_model(db_data_set: models.DataSet) -> datasets.DataSet:
+    def db_to_model(
+        db_data_set: models.DataSet, include_children: bool = True
+    ) -> datasets.DataSet:
 
         # noinspection PyTypeChecker
         data_set = datasets.DataSet(
             id=db_data_set.id,
             description=db_data_set.description,
-            entries=[
-                DataSetEntryCRUD.db_to_model(entry) for entry in db_data_set.entries
-            ],
+            entries=[]
+            if not include_children
+            else [DataSetEntryCRUD.db_to_model(entry) for entry in db_data_set.entries],
             authors=db_data_set.authors,
         )
 
@@ -157,10 +160,12 @@ class MoleculeSetCRUD:
         return db_molecule_set
 
     @staticmethod
-    def read_all(db: Session, skip: int = 0, limit: int = 100):
+    def read_all(
+        db: Session, skip: int = 0, limit: int = 100, include_children: bool = True
+    ):
 
         molecule_sets = db.query(models.MoleculeSet).offset(skip).limit(limit).all()
-        return [MoleculeSetCRUD.db_to_model(x) for x in molecule_sets]
+        return [MoleculeSetCRUD.db_to_model(x, include_children) for x in molecule_sets]
 
     @staticmethod
     def read(db: Session, molecule_set_id: str):
@@ -189,13 +194,17 @@ class MoleculeSetCRUD:
         return db_molecule_set
 
     @staticmethod
-    def db_to_model(db_molecule_set: models.MoleculeSet) -> datasets.MoleculeSet:
+    def db_to_model(
+        db_molecule_set: models.MoleculeSet, include_children: bool = True
+    ) -> datasets.MoleculeSet:
 
         # noinspection PyTypeChecker
         molecule_set = datasets.MoleculeSet(
             id=db_molecule_set.id,
             description=db_molecule_set.description,
-            entries=[entry.smiles for entry in db_molecule_set.entries],
+            entries=[]
+            if not include_children
+            else [entry.smiles for entry in db_molecule_set.entries],
             authors=db_molecule_set.authors,
         )
 
