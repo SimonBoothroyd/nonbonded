@@ -93,9 +93,9 @@ class Trace(BaseModel, abc.ABC):
     x: List[Union[float, str]] = Field(..., description="The x-values of the data.")
     y: List[float] = Field(..., description="The y-values of the data.")
 
-    # error_x: Optional[ErrorBar] = Field(
-    #     None, description="The x-error bars associated with the data."
-    # )
+    error_x: Optional[ErrorBar] = Field(
+        None, description="The x-error bars associated with the data."
+    )
     error_y: Optional[ErrorBar] = Field(
         None, description="The y-error bars associated with the data."
     )
