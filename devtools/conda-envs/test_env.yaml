@@ -37,6 +37,7 @@ dependencies:
 
     # Plotting
   - seaborn >= 0.11
+  - plotly
 
     # Statistics
   - scipy
