@@ -160,11 +160,11 @@ def plot_scatter_results(
                         name=category,
                         x=[*category_data["Estimated Value"]],
                         y=[*category_data["Reference Value"]],
-                        # error_x=ErrorBar(
-                        #     symmetric=True,
-                        #     array=[*category_data["Estimated Std"]],
-                        #     arrayminus=None,
-                        # ),
+                        error_x=ErrorBar(
+                            symmetric=True,
+                            array=[*category_data["Estimated Std"]],
+                            arrayminus=None,
+                        ),
                         error_y=ErrorBar(
                             symmetric=True,
                             array=[*category_data["Reference Std"]],
