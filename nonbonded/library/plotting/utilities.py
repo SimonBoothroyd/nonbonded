@@ -90,7 +90,12 @@ def combine_data_set_results(
 
             # For now trim down the number of different categories and
             # shorten certain category names.
-            category = re.sub("[<>~]", "+", result_entry.category)
+            category = result_entry.category
+
+            if category is None:
+                category = "Uncategorized"
+
+            category = re.sub("[<>~]", "+", category)
             category = re.sub("Carboxylic Acid Ester", "Ester", category)
             category = re.sub("Carboxylic Acid", "Acid", category)
 

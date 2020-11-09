@@ -162,12 +162,16 @@ def plot_scatter_results(
                         y=[*category_data["Reference Value"]],
                         error_x=ErrorBar(
                             symmetric=True,
-                            array=[*category_data["Estimated Std"]],
+                            array=[
+                                *category_data["Estimated Std"].replace(numpy.nan, 0)
+                            ],
                             arrayminus=None,
                         ),
                         error_y=ErrorBar(
                             symmetric=True,
-                            array=[*category_data["Reference Std"]],
+                            array=[
+                                *category_data["Reference Std"].replace(numpy.nan, 0)
+                            ],
                             arrayminus=None,
                         ),
                         marker=MarkerStyle(color=category_colors[category]),
