@@ -1,4 +1,5 @@
 from collections import defaultdict
+from typing import List
 
 from nonbonded.library.models.plotly import (
     Figure,
@@ -13,8 +14,8 @@ from nonbonded.library.plotting.plotly.utilities import unique_colors, unique_ma
 
 
 def plot_objective_per_iteration(
-    optimization: Optimization,
-    optimization_result: OptimizationResult,
+    optimizations: List[Optimization],
+    optimization_results: List[OptimizationResult],
 ) -> Figure:
     """Plots the objective function for each optimizations target as a function of the
     optimization iteration.
@@ -24,33 +25,53 @@ def plot_objective_per_iteration(
 
     Parameters
     ----------
-    optimization
-        The optimization which has been performed.
-    optimization_result
-        The analyzed output of the optimization.
+    optimizations
+        The optimizations which have been performed.
+    optimization_results
+        The analyzed outputs of the optimizations.
     """
 
-    target_iterations = defaultdict(dict)
+    target_iterations = defaultdict(lambda: defaultdict(dict))
+    targets = set()
 
-    for iteration, iteration_result in optimization_result.target_results.items():
-        for target_id, target_result in iteration_result.items():
+    for optimization, optimization_result in zip(optimizations, optimization_results):
+        for iteration, iteration_result in optimization_result.target_results.items():
+            for target_id, target_result in iteration_result.items():
 
-            target_iterations[target_id][iteration] = target_result.objective_function
+                target_iterations[optimization.id][target_id][
+                    iteration
+                ] = target_result.objective_function
+                targets.add(target_id)
 
-    color = f"rgb{unique_colors(1)[0]}"
-    markers = unique_markers(len(optimization.targets))
+    targets = sorted(targets)
+
+    colors = [f"rgb{color}" for color in unique_colors(10)]
+    markers = unique_markers(11)
+
+    def trace_name(optimization_id, target_id):
+
+        if len(optimizations) <= 1:
+            return target_id
+        elif len(optimizations) > 1 and len(targets) <= 1:
+            return optimization_id
+
+        return f"{optimization_id}: {target_id}"
 
     traces = [
         ScatterTrace(
-            name=target_id,
+            name=trace_name(optimization_id, target_id),
             x=[str(x) for x in iterations],
             y=[iterations[x] for x in iterations],
-            marker=MarkerStyle(color=color, symbol=markers[i]),
-            legendgroup=target_id,
+            marker=MarkerStyle(
+                color=colors[i % 10], symbol=markers[targets.index(target_id) % 11]
+            ),
+            legendgroup=trace_name(optimization_id, target_id),
             showlegend=True,
             mode="lines+markers",
+            hoverinfo="none",
         )
-        for i, (target_id, iterations) in enumerate(target_iterations.items())
+        for i, optimization_id in enumerate(target_iterations)
+        for target_id, iterations in target_iterations[optimization_id].items()
     ]
 
     return Figure(

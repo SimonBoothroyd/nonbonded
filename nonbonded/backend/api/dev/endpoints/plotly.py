@@ -49,7 +49,7 @@ class PlotlyEndpoints:
             for sub_study_id in sub_study_ids
         ]
 
-        return plot_objective_per_iteration(optimizations[0], results[0])
+        return plot_objective_per_iteration(optimizations, results)
 
     @staticmethod
     @router.post("/benchmarks/statistics/{statistic_type}")
