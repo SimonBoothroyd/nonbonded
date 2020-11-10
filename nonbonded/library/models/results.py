@@ -2,6 +2,7 @@ import abc
 import logging
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union
 
+import pandas
 import requests
 from pydantic import Field, conint, validator
 from typing_extensions import Literal
@@ -18,7 +19,6 @@ from nonbonded.library.utilities.exceptions import UnsupportedEndpointError
 
 if TYPE_CHECKING:
 
-    import pandas
     from openff.evaluator.datasets import PhysicalPropertyDataSet
 
     PositiveInt = int
@@ -104,9 +104,8 @@ class DataSetResult(BaseORM):
         reference_data_set: Union[DataSet, DataSetCollection],
         estimated_data_set: "PhysicalPropertyDataSet",
         analysis_environments: List[ChemicalEnvironment],
-    ) -> Tuple[List[DataSetResultEntry], "pandas.DataFrame"]:
+    ) -> Tuple[List[DataSetResultEntry], pandas.DataFrame]:
 
-        import pandas
         from openff.evaluator.datasets import PhysicalProperty
 
         if isinstance(reference_data_set, DataSet):
@@ -182,7 +181,7 @@ class DataSetResult(BaseORM):
     @classmethod
     def _results_frame_to_statistics(
         cls,
-        results_frame: "pandas.DataFrame",
+        results_frame: pandas.DataFrame,
         property_type: str,
         n_components: int,
         category: Optional[str],
