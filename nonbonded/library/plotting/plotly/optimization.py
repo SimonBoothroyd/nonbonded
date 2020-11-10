@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import List
+from typing import List, Optional
 
 from nonbonded.library.models.plotly import (
     Figure,
@@ -15,7 +15,7 @@ from nonbonded.library.plotting.plotly.utilities import unique_colors, unique_ma
 
 def plot_objective_per_iteration(
     optimizations: List[Optimization],
-    optimization_results: List[OptimizationResult],
+    optimization_results: List[Optional[OptimizationResult]],
 ) -> Figure:
     """Plots the objective function for each optimizations target as a function of the
     optimization iteration.
@@ -35,6 +35,10 @@ def plot_objective_per_iteration(
     targets = set()
 
     for optimization, optimization_result in zip(optimizations, optimization_results):
+
+        if optimization_result is None:
+            continue
+
         for iteration, iteration_result in optimization_result.target_results.items():
             for target_id, target_result in iteration_result.items():
 
