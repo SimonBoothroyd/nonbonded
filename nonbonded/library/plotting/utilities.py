@@ -1,11 +1,12 @@
 import re
-from typing import Dict, List
-
-import pandas
+from typing import TYPE_CHECKING, Dict, List
 
 from nonbonded.library.models.datasets import DataSet, DataSetEntry
 from nonbonded.library.models.projects import Benchmark
 from nonbonded.library.models.results import BenchmarkResult
+
+if TYPE_CHECKING:
+    import pandas
 
 
 def property_type_to_title(property_type: str, n_components: int):
@@ -39,7 +40,7 @@ def combine_data_set_results(
     data_sets: List[DataSet],
     benchmarks: List[Benchmark],
     benchmark_results: List[BenchmarkResult],
-) -> pandas.DataFrame:
+) -> "pandas.DataFrame":
     """Combines a set of benchmarked results with their corresponding reference
     data set values into a pandas data frame which can be readily plotted.
 
@@ -68,6 +69,7 @@ def combine_data_set_results(
             * "Reference Std": The uncertainty in the reference value.
             * "Category": The category assigned to the data point.
     """
+    import pandas
 
     reference_data_points: Dict[int, DataSetEntry] = {
         entry.id: entry for data_set in data_sets for entry in data_set.entries
