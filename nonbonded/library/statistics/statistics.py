@@ -32,7 +32,6 @@ def _compute_statistics(measured_values, estimated_values, statistics):
     list of StatisticType
         Human readable labels for each of the statistics.
     """
-    import numpy
     import scipy.stats
 
     if statistics is None:
@@ -98,8 +97,6 @@ def _compute_bootstrapped_statistics(
     bootstrap_iterations: int
         The number of bootstrap iterations to perform.
     """
-    import numpy
-
     sample_count = len(measured_values)
 
     # Compute the mean of the statistics.
@@ -258,9 +255,6 @@ def compute_statistics(
     dict of StatisticType and tuple of float and float
         The 95% confidence intervals of each statistic.
     """
-
-    import numpy
-
     measured_std = measured_std.astype(numpy.float64)
     measured_std[numpy.isnan(measured_std)] = 0.0
 

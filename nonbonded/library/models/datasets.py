@@ -1,6 +1,7 @@
 import abc
 from typing import TYPE_CHECKING, Dict, List, Optional, Type
 
+import pandas
 import requests
 from pydantic import Field, conlist, validator
 from typing_extensions import Literal
@@ -16,7 +17,6 @@ from nonbonded.library.utilities.exceptions import (
 )
 
 if TYPE_CHECKING:
-    import pandas
     from openff.evaluator.datasets import PhysicalProperty, PhysicalPropertyDataSet
 
     PositiveFloat = float
@@ -169,7 +169,6 @@ class DataSetEntry(BaseORM):
 
     def to_series(self) -> "pandas.Series":
 
-        import pandas
         from openff.evaluator import properties, unit
 
         expected_unit = getattr(properties, self.property_type).default_unit()
@@ -275,7 +274,7 @@ class DataSet(_BaseSet):
     @classmethod
     def from_pandas(
         cls,
-        data_frame: "pandas.DataFrame",
+        data_frame: pandas.DataFrame,
         identifier: str,
         description: str,
         authors: List[Author],
@@ -308,9 +307,7 @@ class DataSet(_BaseSet):
 
         return data_set
 
-    def to_pandas(self) -> "pandas.DataFrame":
-
-        import pandas
+    def to_pandas(self) -> pandas.DataFrame:
 
         data_rows = [entry.to_series() for entry in self.entries]
         data_frame = pandas.DataFrame(data_rows)
