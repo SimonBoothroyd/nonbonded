@@ -4,7 +4,7 @@ email_validator
 sqlalchemy
 sqlalchemy-utils
 typing-extensions
-uvicorn
+uvicorn[standard]
 gunicorn
 pydantic
 psycopg2
