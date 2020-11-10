@@ -11,3 +11,4 @@ psycopg2
 click
 requests
 git+git://github.com/openforcefield/openff-recharge@0.0.1-alpha.4#egg=openff-recharge
+pandas
