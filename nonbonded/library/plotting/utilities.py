@@ -10,7 +10,10 @@ from nonbonded.library.models.results import BenchmarkResult
 
 def property_type_to_title(property_type: str, n_components: int):
 
-    from openff.evaluator import unit
+    try:
+        from openff.evaluator import unit
+    except ImportError:
+        unit = None
 
     abbreviations = {
         "Density": r"\rho",
@@ -21,11 +24,15 @@ def property_type_to_title(property_type: str, n_components: int):
         "SolvationFreeEnergy": r"G_{solv}",
     }
 
-    property_unit = unit.Unit(DataSetEntry.default_units()[property_type])
+    unit_string = DataSetEntry.default_units()[property_type]
 
-    unit_string = (
-        "" if property_unit == unit.dimensionless else f" ({property_unit:~P})"
-    )
+    if unit is not None:
+
+        property_unit = unit.Unit(unit_string)
+
+        unit_string = (
+            "" if property_unit == unit.dimensionless else f" ({property_unit:~P})"
+        )
 
     abbreviation = abbreviations.get(property_type, property_type)
 
