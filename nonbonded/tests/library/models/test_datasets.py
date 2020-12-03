@@ -23,11 +23,11 @@ from nonbonded.library.models.datasets import (
     DataSet,
     DataSetCollection,
     DataSetEntry,
-    MoleculeSet,
-    MoleculeSetCollection,
+    QCDataSet,
+    QCDataSetCollection,
 )
 from nonbonded.library.utilities.exceptions import UnrecognisedPropertyType
-from nonbonded.tests.utilities.factory import create_data_set, create_molecule_set
+from nonbonded.tests.utilities.factory import create_data_set, create_qc_data_set
 
 
 def compare_properties(
@@ -382,31 +382,31 @@ def test_data_set_collection_validation():
         )
 
 
-def test_molecule_set_collection_validation():
-    """Check that the molecule set correctly validates for unique set ids."""
+def test_qc_data_set_collection_validation():
+    """Check that the QC data set correctly validates for unique set ids."""
 
     # Create a set which should not error
-    MoleculeSetCollection(molecule_sets=[create_molecule_set("molecule-set-1")])
+    QCDataSetCollection(data_sets=[create_qc_data_set("qc-data-set-1")])
 
     # Create a set which should error
     with pytest.raises(ValidationError):
 
-        MoleculeSetCollection(
-            molecule_sets=[
-                create_molecule_set("molecule-set-1"),
-                create_molecule_set("molecule-set-1"),
+        QCDataSetCollection(
+            data_sets=[
+                create_qc_data_set("qc-data-set-1"),
+                create_qc_data_set("qc-data-set-1"),
             ]
         )
 
 
-def test_molecule_set_validation():
-    """Check that the molecule set correctly validates for unique set ids."""
+def test_qc_data_set_validation():
+    """Check that the QC data set correctly validates for unique set ids."""
 
     # Create a set which should not error
-    molecule_set = create_molecule_set("molecule-set-1")
+    qc_data_set = create_qc_data_set("qc-data-set-1")
 
     # Create a set which should error
     with pytest.raises(ValidationError):
 
-        molecule_set.entries.append(molecule_set.entries[0])
-        MoleculeSet(**molecule_set.dict())
+        qc_data_set.entries.append(qc_data_set.entries[0])
+        QCDataSet(**qc_data_set.dict())

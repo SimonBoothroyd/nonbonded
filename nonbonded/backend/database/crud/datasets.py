@@ -5,8 +5,8 @@ from nonbonded.backend.database.crud.authors import AuthorCRUD
 from nonbonded.backend.database.utilities.exceptions import (
     DataSetExistsError,
     DataSetNotFoundError,
-    MoleculeSetExistsError,
-    MoleculeSetNotFoundError,
+    QCDataSetExistsError,
+    QCDataSetNotFoundError,
     UnableToDeleteError,
 )
 from nonbonded.library.models import datasets
@@ -147,83 +147,85 @@ class DataSetCRUD:
         db.delete(db_data_set)
 
 
-class MoleculeSetCRUD:
+class QCDataSetCRUD:
     @staticmethod
-    def query(db: Session, molecule_set_id: str):
+    def query(db: Session, qc_data_set_id: str):
 
-        db_molecule_set = (
-            db.query(models.MoleculeSet)
-            .filter(models.MoleculeSet.id == molecule_set_id)
+        db_qc_data_set = (
+            db.query(models.QCDataSet)
+            .filter(models.QCDataSet.id == qc_data_set_id)
             .first()
         )
 
-        return db_molecule_set
+        return db_qc_data_set
 
     @staticmethod
     def read_all(
         db: Session, skip: int = 0, limit: int = 100, include_children: bool = True
     ):
 
-        molecule_sets = db.query(models.MoleculeSet).offset(skip).limit(limit).all()
-        return [MoleculeSetCRUD.db_to_model(x, include_children) for x in molecule_sets]
+        qc_data_sets = db.query(models.QCDataSet).offset(skip).limit(limit).all()
+        return [QCDataSetCRUD.db_to_model(x, include_children) for x in qc_data_sets]
 
     @staticmethod
-    def read(db: Session, molecule_set_id: str):
+    def read(db: Session, qc_data_set_id: str):
 
-        db_molecule_set = MoleculeSetCRUD.query(db, molecule_set_id)
+        db_qc_data_set = QCDataSetCRUD.query(db, qc_data_set_id)
 
-        if db_molecule_set is None:
-            raise MoleculeSetNotFoundError(molecule_set_id)
+        if db_qc_data_set is None:
+            raise QCDataSetNotFoundError(qc_data_set_id)
 
-        return MoleculeSetCRUD.db_to_model(db_molecule_set)
+        return QCDataSetCRUD.db_to_model(db_qc_data_set)
 
     @staticmethod
-    def create(db: Session, molecule_set: datasets.MoleculeSet) -> models.MoleculeSet:
+    def create(db: Session, qc_data_set: datasets.QCDataSet) -> models.QCDataSet:
 
-        if MoleculeSetCRUD.query(db, molecule_set.id) is not None:
-            raise MoleculeSetExistsError(molecule_set.id)
+        if QCDataSetCRUD.query(db, qc_data_set.id) is not None:
+            raise QCDataSetExistsError(qc_data_set.id)
 
         # noinspection PyTypeChecker
-        db_molecule_set = models.MoleculeSet(
-            id=molecule_set.id,
-            description=molecule_set.description,
-            authors=[AuthorCRUD.create(db, author) for author in molecule_set.authors],
-            entries=[models.Molecule(smiles=entry) for entry in molecule_set.entries],
+        db_qc_data_set = models.QCDataSet(
+            id=qc_data_set.id,
+            description=qc_data_set.description,
+            authors=[AuthorCRUD.create(db, author) for author in qc_data_set.authors],
+            entries=[
+                models.QCDataSetEntry.unique(db, models.QCDataSetEntry(record_id=entry))
+                for entry in qc_data_set.entries
+            ],
         )
 
-        return db_molecule_set
+        return db_qc_data_set
 
     @staticmethod
     def db_to_model(
-        db_molecule_set: models.MoleculeSet, include_children: bool = True
-    ) -> datasets.MoleculeSet:
+        db_qc_data_set: models.QCDataSet, include_children: bool = True
+    ) -> datasets.QCDataSet:
 
-        # noinspection PyTypeChecker
-        molecule_set = datasets.MoleculeSet(
-            id=db_molecule_set.id,
-            description=db_molecule_set.description,
+        qc_data_set = datasets.QCDataSet(
+            id=db_qc_data_set.id,
+            description=db_qc_data_set.description,
             entries=[]
             if not include_children
-            else [entry.smiles for entry in db_molecule_set.entries],
-            authors=db_molecule_set.authors,
+            else [entry.record_id for entry in db_qc_data_set.entries],
+            authors=db_qc_data_set.authors,
         )
 
-        return molecule_set
+        return qc_data_set
 
     @staticmethod
-    def delete(db: Session, molecule_set_id: str):
+    def delete(db: Session, qc_data_set_id: str):
 
-        db_molecule_set = MoleculeSetCRUD.query(db, molecule_set_id)
+        db_qc_data_set = QCDataSetCRUD.query(db, qc_data_set_id)
 
-        if not db_molecule_set:
-            raise MoleculeSetNotFoundError(molecule_set_id)
+        if not db_qc_data_set:
+            raise QCDataSetNotFoundError(qc_data_set_id)
 
-        if len(db_molecule_set.optimizations) > 0:
+        if len(db_qc_data_set.optimizations) > 0:
 
             raise UnableToDeleteError(
-                f"This molecule set (id={molecule_set_id}) is being referenced by at "
+                f"This QC data set (id={qc_data_set_id}) is being referenced by at "
                 f"least one optimization target and so cannot be deleted. Delete the "
                 f"referencing optimization target first and then try again."
             )
 
-        db.delete(db_molecule_set)
+        db.delete(db_qc_data_set)

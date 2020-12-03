@@ -39,7 +39,7 @@ def valid_optimization_kwargs(valid_sub_study_kwargs):
         "engine": ForceBalance(priors={" ": 1.0}),
         "targets": [
             create_evaluator_target("evaluator-target", ["data-set-1"]),
-            create_recharge_target("recharge-target", ["molecule-set-1"]),
+            create_recharge_target("recharge-target", ["qc-data-set-1"]),
         ],
         "force_field": force_field,
         "parameters_to_train": parameters,

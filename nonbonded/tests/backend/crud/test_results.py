@@ -51,7 +51,7 @@ class TestOptimizationResultCRUD(BaseCRUDTest):
             "evaluator-target",
             "recharge-target",
             "data-set",
-            "molecule-set",
+            "qc-data-set",
         ]
 
     @classmethod
@@ -96,8 +96,8 @@ class TestOptimizationResultCRUD(BaseCRUDTest):
         assert db.query(models.DataSetResultEntry.id).count() == 0
         assert db.query(models.DataSetResult.id).count() == 0
 
-        assert db.query(models.MoleculeSetStatistic.id).count() == 0
-        assert db.query(models.MoleculeSetResult.id).count() == 0
+        assert db.query(models.QCDataSetStatistic.id).count() == 0
+        assert db.query(models.QCDataSetResult.id).count() == 0
 
         assert db.query(models.TargetResult.id).count() == 0
         assert db.query(models.EvaluatorTargetResult.id).count() == 0

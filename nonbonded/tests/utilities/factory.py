@@ -10,7 +10,7 @@ from nonbonded.library.models.datasets import (
     DataSet,
     DataSetCollection,
     DataSetEntry,
-    MoleculeSet,
+    QCDataSet,
 )
 from nonbonded.library.models.engines import ForceBalance
 from nonbonded.library.models.forcefield import ForceField, Parameter
@@ -89,29 +89,29 @@ def create_data_set(data_set_id: str, entry_id: Optional[int] = None):
     return data_set
 
 
-def create_molecule_set(molecule_set_id: str):
-    """Creates a single author molecule set which contains a single methane entry.
+def create_qc_data_set(qc_data_set_id: str):
+    """Creates a single author QC data set which contains a single methane entry.
 
     Parameters
     ----------
-    molecule_set_id: str
-        The id to assign to the molecule set.
+    qc_data_set_id: str
+        The id to assign to the QC data set.
 
     Returns
     -------
-    MoleculeSet
+    QCDataSet
     """
 
     author = create_author()
 
-    molecule_set = MoleculeSet(
-        id=molecule_set_id,
+    qc_data_set = QCDataSet(
+        id=qc_data_set_id,
         description=" ",
         authors=[author],
-        entries=["C"],
+        entries=["1"],
     )
 
-    return molecule_set
+    return qc_data_set
 
 
 def create_project(project_id: str) -> Project:
@@ -159,19 +159,19 @@ def create_evaluator_target(name: str, data_set_ids: List[str]) -> EvaluatorTarg
     )
 
 
-def create_recharge_target(name: str, molecule_set_ids: List[str]) -> RechargeTarget:
+def create_recharge_target(name: str, qc_data_set_ids: List[str]) -> RechargeTarget:
     """Creates a recharge optimization target.
 
     Parameters
     ----------
     name
         The name of the target.
-    molecule_set_ids
-        The ids of the molecule sets which form the training set.
+    qc_data_set_ids
+        The ids of the QC data sets which form the training set.
     """
     return RechargeTarget(
         id=name,
-        molecule_set_ids=molecule_set_ids,
+        qc_data_set_ids=qc_data_set_ids,
         conformer_settings=ConformerSettings(),
         esp_settings=ESPSettings(
             grid_settings=GridSettings(), psi4_dft_grid_settings=DFTGridSettings.Medium

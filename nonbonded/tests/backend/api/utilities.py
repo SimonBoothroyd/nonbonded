@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from requests import HTTPError
 from sqlalchemy.orm import Session
 
-from nonbonded.backend.database.crud.datasets import DataSetCRUD, MoleculeSetCRUD
+from nonbonded.backend.database.crud.datasets import DataSetCRUD, QCDataSetCRUD
 from nonbonded.backend.database.crud.projects import BenchmarkCRUD, ProjectCRUD
 from nonbonded.backend.database.crud.results import (
     BenchmarkResultCRUD,
@@ -17,8 +17,8 @@ from nonbonded.library.models import BaseREST
 from nonbonded.library.models.datasets import (
     DataSet,
     DataSetCollection,
-    MoleculeSet,
-    MoleculeSetCollection,
+    QCDataSet,
+    QCDataSetCollection,
 )
 from nonbonded.library.models.projects import Benchmark, Optimization, Project, Study
 from nonbonded.library.models.results import BenchmarkResult, OptimizationResult
@@ -31,10 +31,10 @@ from nonbonded.tests.utilities.factory import (
     create_data_set,
     create_evaluator_target,
     create_force_field,
-    create_molecule_set,
     create_optimization,
     create_optimization_result,
     create_project,
+    create_qc_data_set,
     create_recharge_target,
     create_study,
 )
@@ -79,26 +79,26 @@ def commit_data_set_collection(db: Session) -> DataSetCollection:
     return data_set_collection
 
 
-def commit_molecule_set(db: Session, unique_id: str = "molecule-set-1") -> MoleculeSet:
-    """Creates a new molecule set and commits it the current session.
+def commit_qc_data_set(db: Session, unique_id: str = "qc-data-set-1") -> QCDataSet:
+    """Creates a new QC data set and commits it the current session.
 
     Parameters
     ----------
     db
         The current data base session.
     unique_id
-        The id to assign to the molecule set.
+        The id to assign to the QC data set.
     """
-    db_molecule_set = MoleculeSetCRUD.create(db, create_molecule_set(unique_id))
+    db_qc_data_set = QCDataSetCRUD.create(db, create_qc_data_set(unique_id))
 
-    db.add(db_molecule_set)
+    db.add(db_qc_data_set)
     db.commit()
 
-    return MoleculeSetCRUD.db_to_model(db_molecule_set)
+    return QCDataSetCRUD.db_to_model(db_qc_data_set)
 
 
-def commit_molecule_set_collection(db: Session) -> MoleculeSetCollection:
-    """Commits two molecule sets to the current session and returns
+def commit_qc_data_set_collection(db: Session) -> QCDataSetCollection:
+    """Commits two QC data sets to the current session and returns
     them in a collection object.
 
     Parameters
@@ -108,12 +108,12 @@ def commit_molecule_set_collection(db: Session) -> MoleculeSetCollection:
     """
 
     # Create the training set.
-    molecule_set_ids = ["molecule-set-1", "molecule-set-2"]
+    qc_data_set_ids = ["qc-data-set-1", "qc-data-set-2"]
 
-    molecule_sets = [commit_molecule_set(db, x) for x in molecule_set_ids]
-    molecule_set_collection = MoleculeSetCollection(molecule_sets=molecule_sets)
+    qc_data_sets = [commit_qc_data_set(db, x) for x in qc_data_set_ids]
+    qc_data_set_collection = QCDataSetCollection(data_sets=qc_data_sets)
 
-    return molecule_set_collection
+    return qc_data_set_collection
 
 
 def commit_project(db: Session) -> Project:
@@ -154,7 +154,7 @@ def commit_study(db: Session) -> Tuple[Project, Study]:
 
 def commit_optimization(
     db: Session,
-) -> Tuple[Project, Study, Optimization, DataSetCollection, MoleculeSetCollection]:
+) -> Tuple[Project, Study, Optimization, DataSetCollection, QCDataSetCollection]:
     """Commits a new project and study to the current session and appends an
     empty optimization onto it. Additionally, this function commits two data sets
     to the session to use as the training set.
@@ -168,8 +168,8 @@ def commit_optimization(
     training_set = commit_data_set_collection(db)
     training_set_ids = [x.id for x in training_set.data_sets]
 
-    molecule_set = commit_molecule_set_collection(db)
-    molecule_set_ids = [x.id for x in molecule_set.molecule_sets]
+    qc_data_set = commit_qc_data_set_collection(db)
+    qc_data_set_ids = [x.id for x in qc_data_set.data_sets]
 
     study = create_study("project-1", "study-1")
     study.optimizations = [
@@ -179,7 +179,7 @@ def commit_optimization(
             "optimization-1",
             [
                 create_evaluator_target("evaluator-target-1", training_set_ids),
-                create_recharge_target("recharge-target-1", molecule_set_ids),
+                create_recharge_target("recharge-target-1", qc_data_set_ids),
             ],
         )
     ]
@@ -192,7 +192,7 @@ def commit_optimization(
     db.commit()
 
     project = ProjectCRUD.db_to_model(db_project)
-    return project, study, study.optimizations[0], training_set, molecule_set
+    return project, study, study.optimizations[0], training_set, qc_data_set
 
 
 def commit_optimization_result(
@@ -202,7 +202,7 @@ def commit_optimization_result(
     Study,
     Optimization,
     DataSetCollection,
-    MoleculeSetCollection,
+    QCDataSetCollection,
     OptimizationResult,
 ]:
     """Creates a new optimization result and commits it the current session.
@@ -214,7 +214,7 @@ def commit_optimization_result(
     """
 
     # Create the parent optimization
-    project, study, optimization, data_set, molecule_set = commit_optimization(db)
+    project, study, optimization, data_set, qc_data_set = commit_optimization(db)
 
     result = create_optimization_result(
         project.id,
@@ -237,7 +237,7 @@ def commit_optimization_result(
     db.commit()
 
     result = OptimizationResultCRUD.db_to_model(db_result)
-    return project, study, optimization, data_set, molecule_set, result
+    return project, study, optimization, data_set, qc_data_set, result
 
 
 def commit_benchmark(

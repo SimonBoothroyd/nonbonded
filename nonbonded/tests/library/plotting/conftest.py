@@ -28,7 +28,7 @@ def optimizations_and_results(
         "optimization-1",
         [
             create_evaluator_target("evaluator-target-1", ["data-set-1"]),
-            create_recharge_target("recharge-target-1", ["molecule-set-1"]),
+            create_recharge_target("recharge-target-1", ["qc-data-set-1"]),
         ],
     )
     optimization_1.name = "Optimization 1"
@@ -39,7 +39,7 @@ def optimizations_and_results(
         "optimization-2",
         [
             create_evaluator_target("evaluator-target-1", ["data-set-1"]),
-            create_recharge_target("recharge-target-1", ["molecule-set-1"]),
+            create_recharge_target("recharge-target-1", ["qc-data-set-1"]),
         ],
     )
     optimization_2.force_field = ForceField.from_openff(smirnoff_force_field)

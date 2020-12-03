@@ -9,7 +9,7 @@ from openff.evaluator.properties import Density
 from openforcefield.typing.engines.smirnoff import ForceField as OFFForceField
 
 from nonbonded.library.factories.inputs.optimization import OptimizationInputFactory
-from nonbonded.library.models.datasets import DataSetCollection, MoleculeSetCollection
+from nonbonded.library.models.datasets import DataSetCollection
 from nonbonded.library.models.forcefield import Parameter
 from nonbonded.library.models.projects import Optimization
 from nonbonded.library.models.results import OptimizationResult
@@ -17,15 +17,15 @@ from nonbonded.library.utilities import temporary_cd
 from nonbonded.tests.utilities.factory import (
     create_data_set,
     create_evaluator_target,
-    create_molecule_set,
     create_optimization,
     create_optimization_result,
+    create_qc_data_set,
     create_recharge_target,
 )
 from nonbonded.tests.utilities.mock import (
     mock_get_data_set,
-    mock_get_molecule_set,
     mock_get_optimization_result,
+    mock_get_qc_data_set,
 )
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ def optimization(force_field) -> Optimization:
         "optimization-1",
         [
             create_evaluator_target("evaluator-target-1", ["data-set-1"]),
-            create_recharge_target("recharge-target-1", ["molecule-set-1"]),
+            create_recharge_target("recharge-target-1", ["qc-data-set-1"]),
         ],
     )
     optimization.force_field = force_field
@@ -175,39 +175,28 @@ class TestOptimizationInputFactory:
 
     def test_generate_recharge_target(self, requests_mock):
 
-        molecule_set = create_molecule_set("molecule-set-1")
-        mock_get_molecule_set(requests_mock, molecule_set)
+        qc_data_set = create_qc_data_set("qc-data-set-1")
+        mock_get_qc_data_set(requests_mock, qc_data_set)
 
-        target = create_recharge_target("recharge-target-1", [molecule_set.id])
+        target = create_recharge_target("recharge-target-1", [qc_data_set.id])
 
         with temporary_cd():
 
             OptimizationInputFactory._generate_recharge_target(target)
 
-            assert os.path.isfile("training-set-collection.json")
-            molecule_set_collection = MoleculeSetCollection.parse_file(
-                "training-set-collection.json"
-            )
-            assert (
-                molecule_set_collection.molecule_sets[0].json() == molecule_set.json()
-            )
-
             with open("training-set.json") as file:
-                training_smiles = json.load(file)
+                training_entries = json.load(file)
 
-            assert training_smiles == molecule_set.entries
+            assert training_entries == qc_data_set.entries
 
             with open("esp-settings.json") as file:
                 assert file.read() == target.esp_settings.json()
-
-            with open("conformer-settings.json") as file:
-                assert file.read() == target.conformer_settings.json()
 
     @pytest.mark.parametrize(
         "target",
         [
             create_evaluator_target("evaluator-target-1", ["data-set-1"]),
-            create_recharge_target("recharge-target-1", ["molecule-set-1"]),
+            create_recharge_target("recharge-target-1", ["qc-data-set-1"]),
         ],
     )
     def test_generate_target(self, target, caplog, monkeypatch):
@@ -252,6 +241,8 @@ class TestOptimizationInputFactory:
             assert stored_result.json() == result.json()
 
     def test_generate(self, optimization, monkeypatch):
+
+        logging.basicConfig(level=logging.INFO)
 
         # Mock the already tested functions
         monkeypatch.setattr(

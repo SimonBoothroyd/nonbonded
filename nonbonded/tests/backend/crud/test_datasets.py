@@ -4,16 +4,16 @@ import pytest
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.database import models
-from nonbonded.backend.database.crud.datasets import DataSetCRUD, MoleculeSetCRUD
+from nonbonded.backend.database.crud.datasets import DataSetCRUD, QCDataSetCRUD
 from nonbonded.backend.database.crud.projects import BenchmarkCRUD, OptimizationCRUD
 from nonbonded.backend.database.utilities.exceptions import (
     DataSetExistsError,
     DataSetNotFoundError,
-    MoleculeSetExistsError,
-    MoleculeSetNotFoundError,
+    QCDataSetExistsError,
+    QCDataSetNotFoundError,
 )
 from nonbonded.tests.backend.crud.utilities import BaseCRUDTest, create_dependencies
-from nonbonded.tests.utilities.factory import create_data_set, create_molecule_set
+from nonbonded.tests.utilities.factory import create_data_set, create_qc_data_set
 
 
 class TestDataSetCRUD(BaseCRUDTest):
@@ -99,10 +99,10 @@ class TestDataSetCRUD(BaseCRUDTest):
         pass
 
 
-class TestMoleculeSetCRUD(BaseCRUDTest):
+class TestQCDataSetCRUD(BaseCRUDTest):
     @classmethod
     def crud_class(cls):
-        return MoleculeSetCRUD
+        return QCDataSetCRUD
 
     @classmethod
     def dependencies(cls):
@@ -110,19 +110,19 @@ class TestMoleculeSetCRUD(BaseCRUDTest):
 
     @classmethod
     def create_model(cls, include_children=False, index=1):
-        return create_molecule_set(f"molecule-set-{index}")
+        return create_qc_data_set(f"qc-data-set-{index}")
 
     @classmethod
     def not_found_error(cls):
-        return MoleculeSetNotFoundError
+        return QCDataSetNotFoundError
 
     @classmethod
     def already_exists_error(cls):
-        return MoleculeSetExistsError
+        return QCDataSetExistsError
 
     @classmethod
     def model_to_read_kwargs(cls, model):
-        return {"molecule_set_id": model.id}
+        return {"qc_data_set_id": model.id}
 
     @classmethod
     def model_to_read_all_kwargs(cls, model):
@@ -131,11 +131,15 @@ class TestMoleculeSetCRUD(BaseCRUDTest):
     @classmethod
     def check_has_deleted(cls, db: Session):
 
-        from nonbonded.backend.database.models.datasets import author_base_sets_table
+        from nonbonded.backend.database.models.datasets import (
+            author_base_sets_table,
+            qc_data_set_entries_table,
+        )
 
-        assert db.query(models.Molecule.id).count() == 0
-        assert db.query(models.MoleculeSet.id).count() == 0
+        assert db.query(models.QCDataSetEntry.id).count() == 1
+        assert db.query(models.QCDataSet.id).count() == 0
         assert db.query(author_base_sets_table).count() == 0
+        assert db.query(qc_data_set_entries_table).count() == 0
 
     @pytest.mark.parametrize(
         "create_dependant, delete_dependant",
@@ -154,20 +158,34 @@ class TestMoleculeSetCRUD(BaseCRUDTest):
     def test_delete_with_dependent(
         self, db: Session, create_dependant, delete_dependant
     ):
-        super(TestMoleculeSetCRUD, self).test_delete_with_dependent(
+        super(TestQCDataSetCRUD, self).test_delete_with_dependent(
             db, create_dependant, delete_dependant
         )
 
-    @pytest.mark.skip("Molecule sets cannot be updated yet.")
+    @pytest.mark.skip("QC data sets cannot be updated yet.")
     def test_update(self, db: Session, perturbation, database_checks, expected_raise):
         pass
 
-    @pytest.mark.skip("Molecule sets cannot be updated yet.")
+    @pytest.mark.skip("QC data sets cannot be updated yet.")
     def test_update_not_found(self, db: Session):
         pass
 
-    @pytest.mark.skip("Molecule sets  do not have any dependencies.")
+    @pytest.mark.skip("QC data sets  do not have any dependencies.")
     def test_missing_dependencies(
         self, db: Session, dependencies: List[str], expected_error
     ):
         pass
+
+    def test_unique_entries(self, db: Session):
+
+        # Add data set with a single entry.
+        db.add(QCDataSetCRUD.create(db, create_qc_data_set("qc-data-set-1")))
+        db.commit()
+
+        assert db.query(models.QCDataSetEntry.id).count() == 1
+
+        # Make sure the previously added entry is referenced by the new data set.
+        db.add(QCDataSetCRUD.create(db, create_qc_data_set("qc-data-set-2")))
+        db.commit()
+
+        assert db.query(models.QCDataSetEntry.id).count() == 1

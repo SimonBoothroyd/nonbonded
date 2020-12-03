@@ -104,21 +104,21 @@ class RechargeTarget(OptimizationTarget):
         "numbers are incompatible.",
     )
 
-    molecule_set_ids: conlist(IdentifierStr, min_items=1) = Field(
+    qc_data_set_ids: conlist(IdentifierStr, min_items=1) = Field(
         ...,
-        description="The unique identifiers of the molecule sets to include in this "
+        description="The unique identifiers of the QC data sets to include in this "
         "optimization target.",
     )
 
     conformer_settings: "ConformerSettings" = Field(
         ...,
         description="The settings to use when generating conformers for each molecule "
-        "in the training molecule sets.",
+        "in the training QC data sets.",
     )
     esp_settings: "ESPSettings" = Field(
         ...,
         description="The settings to use when generating the electrostatic data "
-        "for each molecule in the training molecule sets.",
+        "for each molecule in the training QC data sets.",
     )
 
     property: Literal["esp", "electric-field"] = Field(

@@ -23,9 +23,9 @@ recharge_training_table = Table(
         primary_key=True,
     ),
     Column(
-        "molecule_set_id",
+        "qc_data_set_id",
         String,
-        ForeignKey("molecule_sets.id"),
+        ForeignKey("qc_data_sets.id"),
         primary_key=True,
     ),
 )
@@ -131,7 +131,7 @@ class RechargeTarget(OptimizationTarget):
     id = Column(Integer, ForeignKey("optimization_targets.id"), primary_key=True)
 
     training_sets = relationship(
-        "MoleculeSet",
+        "QCDataSet",
         secondary=recharge_training_table,
         backref="optimizations",
     )

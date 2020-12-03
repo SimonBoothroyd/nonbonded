@@ -5,16 +5,16 @@ from nonbonded.backend.database import models
 from nonbonded.library.models.datasets import (
     DataSet,
     DataSetCollection,
-    MoleculeSet,
-    MoleculeSetCollection,
+    QCDataSet,
+    QCDataSetCollection,
 )
 from nonbonded.tests.backend.api.utilities import (
     BaseTestEndpoints,
     commit_data_set,
-    commit_molecule_set,
+    commit_qc_data_set,
 )
 from nonbonded.tests.utilities.comparison import compare_pydantic_models
-from nonbonded.tests.utilities.factory import create_data_set, create_molecule_set
+from nonbonded.tests.utilities.factory import create_data_set, create_qc_data_set
 
 
 class TestDataSetEndpoints(BaseTestEndpoints):
@@ -52,15 +52,15 @@ class TestDataSetEndpoints(BaseTestEndpoints):
         compare_pydantic_models(data_set, rest_data_collection.data_sets[0])
 
 
-class TestMoleculeSetEndpoints(BaseTestEndpoints):
+class TestQCDataSetEndpoints(BaseTestEndpoints):
     @classmethod
     def _rest_class(cls):
-        return MoleculeSet
+        return QCDataSet
 
     @classmethod
     def _create_model(cls, db, create_dependencies=True):
-        molecule_set = create_molecule_set("molecule-set-1")
-        return molecule_set, {"molecule_set_id": molecule_set.id}
+        qc_data_set = create_qc_data_set("qc-data-set-1")
+        return qc_data_set, {"qc_data_set_id": qc_data_set.id}
 
     @classmethod
     def _perturb_model(cls, model):
@@ -68,21 +68,21 @@ class TestMoleculeSetEndpoints(BaseTestEndpoints):
 
     @classmethod
     def _commit_model(cls, db):
-        molecule_set = commit_molecule_set(db)
-        return molecule_set, {"molecule_set_id": molecule_set.id}
+        qc_data_set = commit_qc_data_set(db)
+        return qc_data_set, {"qc_data_set_id": qc_data_set.id}
 
     @classmethod
     def _n_db_models(cls, db: Session) -> int:
-        return db.query(models.MoleculeSet.id).count()
+        return db.query(models.QCDataSet.id).count()
 
     def test_get_all(self, rest_client: TestClient, db: Session):
 
-        molecule_set = commit_molecule_set(db)
-        rest_molecule_collection = MoleculeSetCollection.from_rest(
+        qc_data_set = commit_qc_data_set(db)
+        rest_qc_data_set_collection = QCDataSetCollection.from_rest(
             requests_class=rest_client
         )
 
-        assert rest_molecule_collection is not None
-        assert len(rest_molecule_collection.molecule_sets) == 1
+        assert rest_qc_data_set_collection is not None
+        assert len(rest_qc_data_set_collection.data_sets) == 1
 
-        compare_pydantic_models(molecule_set, rest_molecule_collection.molecule_sets[0])
+        compare_pydantic_models(qc_data_set, rest_qc_data_set_collection.data_sets[0])

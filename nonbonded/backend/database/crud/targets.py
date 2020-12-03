@@ -4,10 +4,10 @@ from openff.recharge.grids import GridSettings
 from sqlalchemy.orm import Session
 
 from nonbonded.backend.database import models
-from nonbonded.backend.database.crud.datasets import DataSetCRUD, MoleculeSetCRUD
+from nonbonded.backend.database.crud.datasets import DataSetCRUD, QCDataSetCRUD
 from nonbonded.backend.database.utilities.exceptions import (
     DataSetNotFoundError,
-    MoleculeSetNotFoundError,
+    QCDataSetNotFoundError,
 )
 from nonbonded.library.models.results import EvaluatorTargetResult, RechargeTargetResult
 from nonbonded.library.models.targets import EvaluatorTarget, RechargeTarget
@@ -101,17 +101,17 @@ class EvaluatorTargetResultCRUD:
 class RechargeTargetCRUD:
     @classmethod
     def model_to_db(cls, db: Session, target: RechargeTarget) -> models.RechargeTarget:
-        molecule_sets = [
-            MoleculeSetCRUD.query(db, molecule_set_id)
-            for molecule_set_id in target.molecule_set_ids
+        qc_data_sets = [
+            QCDataSetCRUD.query(db, qc_data_set_id)
+            for qc_data_set_id in target.qc_data_set_ids
         ]
 
-        if any(x is None for x in molecule_sets):
-            raise MoleculeSetNotFoundError(
+        if any(x is None for x in qc_data_sets):
+            raise QCDataSetNotFoundError(
                 next(
                     iter(
                         x
-                        for x, y in zip(target.molecule_set_ids, molecule_sets)
+                        for x, y in zip(target.qc_data_set_ids, qc_data_sets)
                         if y is None
                     )
                 )
@@ -120,7 +120,7 @@ class RechargeTargetCRUD:
         db_target = models.RechargeTarget(
             identifier=target.id,
             weight=target.weight,
-            training_sets=molecule_sets,
+            training_sets=qc_data_sets,
             grid_settings=models.RechargeGridSettings(
                 **target.esp_settings.grid_settings.dict()
             ),
@@ -153,7 +153,7 @@ class RechargeTargetCRUD:
         return RechargeTarget(
             id=db_target.identifier,
             weight=db_target.weight,
-            molecule_set_ids=[x.id for x in db_target.training_sets],
+            qc_data_set_ids=[x.id for x in db_target.training_sets],
             esp_settings=ESPSettings(
                 basis=db_target.esp_settings.basis,
                 method=db_target.esp_settings.method,
@@ -200,9 +200,9 @@ class RechargeTargetResultCRUD:
             target_id=db_target.id,
             iteration=iteration,
             objective_function=result.objective_function,
-            molecule_set_result=models.MoleculeSetResult(
+            qc_data_set_result=models.QCDataSetResult(
                 statistic_entries=[
-                    models.MoleculeSetStatistic(
+                    models.QCDataSetStatistic(
                         **statistic.dict(exclude={"statistic_type"}),
                         statistic_type=statistic.statistic_type.value,
                     )
@@ -218,5 +218,5 @@ class RechargeTargetResultCRUD:
         # noinspection PyTypeChecker
         return RechargeTargetResult(
             objective_function=db_target_result.objective_function,
-            statistic_entries=db_target_result.molecule_set_result.statistic_entries,
+            statistic_entries=db_target_result.qc_data_set_result.statistic_entries,
         )
