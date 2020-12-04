@@ -54,9 +54,6 @@ class BenchmarkInputFactory(InputFactory):
         with open("test-set-collection.json", "w") as file:
             file.write(test_set_collection.json())
 
-        evaluator_set = test_set_collection.to_evaluator()
-        evaluator_set.json("test-set.json")
-
     @classmethod
     def _retrieve_results(cls, benchmark: Benchmark):
         """Retrieves the full results for a benchmark.

@@ -9,7 +9,6 @@ from openff.evaluator.properties import Density
 from openforcefield.typing.engines.smirnoff import ForceField as OFFForceField
 
 from nonbonded.library.factories.inputs.optimization import OptimizationInputFactory
-from nonbonded.library.models.datasets import DataSetCollection
 from nonbonded.library.models.forcefield import Parameter
 from nonbonded.library.models.projects import Optimization
 from nonbonded.library.models.results import OptimizationResult
@@ -160,12 +159,6 @@ class TestOptimizationInputFactory:
         with temporary_cd():
 
             OptimizationInputFactory._generate_evaluator_target(target, 8000)
-
-            assert os.path.isfile("training-set-collection.json")
-            data_set_collection = DataSetCollection.parse_file(
-                "training-set-collection.json"
-            )
-            assert data_set_collection.data_sets[0].json() == data_set.json()
 
             assert os.path.isfile("training-set.json")
             off_data_set = PhysicalPropertyDataSet.from_json("training-set.json")

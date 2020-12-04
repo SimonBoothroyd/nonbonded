@@ -72,8 +72,8 @@ def test_analyze_evaluator_target(tmpdir):
 
         # Create a dummy data set and estimated result.
         reference_data_set = create_data_set("data-set-1", 1)
-        DataSetCollection(data_sets=[reference_data_set]).to_file(
-            os.path.join("targets", target.id, "training-set-collection.json")
+        DataSetCollection(data_sets=[reference_data_set]).to_evaluator().json(
+            os.path.join("targets", target.id, "training-set.json")
         )
 
         results = RequestResult()

@@ -7,6 +7,7 @@ from click_option_group import optgroup
 
 from nonbonded.cli.utilities import generate_click_command
 from nonbonded.library.factories.inputs.evaluator import EvaluatorServerConfig
+from nonbonded.library.models.datasets import DataSetCollection
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +78,6 @@ def _prepare_restart(
     """
 
     from openff.evaluator.client import RequestResult
-    from openff.evaluator.datasets import PhysicalPropertyDataSet
 
     # Check for existing results files to restart from.
     existing_results: Optional[RequestResult] = None
@@ -110,7 +110,9 @@ def _prepare_restart(
 
     # Load in the data set.
     if existing_results is None:
-        data_set = PhysicalPropertyDataSet.from_json("test-set.json")
+        data_set = DataSetCollection.parse_file(
+            "test-set-collection.json"
+        ).to_evaluator()
     else:
         data_set = existing_results.unsuccessful_properties
 
