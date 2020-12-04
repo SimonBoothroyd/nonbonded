@@ -71,20 +71,26 @@ def upgrade():
             ["qc_entries.id"],
         ),
     )
+    op.drop_constraint(
+        "recharge_target_results_molecule_set_result_id_fkey",
+        "recharge_target_results",
+        type_="foreignkey",
+    )
+    op.drop_constraint(
+        "recharge_training_sets_molecule_set_id_fkey",
+        "recharge_training_sets",
+        type_="foreignkey",
+    )
     op.drop_table("molecule_set_statistics")
     op.drop_index("ix_molecule_set_results_id", table_name="molecule_set_results")
     op.drop_table("molecule_set_results")
     op.drop_index("ix_molecules_id", table_name="molecules")
     op.drop_table("molecules")
     op.drop_table("molecule_sets")
+    op.drop_column("recharge_target_results", "molecule_set_result_id")
     op.add_column(
         "recharge_target_results",
         sa.Column("qc_data_set_result_id", sa.Integer(), nullable=True),
-    )
-    op.drop_constraint(
-        "recharge_target_results_molecule_set_result_id_fkey",
-        "recharge_target_results",
-        type_="foreignkey",
     )
     op.create_foreign_key(
         None,
@@ -93,15 +99,9 @@ def upgrade():
         ["qc_data_set_result_id"],
         ["id"],
     )
-    op.drop_column("recharge_target_results", "molecule_set_result_id")
     op.add_column(
         "recharge_training_sets",
         sa.Column("qc_data_set_id", sa.String(), nullable=False),
-    )
-    op.drop_constraint(
-        "recharge_training_sets_molecule_set_id_fkey",
-        "recharge_training_sets",
-        type_="foreignkey",
     )
     op.create_foreign_key(
         None, "recharge_training_sets", "qc_data_sets", ["qc_data_set_id"], ["id"]
