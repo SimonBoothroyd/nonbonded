@@ -1,7 +1,6 @@
 import os
 
 import pytest
-from openff.evaluator.datasets import PhysicalPropertyDataSet
 from openff.evaluator.forcefield import TLeapForceFieldSource
 
 from nonbonded.library.factories.inputs.benchmark import BenchmarkInputFactory
@@ -120,10 +119,6 @@ class TestBenchmarkInputFactory:
                 "test-set-collection.json"
             )
             assert data_set_collection.data_sets[0].json() == data_set.json()
-
-            assert os.path.isfile("test-set.json")
-            off_data_set = PhysicalPropertyDataSet.from_json("test-set.json")
-            assert off_data_set.json() == data_set.to_evaluator().json()
 
     def test_retrieve_results(self, benchmark, requests_mock):
 

@@ -191,9 +191,6 @@ class OptimizationInputFactory(InputFactory):
         ]
         training_set_collection = DataSetCollection(data_sets=training_sets)
 
-        with open("training-set-collection.json", "w") as file:
-            file.write(training_set_collection.json())
-
         evaluator_set = training_set_collection.to_evaluator()
         evaluator_set.json("training-set.json")
 

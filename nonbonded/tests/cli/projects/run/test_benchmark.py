@@ -23,6 +23,7 @@ from nonbonded.library.factories.inputs.evaluator import (
     DaskLocalClusterConfig,
     EvaluatorServerConfig,
 )
+from nonbonded.library.models.datasets import DataSetCollection
 from nonbonded.library.utilities import temporary_cd
 from nonbonded.tests.utilities.comparison import does_not_raise
 from nonbonded.tests.utilities.factory import create_data_set
@@ -66,8 +67,10 @@ def test_prepare_restart(
     with temporary_cd():
 
         # Create a mock data set
-        original_data_set = create_data_set("data-set-1", 1).to_evaluator()
-        original_data_set.json("test-set.json")
+        original_data_set = DataSetCollection(
+            data_sets=[create_data_set("data-set-1", 1)]
+        )
+        original_data_set.to_file("test-set-collection.json")
 
         if original_existing_results is not None:
             original_existing_results.json("results.json")
