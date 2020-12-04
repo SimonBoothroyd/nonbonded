@@ -1,6 +1,4 @@
 import pytest
-from openff.recharge.conformers import ConformerSettings
-from openff.recharge.esp import ESPSettings
 from openff.recharge.grids import GridSettings
 
 from nonbonded.library.models.targets import EvaluatorTarget, RechargeTarget
@@ -124,8 +122,7 @@ def test_force_balance_template():
                 id="recharge-target-1",
                 weight=0.8,
                 qc_data_set_ids=["qc-data-set-1"],
-                conformer_settings=ConformerSettings(),
-                esp_settings=ESPSettings(grid_settings=GridSettings()),
+                grid_settings=GridSettings(),
                 property="esp",
             ),
             EvaluatorTarget(
@@ -138,8 +135,7 @@ def test_force_balance_template():
                 id="recharge-target-2",
                 weight=1.0,
                 qc_data_set_ids=["qc-data-set-1"],
-                conformer_settings=ConformerSettings(),
-                esp_settings=ESPSettings(grid_settings=GridSettings()),
+                grid_settings=GridSettings(),
                 property="esp",
             ),
         ],

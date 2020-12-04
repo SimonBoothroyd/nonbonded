@@ -1,5 +1,3 @@
-from openff.recharge.conformers import ConformerSettings
-from openff.recharge.esp import DFTGridSettings, ESPSettings, PCMSettings
 from openff.recharge.grids import GridSettings
 from sqlalchemy.orm import Session
 
@@ -121,27 +119,7 @@ class RechargeTargetCRUD:
             identifier=target.id,
             weight=target.weight,
             training_sets=qc_data_sets,
-            grid_settings=models.RechargeGridSettings(
-                **target.esp_settings.grid_settings.dict()
-            ),
-            pcm_settings=(
-                None
-                if target.esp_settings.pcm_settings is None
-                else models.RechargePCMSettings(
-                    **target.esp_settings.pcm_settings.dict()
-                )
-            ),
-            esp_settings=models.RechargeESPSettings.unique(
-                db,
-                models.RechargeESPSettings(
-                    basis=target.esp_settings.basis,
-                    method=target.esp_settings.method,
-                    psi4_dft_grid_settings=target.esp_settings.psi4_dft_grid_settings.value,
-                ),
-            ),
-            conformer_settings=models.RechargeConformerSettings.unique(
-                db, models.RechargeConformerSettings(**target.conformer_settings.dict())
-            ),
+            grid_settings=models.RechargeGridSettings(**target.grid_settings.dict()),
             property=target.property,
         )
 
@@ -154,34 +132,11 @@ class RechargeTargetCRUD:
             id=db_target.identifier,
             weight=db_target.weight,
             qc_data_set_ids=[x.id for x in db_target.training_sets],
-            esp_settings=ESPSettings(
-                basis=db_target.esp_settings.basis,
-                method=db_target.esp_settings.method,
-                psi4_dft_grid_settings=DFTGridSettings(
-                    db_target.esp_settings.psi4_dft_grid_settings
-                ),
-                grid_settings=GridSettings(
-                    type=db_target.grid_settings.type,
-                    spacing=db_target.grid_settings.spacing,
-                    inner_vdw_scale=db_target.grid_settings.inner_vdw_scale,
-                    outer_vdw_scale=db_target.grid_settings.outer_vdw_scale,
-                ),
-                pcm_settings=(
-                    None
-                    if db_target.pcm_settings is None
-                    else PCMSettings(
-                        solver=db_target.pcm_settings.solver,
-                        solvent=db_target.pcm_settings.solvent,
-                        radii_model=db_target.pcm_settings.radii_model,
-                        radii_scaling=db_target.pcm_settings.radii_scaling,
-                        cavity_area=db_target.pcm_settings.cavity_area,
-                    )
-                ),
-            ),
-            conformer_settings=ConformerSettings(
-                method=db_target.conformer_settings.method,
-                sampling_mode=db_target.conformer_settings.sampling_mode,
-                max_conformers=db_target.conformer_settings.max_conformers,
+            grid_settings=GridSettings(
+                type=db_target.grid_settings.type,
+                spacing=db_target.grid_settings.spacing,
+                inner_vdw_scale=db_target.grid_settings.inner_vdw_scale,
+                outer_vdw_scale=db_target.grid_settings.outer_vdw_scale,
             ),
             property=db_target.property,
         )

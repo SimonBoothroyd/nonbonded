@@ -1,7 +1,5 @@
 from typing import List, Optional, Union
 
-from openff.recharge.conformers import ConformerSettings
-from openff.recharge.esp import DFTGridSettings, ESPSettings
 from openff.recharge.grids import GridSettings
 
 from nonbonded.library.models.authors import Author
@@ -172,10 +170,7 @@ def create_recharge_target(name: str, qc_data_set_ids: List[str]) -> RechargeTar
     return RechargeTarget(
         id=name,
         qc_data_set_ids=qc_data_set_ids,
-        conformer_settings=ConformerSettings(),
-        esp_settings=ESPSettings(
-            grid_settings=GridSettings(), psi4_dft_grid_settings=DFTGridSettings.Medium
-        ),
+        grid_settings=GridSettings(),
         property="esp",
     )
 
