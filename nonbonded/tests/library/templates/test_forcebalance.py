@@ -123,7 +123,7 @@ def test_force_balance_template():
             RechargeTarget(
                 id="recharge-target-1",
                 weight=0.8,
-                molecule_set_ids=["molecule-set-1"],
+                qc_data_set_ids=["qc-data-set-1"],
                 conformer_settings=ConformerSettings(),
                 esp_settings=ESPSettings(grid_settings=GridSettings()),
                 property="esp",
@@ -137,7 +137,7 @@ def test_force_balance_template():
             RechargeTarget(
                 id="recharge-target-2",
                 weight=1.0,
-                molecule_set_ids=["molecule-set-1"],
+                qc_data_set_ids=["qc-data-set-1"],
                 conformer_settings=ConformerSettings(),
                 esp_settings=ESPSettings(grid_settings=GridSettings()),
                 property="esp",

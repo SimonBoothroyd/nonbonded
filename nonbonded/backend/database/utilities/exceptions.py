@@ -52,21 +52,21 @@ class DataSetEntryNotFound(ItemNotFound):
         super(DataSetEntryNotFound, self).__init__(detail=detail)
 
 
-class MoleculeSetExistsError(ItemExistsError):
-    def __init__(self, molecule_set_id):
-        self.molecule_set_id = molecule_set_id
+class QCDataSetExistsError(ItemExistsError):
+    def __init__(self, qc_data_set_id):
+        self.qc_data_set_id = qc_data_set_id
 
-        super(MoleculeSetExistsError, self).__init__(
-            f"A molecule set with id={molecule_set_id} already exists."
+        super(QCDataSetExistsError, self).__init__(
+            f"A QC data set with id={qc_data_set_id} already exists."
         )
 
 
-class MoleculeSetNotFoundError(ItemNotFound):
-    def __init__(self, molecule_set_id):
-        self.molecule_set_id = molecule_set_id
+class QCDataSetNotFoundError(ItemNotFound):
+    def __init__(self, qc_data_set_id):
+        self.qc_data_set_id = qc_data_set_id
 
-        super(MoleculeSetNotFoundError, self).__init__(
-            f"The database does not contain a molecule set with id={molecule_set_id}."
+        super(QCDataSetNotFoundError, self).__init__(
+            f"The database does not contain a QC data set with id={qc_data_set_id}."
         )
 
 

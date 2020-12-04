@@ -26,7 +26,7 @@ else:
 
 
 class _BaseSet(BaseREST, abc.ABC):
-    """The base class for sets of measurements or molecules to train and
+    """The base class for sets of experimental measurements or QC results to train and
     test against."""
 
     id: IdentifierStr = Field(
@@ -260,6 +260,8 @@ class DataSetEntry(BaseORM):
 
 
 class DataSet(_BaseSet):
+    """A data set of physical property measurements which have been collected from
+    an experimental data source."""
 
     model_version: Literal[0] = Field(
         0,
@@ -327,16 +329,16 @@ class DataSet(_BaseSet):
 
     @classmethod
     def _get_endpoint(cls, *, data_set_id: str):
-        return f"{settings.API_URL}/datasets/{data_set_id}"
+        return f"{settings.API_URL}/datasets/phys-prop/{data_set_id}"
 
     def _post_endpoint(self):
-        return f"{settings.API_URL}/datasets/"
+        return f"{settings.API_URL}/datasets/phys-prop/"
 
     def _put_endpoint(self):
         raise UnsupportedEndpointError()
 
     def _delete_endpoint(self):
-        return f"{settings.API_URL}/datasets/{self.id}"
+        return f"{settings.API_URL}/datasets/phys-prop/{self.id}"
 
     @classmethod
     def from_rest(cls, *, data_set_id: str, requests_class=requests) -> "DataSet":
@@ -347,10 +349,11 @@ class DataSet(_BaseSet):
 
 
 class DataSetCollection(BaseRESTCollection):
+    """A collection of physical property data sets."""
 
     data_sets: List[DataSet] = Field(
         default_factory=list,
-        description="A collection of data sets.",
+        description="The stored collection of physical property data sets.",
     )
 
     @validator("data_sets")
@@ -360,7 +363,7 @@ class DataSetCollection(BaseRESTCollection):
 
     @classmethod
     def _get_endpoint(cls, **kwargs):
-        return f"{settings.API_URL}/datasets/"
+        return f"{settings.API_URL}/datasets/phys-prop/"
 
     def to_evaluator(self) -> "PhysicalPropertyDataSet":
 
@@ -375,9 +378,9 @@ class DataSetCollection(BaseRESTCollection):
         return evaluator_set
 
 
-class MoleculeSet(_BaseSet):
-    """The set of molecules which forms either a train or test set for
-    certain (predominantly QM based) targets.
+class QCDataSet(_BaseSet):
+    """A reference to a data set of quantum chemical (QC) computations which have been
+    stored in the main QCArchive repository.
     """
 
     model_version: Literal[0] = Field(
@@ -386,51 +389,50 @@ class MoleculeSet(_BaseSet):
         "numbers are incompatible.",
     )
 
-    entries: conlist(NonEmptyStr, min_items=1) = Field(
-        ..., description="The entries in the set."
+    entries: List[NonEmptyStr] = Field(
+        ...,
+        description="The ids of the QCA compute records to include in the data set.",
     )
 
     @validator("entries")
-    def validate_entries(cls, v: List[str]) -> List[str]:
+    def validate_subset(cls, v: List[str]) -> List[str]:
         assert len(v) == len({*v})
         return v
 
     @classmethod
-    def _get_endpoint(cls, *, molecule_set_id: str):
-        return f"{settings.API_URL}/molsets/{molecule_set_id}"
+    def _get_endpoint(cls, *, qc_data_set_id: str):
+        return f"{settings.API_URL}/datasets/qc/{qc_data_set_id}"
 
     def _post_endpoint(self):
-        return f"{settings.API_URL}/molsets/"
+        return f"{settings.API_URL}/datasets/qc/"
 
     def _put_endpoint(self):
         raise UnsupportedEndpointError()
 
     def _delete_endpoint(self):
-        return f"{settings.API_URL}/molsets/{self.id}"
+        return f"{settings.API_URL}/datasets/qc/{self.id}"
 
     @classmethod
-    def from_rest(
-        cls, *, molecule_set_id: str, requests_class=requests
-    ) -> "MoleculeSet":
+    def from_rest(cls, *, qc_data_set_id: str, requests_class=requests) -> "QCDataSet":
         # noinspection PyTypeChecker
-        return super(MoleculeSet, cls).from_rest(
-            molecule_set_id=molecule_set_id, requests_class=requests_class
+        return super(QCDataSet, cls).from_rest(
+            qc_data_set_id=qc_data_set_id, requests_class=requests_class
         )
 
 
-class MoleculeSetCollection(BaseRESTCollection):
-    """A collection of sets of molecules."""
+class QCDataSetCollection(BaseRESTCollection):
+    """A collection of quantum chemical data sets."""
 
-    molecule_sets: List[MoleculeSet] = Field(
+    data_sets: List[QCDataSet] = Field(
         default_factory=list,
-        description="A collection of molecule sets.",
+        description="The stored collection of quantum chemical data sets.",
     )
 
-    @validator("molecule_sets")
-    def validate_entries(cls, value: List[MoleculeSet]) -> List[MoleculeSet]:
-        assert len(value) == len({molecule_set.id for molecule_set in value})
+    @validator("data_sets")
+    def validate_entries(cls, value: List[QCDataSet]) -> List[QCDataSet]:
+        assert len(value) == len({qc_data_set.id for qc_data_set in value})
         return value
 
     @classmethod
     def _get_endpoint(cls, **kwargs):
-        return f"{settings.API_URL}/molsets/"
+        return f"{settings.API_URL}/datasets/qc/"

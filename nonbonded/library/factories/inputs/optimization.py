@@ -4,14 +4,9 @@ from collections import defaultdict
 from typing import TYPE_CHECKING, List, Union
 
 from nonbonded.library.factories.inputs import InputFactory
-from nonbonded.library.models.datasets import (
-    DataSet,
-    DataSetCollection,
-    MoleculeSet,
-    MoleculeSetCollection,
-)
+from nonbonded.library.models.datasets import DataSet, DataSetCollection, QCDataSet
 from nonbonded.library.models.projects import Optimization
-from nonbonded.library.models.results import OptimizationResult
+from nonbonded.library.models.results import OptimizationResult, logger
 from nonbonded.library.models.targets import EvaluatorTarget, RechargeTarget
 from nonbonded.library.templates.forcebalance import ForceBalanceInput
 from nonbonded.library.utilities import temporary_cd
@@ -228,27 +223,27 @@ class OptimizationInputFactory(InputFactory):
     def _generate_recharge_target(cls, target: RechargeTarget):
         """Generates the input files for an evaluator target."""
 
-        training_sets: List[MoleculeSet] = [
-            MoleculeSet.from_rest(molecule_set_id=x) for x in target.molecule_set_ids
+        training_sets: List[QCDataSet] = [
+            QCDataSet.from_rest(qc_data_set_id=x) for x in target.qc_data_set_ids
         ]
-        training_set_collection = MoleculeSetCollection(molecule_sets=training_sets)
 
-        with open("training-set-collection.json", "w") as file:
-            file.write(training_set_collection.json())
-
-        training_molecules = [
-            smiles for training_set in training_sets for smiles in training_set.entries
+        # Save the list of QCA compute record ids. The user will need to
+        # reconstruct the full ESP and EF from these ids + the ESP settings
+        # using the openff-recharge CLI.
+        target_records = [
+            *{
+                record_id
+                for training_set in training_sets
+                for record_id in training_set.entries
+            }
         ]
 
         with open("training-set.json", "w") as file:
-            json.dump(training_molecules, file)
+            json.dump(target_records, file)
 
         # Save the ESP and conformer generation settings
         with open("esp-settings.json", "w") as file:
             file.write(target.esp_settings.json())
-
-        with open("conformer-settings.json", "w") as file:
-            file.write(target.conformer_settings.json())
 
     @classmethod
     def _generate_target(
@@ -332,6 +327,39 @@ class OptimizationInputFactory(InputFactory):
         # Create targets directory
         for target in model.targets:
             cls._generate_target(target, evaluator_port)
+
+        # Give a warning that currently the user will need to reconstruct the
+        # ESP and EF data used by any recharge targets manually.
+        recharge_targets = [
+            target for target in model.targets if isinstance(target, RechargeTarget)
+        ]
+
+        if len(recharge_targets) > 0:
+
+            directories = "\n".join(
+                [
+                    f'    {os.path.join("targets", target.id, "training-set.json")}'
+                    for target in recharge_targets
+                ]
+            )
+
+            logger.info(
+                f"The inputs to openff-recharge targets must currently be setup "
+                f"manually. Reconstructing the ESP and electric field from a set of "
+                f"QCArchive results can take some time, and is better handled "
+                f"separately by the user."
+                f"\n\n"
+                f"The setup be performed by running the"
+                f"\n\n"
+                f"    recharge reconstruct --record-ids training-set.json "
+                f"--esp-settings esp-settings.json"
+                f"\n\n"
+                f"command in the"
+                f"\n\n"
+                f"{directories}"
+                f"\n\n"
+                f"directories."
+            )
 
         # Generate an Evaluator server configuration if needed.
         if any(isinstance(target, EvaluatorTarget) for target in model.targets):

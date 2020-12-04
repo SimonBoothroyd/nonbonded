@@ -112,7 +112,7 @@ def test_analyze_recharge_target(tmpdir):
     with temporary_cd(str(tmpdir)):
 
         # Mock the target to analyze.
-        target = create_recharge_target("recharge-target-1", ["molecule-set-1"])
+        target = create_recharge_target("recharge-target-1", ["qc-data-set-1"])
         os.makedirs(os.path.join("targets", target.id))
 
         optimization = create_optimization(
@@ -152,7 +152,7 @@ def test_analyze_recharge_target(tmpdir):
 
 def test_analyze_recharge_target_missing(tmpdir):
 
-    target = create_recharge_target("recharge-target-1", ["molecule-set-1"])
+    target = create_recharge_target("recharge-target-1", ["qc-data-set-1"])
 
     optimization = create_optimization(
         "project-1", "study-1", "optimization-1", [target]
@@ -174,7 +174,7 @@ def test_optimization_analysis(monkeypatch, force_field):
         "optimization-1",
         [
             create_evaluator_target("evaluator-target-1", ["data-set-1"]),
-            create_recharge_target("recharge-target-1", ["molecule-set-1"]),
+            create_recharge_target("recharge-target-1", ["qc-data-set-1"]),
         ],
     )
     optimization.force_field = force_field
@@ -262,7 +262,7 @@ def test_optimization_analysis_n_iteration(monkeypatch, force_field):
         "optimization-1",
         [
             create_evaluator_target("evaluator-target-1", ["data-set-1"]),
-            create_recharge_target("recharge-target-1", ["molecule-set-1"]),
+            create_recharge_target("recharge-target-1", ["qc-data-set-1"]),
         ],
     )
     optimization.force_field = force_field
@@ -294,7 +294,7 @@ def test_optimization_analysis_missing_result(monkeypatch, force_field):
         "optimization-1",
         [
             create_evaluator_target("evaluator-target-1", ["data-set-1"]),
-            create_recharge_target("recharge-target-1", ["molecule-set-1"]),
+            create_recharge_target("recharge-target-1", ["qc-data-set-1"]),
         ],
     )
     optimization.force_field = force_field

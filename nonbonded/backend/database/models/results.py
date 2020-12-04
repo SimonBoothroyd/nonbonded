@@ -71,25 +71,23 @@ class DataSetResult(Base):
     statistic_entries = relationship("DataSetStatistic", cascade="all, delete-orphan")
 
 
-class MoleculeSetStatistic(Statistic):
+class QCDataSetStatistic(Statistic):
 
-    __tablename__ = "molecule_set_statistics"
+    __tablename__ = "qc_data_set_statistics"
 
     id = Column(Integer, ForeignKey("statistics.id"), primary_key=True)
-    parent_id = Column(Integer, ForeignKey("molecule_set_results.id"), nullable=False)
+    parent_id = Column(Integer, ForeignKey("qc_data_set_results.id"), nullable=False)
 
-    __mapper_args__ = {"polymorphic_identity": "molecule-set"}
+    __mapper_args__ = {"polymorphic_identity": "qc-data-set"}
 
 
-class MoleculeSetResult(Base):
+class QCDataSetResult(Base):
 
-    __tablename__ = "molecule_set_results"
+    __tablename__ = "qc_data_set_results"
 
     id = Column(Integer, primary_key=True, index=True)
 
-    statistic_entries = relationship(
-        "MoleculeSetStatistic", cascade="all, delete-orphan"
-    )
+    statistic_entries = relationship("QCDataSetStatistic", cascade="all, delete-orphan")
 
 
 class BenchmarkResult(Base):
@@ -144,9 +142,9 @@ class RechargeTargetResult(TargetResult):
 
     id = Column(Integer, ForeignKey("target_results.id"), primary_key=True)
 
-    molecule_set_result_id = Column(Integer, ForeignKey("molecule_set_results.id"))
-    molecule_set_result = relationship(
-        "MoleculeSetResult",
+    qc_data_set_result_id = Column(Integer, ForeignKey("qc_data_set_results.id"))
+    qc_data_set_result = relationship(
+        "QCDataSetResult",
         uselist=False,
         cascade="all, delete-orphan",
         single_parent=True,

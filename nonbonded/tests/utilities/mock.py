@@ -1,5 +1,5 @@
 from nonbonded.library.config import settings
-from nonbonded.library.models.datasets import DataSet, DataSetCollection, MoleculeSet
+from nonbonded.library.models.datasets import DataSet, DataSetCollection, QCDataSet
 from nonbonded.library.models.projects import (
     Benchmark,
     Optimization,
@@ -19,18 +19,18 @@ def mock_get_data_set(requests_mock, data_set: DataSet):
     )
 
 
-def mock_get_molecule_set(requests_mock, molecule_set: MoleculeSet):
+def mock_get_qc_data_set(requests_mock, qc_data_set: QCDataSet):
     """Mock the get data sets endpoint."""
     requests_mock.get(
-        MoleculeSet._get_endpoint(molecule_set_id=molecule_set.id),
-        text=molecule_set.json(),
+        QCDataSet._get_endpoint(qc_data_set_id=qc_data_set.id),
+        text=qc_data_set.json(),
     )
 
 
 def mock_get_data_sets(requests_mock, data_sets: DataSetCollection):
     """Mock the get data sets endpoint."""
     requests_mock.get(
-        f"{settings.API_URL}/datasets/",
+        f"{settings.API_URL}/datasets/phys-prop/",
         text=data_sets.json(),
     )
 

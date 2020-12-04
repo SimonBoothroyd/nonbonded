@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy.orm import Session
 from typing_extensions import Protocol
 
-from nonbonded.backend.database.crud.datasets import DataSetCRUD, MoleculeSetCRUD
+from nonbonded.backend.database.crud.datasets import DataSetCRUD, QCDataSetCRUD
 from nonbonded.backend.database.crud.projects import ProjectCRUD
 from nonbonded.backend.database.utilities.exceptions import UnableToDeleteError
 from nonbonded.tests.utilities.comparison import compare_pydantic_models
@@ -17,9 +17,9 @@ from nonbonded.tests.utilities.factory import (
     create_data_set,
     create_evaluator_target,
     create_force_field,
-    create_molecule_set,
     create_optimization,
     create_project,
+    create_qc_data_set,
     create_recharge_target,
     create_study,
 )
@@ -219,22 +219,22 @@ def create_dependencies(db: Session, dependencies: List[str]):
 
     project = None
     data_set_ids = []
-    molecule_set_ids = []
+    qc_data_set_ids = []
 
     if "data-set" in dependencies:
         data_set_ids.append("data-set-1")
-    if "molecule-set" in dependencies:
-        molecule_set_ids.append("molecule-set-1")
+    if "qc-data-set" in dependencies:
+        qc_data_set_ids.append("qc-data-set-1")
 
     for data_set_id in data_set_ids:
         data_set = create_data_set(data_set_id)
         db_data_set = DataSetCRUD.create(db, data_set)
         db.add(db_data_set)
 
-    for molecule_set_id in molecule_set_ids:
-        molecule_set = create_molecule_set(molecule_set_id)
-        db_molecule_set = MoleculeSetCRUD.create(db, molecule_set)
-        db.add(db_molecule_set)
+    for qc_data_set_id in qc_data_set_ids:
+        qc_data_set = create_qc_data_set(qc_data_set_id)
+        db_qc_data_set = QCDataSetCRUD.create(db, qc_data_set)
+        db.add(db_qc_data_set)
 
     db.commit()
 
@@ -265,7 +265,7 @@ def create_dependencies(db: Session, dependencies: List[str]):
             )
         if "recharge-target" in dependencies:
             targets.append(
-                create_recharge_target("recharge-target-1", ["molecule-set-1"])
+                create_recharge_target("recharge-target-1", ["qc-data-set-1"])
             )
 
         optimization = create_optimization(

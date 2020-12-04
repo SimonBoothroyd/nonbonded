@@ -20,11 +20,11 @@ from nonbonded.backend.database.utilities.exceptions import (
     BenchmarkExistsError,
     BenchmarkNotFoundError,
     DataSetNotFoundError,
-    MoleculeSetNotFoundError,
     OptimizationExistsError,
     OptimizationNotFoundError,
     ProjectExistsError,
     ProjectNotFoundError,
+    QCDataSetNotFoundError,
     StudyExistsError,
     StudyNotFoundError,
     UnableToCreateError,
@@ -200,7 +200,7 @@ def optimization_model_perturbations():
         "evaluator-target-1", ["data-set-999"]
     )
     invalid_recharge_target = create_recharge_target(
-        "recharge-target-1", ["molecule-set-999"]
+        "recharge-target-1", ["qc-data-set-999"]
     )
 
     return [
@@ -282,7 +282,7 @@ def optimization_model_perturbations():
         (
             {
                 "targets": [
-                    create_recharge_target("recharge-target-1", ["molecule-set-1"])
+                    create_recharge_target("recharge-target-1", ["qc-data-set-1"])
                 ]
             },
             lambda db: [
@@ -297,7 +297,7 @@ def optimization_model_perturbations():
                 "targets": [
                     create_evaluator_target("evaluator-target-1", ["data-set-1"]),
                     create_evaluator_target("evaluator-target-2", ["data-set-1"]),
-                    create_recharge_target("recharge-target-1", ["molecule-set-1"]),
+                    create_recharge_target("recharge-target-1", ["qc-data-set-1"]),
                 ]
             },
             lambda db: [
@@ -310,8 +310,8 @@ def optimization_model_perturbations():
             {
                 "targets": [
                     create_evaluator_target("evaluator-target-1", ["data-set-1"]),
-                    create_recharge_target("recharge-target-1", ["molecule-set-1"]),
-                    create_recharge_target("recharge-target-2", ["molecule-set-1"]),
+                    create_recharge_target("recharge-target-1", ["qc-data-set-1"]),
+                    create_recharge_target("recharge-target-2", ["qc-data-set-1"]),
                 ]
             },
             lambda db: [
@@ -329,7 +329,7 @@ def optimization_model_perturbations():
         (
             {"targets": [invalid_recharge_target]},
             lambda db: [],
-            pytest.raises(MoleculeSetNotFoundError),
+            pytest.raises(QCDataSetNotFoundError),
         ),
     ]
 
@@ -515,7 +515,7 @@ class TestOptimizationCRUD(BaseCRUDTest):
 
     @classmethod
     def dependencies(cls):
-        return ["project", "study", "data-set", "molecule-set"]
+        return ["project", "study", "data-set", "qc-data-set"]
 
     @classmethod
     def create_model(cls, include_children=False, index=1):
@@ -526,7 +526,7 @@ class TestOptimizationCRUD(BaseCRUDTest):
             f"optimization-{index}",
             targets=[
                 create_evaluator_target("evaluator-target-1", ["data-set-1"]),
-                create_recharge_target("recharge-target-1", ["molecule-set-1"]),
+                create_recharge_target("recharge-target-1", ["qc-data-set-1"]),
             ],
         )
 
@@ -564,7 +564,7 @@ class TestOptimizationCRUD(BaseCRUDTest):
 
         # These should not be deleted.
         assert db.query(models.DataSet.id).count() == 1
-        assert db.query(models.MoleculeSet.id).count() == 1
+        assert db.query(models.QCDataSet.id).count() == 1
 
     @pytest.mark.parametrize(
         "perturbation, database_checks, expected_raise",
@@ -580,7 +580,7 @@ class TestOptimizationCRUD(BaseCRUDTest):
         [
             (["study"], StudyNotFoundError),
             (["data-set"], DataSetNotFoundError),
-            (["molecule-set"], MoleculeSetNotFoundError),
+            (["qc-data-set"], QCDataSetNotFoundError),
         ],
     )
     def test_missing_dependencies(

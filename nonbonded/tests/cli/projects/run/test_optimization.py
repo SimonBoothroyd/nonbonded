@@ -33,7 +33,7 @@ from nonbonded.tests.utilities.factory import (
                 "project-1",
                 "study-1",
                 "optimization-1",
-                [create_recharge_target("recharge-target", ["molecule-set-1"])],
+                [create_recharge_target("recharge-target", ["qc-data-set-1"])],
             ),
             None,
             does_not_raise(),
@@ -116,8 +116,8 @@ def test_prepare_restart_finished(caplog):
         "study-1",
         "optimization-1",
         [
-            create_recharge_target("recharge-target-1", ["molecule-set-1"]),
-            create_recharge_target("recharge-target-2", ["molecule-set-1"]),
+            create_recharge_target("recharge-target-1", ["qc-data-set-1"]),
+            create_recharge_target("recharge-target-2", ["qc-data-set-1"]),
         ],
     )
 
@@ -162,8 +162,8 @@ def test_prepare_restart_unfinished(partial_restart, caplog):
         "study-1",
         "optimization-1",
         [
-            create_recharge_target("recharge-target-1", ["molecule-set-1"]),
-            create_recharge_target("recharge-target-2", ["molecule-set-1"]),
+            create_recharge_target("recharge-target-1", ["qc-data-set-1"]),
+            create_recharge_target("recharge-target-2", ["qc-data-set-1"]),
         ],
     )
 
@@ -241,7 +241,7 @@ def test_run_command(restart: bool, create_save: bool, runner, monkeypatch):
         "project-1",
         "study-1",
         "optimization-1",
-        [create_recharge_target("recharge-target-1", ["molecule-set-1"])],
+        [create_recharge_target("recharge-target-1", ["qc-data-set-1"])],
     )
 
     # Save a copy of the result model.
