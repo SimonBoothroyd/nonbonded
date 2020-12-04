@@ -189,8 +189,8 @@ class TestOptimizationInputFactory:
 
             assert training_entries == qc_data_set.entries
 
-            with open("esp-settings.json") as file:
-                assert file.read() == target.esp_settings.json()
+            with open("grid-settings.json") as file:
+                assert file.read() == target.grid_settings.json()
 
     @pytest.mark.parametrize(
         "target",

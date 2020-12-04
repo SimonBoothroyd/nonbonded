@@ -1,8 +1,7 @@
 import abc
 from typing import TYPE_CHECKING, Dict, Optional, Union
 
-from openff.recharge.conformers import ConformerSettings
-from openff.recharge.esp import ESPSettings
+from openff.recharge.grids import GridSettings
 from pydantic import Field, conlist, root_validator
 from typing_extensions import Literal
 
@@ -110,15 +109,10 @@ class RechargeTarget(OptimizationTarget):
         "optimization target.",
     )
 
-    conformer_settings: "ConformerSettings" = Field(
+    grid_settings: GridSettings = Field(
         ...,
-        description="The settings to use when generating conformers for each molecule "
-        "in the training QC data sets.",
-    )
-    esp_settings: "ESPSettings" = Field(
-        ...,
-        description="The settings to use when generating the electrostatic data "
-        "for each molecule in the training QC data sets.",
+        description="The settings which define the grid to compute the ESP and "
+        "electric field on for each entry in each QC data set (``qc_data_set_ids``).",
     )
 
     property: Literal["esp", "electric-field"] = Field(

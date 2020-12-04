@@ -242,8 +242,8 @@ class OptimizationInputFactory(InputFactory):
             json.dump(target_records, file)
 
         # Save the ESP and conformer generation settings
-        with open("esp-settings.json", "w") as file:
-            file.write(target.esp_settings.json())
+        with open("grid-settings.json", "w") as file:
+            file.write(target.grid_settings.json())
 
     @classmethod
     def _generate_target(
@@ -352,7 +352,7 @@ class OptimizationInputFactory(InputFactory):
                 f"The setup be performed by running the"
                 f"\n\n"
                 f"    recharge reconstruct --record-ids training-set.json "
-                f"--esp-settings esp-settings.json"
+                f"--grid-settings grid-settings.json"
                 f"\n\n"
                 f"command in the"
                 f"\n\n"
