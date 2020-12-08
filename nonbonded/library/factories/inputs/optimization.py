@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, List, Union
 
 from nonbonded.library.factories.inputs import InputFactory
 from nonbonded.library.models.datasets import DataSet, DataSetCollection, QCDataSet
+from nonbonded.library.models.forcefield import ForceField
 from nonbonded.library.models.projects import Optimization
 from nonbonded.library.models.results import OptimizationResult, logger
 from nonbonded.library.models.targets import EvaluatorTarget, RechargeTarget
@@ -23,6 +24,17 @@ class OptimizationInputFactory(InputFactory):
     """
 
     @classmethod
+    def _retrieve_force_field(cls, optimization: Optimization) -> ForceField:
+
+        optimization_result: OptimizationResult = OptimizationResult.from_rest(
+            project_id=optimization.project_id,
+            study_id=optimization.study_id,
+            model_id=optimization.optimization_id,
+        )
+
+        return optimization_result.refit_force_field
+
+    @classmethod
     def _prepare_force_field(cls, optimization: Optimization):
         """Adds the required ForceBalance cosmetic attributes and stores the force field
         to refit it in the correct ``forcefield`` directory.
@@ -31,7 +43,11 @@ class OptimizationInputFactory(InputFactory):
         force_field_directory = "forcefield"
         os.makedirs(force_field_directory, exist_ok=True)
 
-        off_force_field = optimization.force_field.to_openff()
+        off_force_field = (
+            optimization.force_field
+            if optimization.force_field is not None
+            else cls._retrieve_force_field(optimization)
+        ).to_openff()
 
         # Add the required cosmetic attributes to the force field.
         parameters_to_train = defaultdict(lambda: defaultdict(list))
