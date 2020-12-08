@@ -303,6 +303,11 @@ class SubStudyCRUD(abc.ABC):
             name=db_sub_study.name,
             description=db_sub_study.description,
             force_field=db_sub_study.force_field,
+            optimization_id=(
+                None
+                if db_sub_study.optimization is None
+                else db_sub_study.optimization.identifier
+            ),
             analysis_environments=[
                 ChemicalEnvironment(x.id) for x in db_sub_study.analysis_environments
             ],
@@ -666,16 +671,7 @@ class BenchmarkCRUD(SubStudyCRUD):
         """Returns the kwargs to create a new model with."""
 
         model_kwargs = super(BenchmarkCRUD, cls)._model_kwargs(db_sub_study)
-        model_kwargs.update(
-            dict(
-                test_set_ids=[x.id for x in db_sub_study.test_sets],
-                optimization_id=(
-                    None
-                    if db_sub_study.optimization is None
-                    else db_sub_study.optimization.identifier
-                ),
-            )
-        )
+        model_kwargs.update(dict(test_set_ids=[x.id for x in db_sub_study.test_sets]))
 
         return model_kwargs
 
