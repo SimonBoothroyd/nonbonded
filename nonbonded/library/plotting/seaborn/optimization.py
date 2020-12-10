@@ -291,8 +291,12 @@ def plot_objective_per_iteration(
 
     plot_data = pandas.DataFrame(data_rows)
 
-    hue = "Optimization" if len(plot_data["Optimization"].unique()) > 1 else None
+    hue = "Optimization"
     style = "Target" if len(plot_data["Target"].unique()) > 1 else None
+
+    colors = seaborn.color_palette(
+        "colorblind", n_colors=len(plot_data["Optimization"].unique())
+    )
 
     plot = seaborn.relplot(
         data=plot_data,
@@ -302,10 +306,22 @@ def plot_objective_per_iteration(
         style=style,
         height=4.0,
         legend="full" if show_legend else False,
+        palette=colors,
     )
-    seaborn.lineplot(
-        data=plot_data, x="Iteration", y="Objective Function", hue=hue, legend=False
-    )
+    for target in plot_data["Target"].unique():
+
+        target_data = plot_data[plot_data["Target"] == target]
+
+        seaborn.lineplot(
+            data=target_data,
+            x="Iteration",
+            y="Objective Function",
+            hue=hue,
+            legend=False,
+            estimator=None,
+            ci=None,
+            palette=colors,
+        )
 
     plot.savefig(os.path.join(output_directory, f"objective-function.{file_type}"))
     pyplot.close(plot.fig)
@@ -398,7 +414,13 @@ def plot_target_rmse(
 
         # Extract a data frame containing only the data type which should
         # be included in this figure.
-        type_plot_data = plot_data[plot_data["Data Type"] == data_type]
+        type_plot_data = plot_data[
+            (
+                plot_data["Data Type"] == data_type
+                if data_type is not None
+                else plot_data["Data Type"].isnull()
+            )
+        ]
 
         categories = sorted(
             type_plot_data["Category"].unique(), key=sort_categories_key, reverse=True
