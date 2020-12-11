@@ -49,6 +49,11 @@ class TestDataSetEndpoints(BaseTestEndpoints):
         assert rest_data_collection is not None
         assert len(rest_data_collection.data_sets) == 1
 
+        assert rest_data_collection.metadata is not None
+        assert rest_data_collection.metadata.skip == 0
+        assert rest_data_collection.metadata.limit == 100
+        assert rest_data_collection.metadata.total_records == 1
+
         compare_pydantic_models(data_set, rest_data_collection.data_sets[0])
 
 
@@ -84,5 +89,10 @@ class TestQCDataSetEndpoints(BaseTestEndpoints):
 
         assert rest_qc_data_set_collection is not None
         assert len(rest_qc_data_set_collection.data_sets) == 1
+
+        assert rest_qc_data_set_collection.metadata is not None
+        assert rest_qc_data_set_collection.metadata.skip == 0
+        assert rest_qc_data_set_collection.metadata.limit == 100
+        assert rest_qc_data_set_collection.metadata.total_records == 1
 
         compare_pydantic_models(qc_data_set, rest_qc_data_set_collection.data_sets[0])

@@ -1,13 +1,26 @@
 import abc
 import logging
-from typing import Callable, Type, TypeVar
+from typing import Callable, Optional, Type, TypeVar
 
 import requests
+from pydantic import Field
 from pydantic.main import BaseModel
 
 from nonbonded.library.config import settings
 
 T = TypeVar("T", bound="BaseREST")
+
+
+class CollectionMeta(BaseModel):
+    """A data model which stores metadata about a retrieved collection, such as
+    pagination information."""
+
+    skip: int = Field(..., description="The number of skipped records.")
+    limit: int = Field(..., description="The maximum number of records returned.")
+
+    total_records: int = Field(
+        ..., description="The total number of records in the collection"
+    )
 
 
 class BaseORM(BaseModel, abc.ABC):
@@ -131,6 +144,13 @@ class BaseREST(BaseORM, abc.ABC):
 
 
 class BaseRESTCollection(BaseORM, abc.ABC):
+
+    metadata: Optional[CollectionMeta] = Field(
+        None,
+        description="Metadata associated with a collection retrieved from a RESTful "
+        "API such as pagination information.",
+    )
+
     @classmethod
     @abc.abstractmethod
     def _get_endpoint(cls, **kwargs):

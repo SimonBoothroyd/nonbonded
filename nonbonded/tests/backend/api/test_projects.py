@@ -59,6 +59,11 @@ class TestProjectEndpoints(BaseTestEndpoints):
         project = commit_project(db)
         rest_collection = ProjectCollection.from_rest(requests_class=rest_client)
 
+        assert rest_collection.metadata is not None
+        assert rest_collection.metadata.skip == 0
+        assert rest_collection.metadata.limit == 100
+        assert rest_collection.metadata.total_records == 1
+
         assert rest_collection is not None
         assert len(rest_collection.projects) == 1
 

@@ -16,6 +16,7 @@ from nonbonded.backend.database.crud.results import (
     BenchmarkResultCRUD,
     OptimizationResultCRUD,
 )
+from nonbonded.library.models.models import CollectionMeta
 from nonbonded.library.models.projects import (
     Benchmark,
     BenchmarkCollection,
@@ -44,10 +45,16 @@ class ProjectEndpoints(BaseCRUDEndpoint):
         children: bool = True,
         db: Session = Depends(depends.get_db),
     ):
-        db_projects = ProjectCRUD.read_all(
-            db, skip=skip, limit=limit, include_children=children
+        project_collection = ProjectCollection(
+            projects=ProjectCRUD.read_all(
+                db, skip=skip, limit=limit, include_children=children
+            )
         )
-        return ProjectCollection(projects=db_projects)
+        project_collection.metadata = CollectionMeta(
+            skip=skip, limit=limit, total_records=ProjectCRUD.n_total(db)
+        )
+
+        return project_collection
 
     @staticmethod
     @router.get("/{project_id}", response_model=Project)

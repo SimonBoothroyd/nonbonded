@@ -14,6 +14,7 @@ from nonbonded.library.models.datasets import (
     QCDataSet,
     QCDataSetCollection,
 )
+from nonbonded.library.models.models import CollectionMeta
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -32,10 +33,17 @@ class DataSetEndpoints(BaseCRUDEndpoint):
         limit: int = 100,
         children: bool = True,
     ):
-        db_data_sets = DataSetCRUD.read_all(
-            db, skip=skip, limit=limit, include_children=children
+
+        data_set_collection = DataSetCollection(
+            data_sets=DataSetCRUD.read_all(
+                db, skip=skip, limit=limit, include_children=children
+            )
         )
-        return {"data_sets": db_data_sets}
+        data_set_collection.metadata = CollectionMeta(
+            skip=skip, limit=limit, total_records=DataSetCRUD.n_total(db)
+        )
+
+        return data_set_collection
 
     @staticmethod
     @router.get("/phys-prop/{data_set_id}")
@@ -74,10 +82,17 @@ class QCDataSetEndpoints(BaseCRUDEndpoint):
         limit: int = 100,
         children: bool = True,
     ):
-        db_qc_data_sets = QCDataSetCRUD.read_all(
-            db, skip=skip, limit=limit, include_children=children
+
+        data_set_collection = QCDataSetCollection(
+            data_sets=QCDataSetCRUD.read_all(
+                db, skip=skip, limit=limit, include_children=children
+            )
         )
-        return {"data_sets": db_qc_data_sets}
+        data_set_collection.metadata = CollectionMeta(
+            skip=skip, limit=limit, total_records=QCDataSetCRUD.n_total(db)
+        )
+
+        return data_set_collection
 
     @staticmethod
     @router.get("/qc/{qc_data_set_id}")
