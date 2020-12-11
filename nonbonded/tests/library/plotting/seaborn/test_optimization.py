@@ -86,7 +86,7 @@ def test_plot_rmse_change(
     optimizations_and_results, file_type: Literal["png", "pdf"], tmpdir
 ):
 
-    _, results = optimizations_and_results
+    optimizations, results = optimizations_and_results
 
     optimization_result = results[0].copy(deep=True)
     optimization_result.target_results[1] = {}
@@ -103,22 +103,25 @@ def test_plot_rmse_change(
 
         optimization_result.target_results[1][target_id] = target_result
 
-    plot_rmse_change(optimization_result, tmpdir, file_type)
+    plot_rmse_change(optimizations[0], optimization_result, tmpdir, file_type)
 
     assert os.path.isfile(
         os.path.join(tmpdir, f"evaluator-target-1-density-2-rmse.{file_type}")
     )
-    assert os.path.isfile(os.path.join(tmpdir, f"recharge-target-1-rmse.{file_type}"))
+    assert os.path.isfile(
+        os.path.join(tmpdir, f"recharge-target-1-esp-rmse.{file_type}")
+    )
 
 
 def test_plot_rmse_change_missing_iteration(optimizations_and_results, tmpdir):
 
-    _, results = optimizations_and_results
+    optimizations, results = optimizations_and_results
 
     optimization_result = results[0].copy(deep=True)
+    del optimization_result.target_results[1]
 
     with pytest.raises(KeyError) as error_info:
-        plot_rmse_change(optimization_result, tmpdir, "png")
+        plot_rmse_change(optimizations[0], optimization_result, tmpdir, "png")
 
     assert "at least two iterations to plot the change in RMSE values" in str(
         error_info.value
@@ -127,6 +130,6 @@ def test_plot_rmse_change_missing_iteration(optimizations_and_results, tmpdir):
     optimization_result.target_results.pop(0)
 
     with pytest.raises(KeyError) as error_info:
-        plot_rmse_change(optimization_result, tmpdir, "png")
+        plot_rmse_change(optimizations[0], optimization_result, tmpdir, "png")
 
     assert "must contain the statistics for iteration 0" in str(error_info.value)

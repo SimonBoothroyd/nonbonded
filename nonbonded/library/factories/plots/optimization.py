@@ -63,4 +63,4 @@ class OptimizationPlotFactory(PlotFactory):
 
             os.makedirs(optimization.id, exist_ok=True)
 
-            plot_rmse_change(result, optimization.id, file_type)
+            plot_rmse_change(optimization, result, optimization.id, file_type)

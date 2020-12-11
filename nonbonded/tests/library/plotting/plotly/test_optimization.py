@@ -4,6 +4,7 @@ from nonbonded.library.plotting.plotly.optimization import (
     plot_target_rmse,
 )
 from nonbonded.library.statistics.statistics import StatisticType
+from nonbonded.tests.utilities.factory import create_recharge_target
 
 
 def test_plot_objective_per_iteration(optimizations_and_results, tmpdir):
@@ -43,10 +44,14 @@ def test_plot_target_rmse(tmpdir):
         ],
     )
 
-    figures = plot_target_rmse([initial_result, final_result], ["Initial", "Final"])
+    figures = plot_target_rmse(
+        [create_recharge_target("target-1", ["data-set-1"])] * 2,
+        [initial_result, final_result],
+        ["Initial", "Final"],
+    )
 
-    assert None in figures
-    figure = figures[None]
+    assert "esp" in figures
+    figure = figures["esp"]
 
     assert len(figure.subplots) == 1
     assert len(figure.subplots[0].traces) == 2
