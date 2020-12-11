@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -14,11 +14,16 @@ from nonbonded.backend.database.crud.results import (
     OptimizationResultCRUD,
 )
 from nonbonded.library.models.plotly import Figure
+from nonbonded.library.models.projects import Benchmark, Optimization
+from nonbonded.library.models.results import BenchmarkResult, OptimizationResult
 from nonbonded.library.plotting.plotly.benchmark import (
     plot_overall_statistics,
     plot_scatter_results,
 )
-from nonbonded.library.plotting.plotly.optimization import plot_objective_per_iteration
+from nonbonded.library.plotting.plotly.optimization import (
+    plot_objective_per_iteration,
+    plot_target_rmse,
+)
 from nonbonded.library.statistics.statistics import StatisticType
 
 logger = logging.getLogger(__name__)
@@ -34,58 +39,115 @@ class SubStudyId(BaseModel):
 
 class PlotlyEndpoints:
     @staticmethod
-    @router.post("/optimizations/objective")
-    async def post_objective_function(
-        sub_study_ids: List[SubStudyId],
-        db: Session = Depends(depends.get_db),
-    ) -> Figure:
+    def _get_optimization_results(
+        db: Session, project_id: str, study_id: str
+    ) -> Tuple[List[Optimization], List[OptimizationResult]]:
 
-        optimizations = [
-            OptimizationCRUD.read(db, **sub_study_id.dict())
-            for sub_study_id in sub_study_ids
-        ]
+        optimizations = OptimizationCRUD.read_all(
+            db, project_id=project_id, study_id=study_id
+        )
         results = [
-            OptimizationResultCRUD.read(db, **sub_study_id.dict())
-            for sub_study_id in sub_study_ids
+            OptimizationResultCRUD.read(
+                db,
+                project_id=project_id,
+                study_id=study_id,
+                sub_study_id=optimization.id,
+            )
+            for optimization in optimizations
         ]
 
-        return plot_objective_per_iteration(optimizations, results)
+        return optimizations, results
 
     @staticmethod
-    @router.post("/benchmarks/statistics/{statistic_type}")
-    async def post_overall_statistics(
-        sub_study_ids: List[SubStudyId],
-        statistic_type: Literal["rmse"],
-        db: Session = Depends(depends.get_db),
-    ) -> Figure:
-        benchmarks = [
-            BenchmarkCRUD.read(db, **sub_study_id.dict())
-            for sub_study_id in sub_study_ids
-        ]
+    def _get_benchmark_results(
+        db: Session, project_id: str, study_id: str
+    ) -> Tuple[List[Benchmark], List[BenchmarkResult]]:
+
+        benchmarks = BenchmarkCRUD.read_all(
+            db, project_id=project_id, study_id=study_id
+        )
         results = [
-            BenchmarkResultCRUD.read(db, **sub_study_id.dict())
-            for sub_study_id in sub_study_ids
+            BenchmarkResultCRUD.read(
+                db,
+                project_id=project_id,
+                study_id=study_id,
+                sub_study_id=benchmark.id,
+            )
+            for benchmark in benchmarks
         ]
 
-        return plot_overall_statistics(
-            benchmarks, results, StatisticType[statistic_type.upper()]
+        return benchmarks, results
+
+    @staticmethod
+    @router.get("/optimizations/objective")
+    async def get_optimization_objective_function(
+        projectid: str,
+        studyid: str,
+        db: Session = Depends(depends.get_db),
+    ) -> Figure:
+
+        return plot_objective_per_iteration(
+            *PlotlyEndpoints._get_optimization_results(db, projectid, studyid)
         )
 
     @staticmethod
-    @router.post("/benchmarks/scatter")
-    async def post_scatter_results(
-        sub_study_ids: List[SubStudyId],
+    @router.get("/optimizations/rmse")
+    async def get_optimization_rmse(
+        projectid: str,
+        studyid: str,
+        db: Session = Depends(depends.get_db),
+    ) -> Dict[str, Dict[str, Dict[str, Figure]]]:
+
+        optimizations, results = PlotlyEndpoints._get_optimization_results(
+            db, projectid, studyid
+        )
+
+        figures = {}
+
+        for optimization, result in zip(optimizations, results):
+
+            if result is None or len(result.target_results) == 0:
+                continue
+
+            targets_by_id = {target.id: target for target in optimization.targets}
+            final_iteration = sorted(result.target_results)[-1]
+
+            figures[optimization.id] = {
+                target_id: plot_target_rmse(
+                    [targets_by_id[target_id], targets_by_id[target_id]],
+                    [initial_result, result.target_results[final_iteration][target_id]],
+                    ["Initial", "Final"],
+                )
+                for target_id, initial_result in result.target_results[0].items()
+            }
+
+        return figures
+
+    @staticmethod
+    @router.get("/benchmarks/statistics/{statistic_type}")
+    async def get_overall_benchmark_statistics(
+        projectid: str,
+        studyid: str,
+        statistic_type: Literal["rmse"],
+        db: Session = Depends(depends.get_db),
+    ) -> Figure:
+
+        return plot_overall_statistics(
+            *PlotlyEndpoints._get_benchmark_results(db, projectid, studyid),
+            StatisticType[statistic_type.upper()]
+        )
+
+    @staticmethod
+    @router.get("/benchmarks/scatter")
+    async def get_benchmark_scatter_results(
+        projectid: str,
+        studyid: str,
         db: Session = Depends(depends.get_db),
     ) -> Dict[str, Figure]:
 
-        benchmarks = [
-            BenchmarkCRUD.read(db, **sub_study_id.dict())
-            for sub_study_id in sub_study_ids
-        ]
-        results = [
-            BenchmarkResultCRUD.read(db, **sub_study_id.dict())
-            for sub_study_id in sub_study_ids
-        ]
+        benchmarks, results = PlotlyEndpoints._get_benchmark_results(
+            db, projectid, studyid
+        )
 
         data_set_ids = {
             test_set_id
