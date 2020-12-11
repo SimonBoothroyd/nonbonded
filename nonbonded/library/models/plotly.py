@@ -91,7 +91,7 @@ class Trace(BaseModel, abc.ABC):
     name: str = Field(..., description="The name of the trace.")
 
     x: List[Union[float, str]] = Field(..., description="The x-values of the data.")
-    y: List[float] = Field(..., description="The y-values of the data.")
+    y: List[Union[float, str]] = Field(..., description="The y-values of the data.")
 
     error_x: Optional[ErrorBar] = Field(
         None, description="The x-error bars associated with the data."
@@ -100,7 +100,7 @@ class Trace(BaseModel, abc.ABC):
         None, description="The y-error bars associated with the data."
     )
 
-    marker: Optional[MarkerStyle] = Field(None, description="The marker style.")
+    marker: MarkerStyle = Field(None, description="The marker style.")
     # line: Optional[LineStyle] = Field(None, description="The line style.")
 
     legendgroup: str = Field(

@@ -402,7 +402,22 @@ def create_optimization_result(
                     )
                     for recharge_target_id in recharge_target_ids
                 },
-            }
+            },
+            1: {
+                **{
+                    evaluator_target_id: EvaluatorTargetResult(
+                        objective_function=1.0,
+                        statistic_entries=[create_data_set_statistic()],
+                    )
+                    for evaluator_target_id in evaluator_target_ids
+                },
+                **{
+                    recharge_target_id: RechargeTargetResult(
+                        objective_function=0.5, statistic_entries=[create_statistic()]
+                    )
+                    for recharge_target_id in recharge_target_ids
+                },
+            },
         },
         refit_force_field=create_force_field("refit"),
     )

@@ -8,16 +8,13 @@ from typing_extensions import Literal
 
 from nonbonded.library.models.forcefield import Parameter
 from nonbonded.library.models.projects import Optimization
-from nonbonded.library.models.results import (
-    DataSetStatistic,
-    OptimizationResult,
-    TargetResultType,
-)
-from nonbonded.library.plotting.seaborn.utilities import (
-    plot_categories,
+from nonbonded.library.models.results import OptimizationResult, TargetResultType
+from nonbonded.library.models.targets import OptimizationTarget
+from nonbonded.library.plotting.seaborn.utilities import plot_categories
+from nonbonded.library.plotting.utilities import (
+    combine_target_rmse,
     sort_categories_key,
 )
-from nonbonded.library.statistics.statistics import StatisticType
 from nonbonded.library.utilities.string import camel_to_kebab_case
 
 if TYPE_CHECKING:
@@ -328,6 +325,7 @@ def plot_objective_per_iteration(
 
 
 def plot_target_rmse(
+    targets: List[OptimizationTarget],
     target_results: List[TargetResultType],
     target_labels: List[str],
     file_prefix: str,
@@ -339,6 +337,8 @@ def plot_target_rmse(
 
     Parameters
     ----------
+    targets
+        The targets which the results were collected for.
     target_results
         The target results to plot.
     target_labels
@@ -350,50 +350,10 @@ def plot_target_rmse(
     file_type
         The file type to use for the plots.
     """
-    import pandas
     import seaborn
     from matplotlib import pyplot
 
-    def statistic_to_key(statistic):
-
-        return (
-            f"{statistic.property_type}-{statistic.n_components}"
-            if isinstance(statistic, DataSetStatistic)
-            else None
-        )
-
-    # Gather the statistics
-    statistics_per_label = {
-        label: {
-            (statistic_to_key(statistic), statistic.category): statistic
-            for statistic in target_result.statistic_entries
-            if statistic.category is not None
-            and statistic.statistic_type == StatisticType.RMSE
-        }
-        for label, target_result in zip(target_labels, target_results)
-    }
-
-    # Reshape the statistics into a uniform data frame.
-    data_rows = []
-
-    for label, statistics in statistics_per_label.items():
-
-        for statistic_key, statistic in statistics.items():
-
-            data_type, category = statistic_key
-
-            data_row = {
-                "Label": label,
-                "Data Type": data_type,
-                "Value": statistic.value,
-                "Lower CI": numpy.abs(statistic.lower_95_ci - statistic.value),
-                "Upper CI": numpy.abs(statistic.upper_95_ci - statistic.value),
-                "Category": category,
-            }
-
-            data_rows.append(data_row)
-
-    plot_data = pandas.DataFrame(data_rows)
+    plot_data = combine_target_rmse(targets, target_results, target_labels)
 
     if len(plot_data) == 0:
         return
@@ -481,6 +441,7 @@ def plot_target_rmse(
 
 
 def plot_rmse_change(
+    optimization: Optimization,
     optimization_result: OptimizationResult,
     output_directory: str,
     file_type: Literal["png", "pdf"] = "png",
@@ -490,6 +451,8 @@ def plot_rmse_change(
 
     Parameters
     ----------
+    optimization
+        The optimization which the results were collected for.
     optimization_result
         The analyzed outputs of the optimization.
     output_directory
@@ -511,6 +474,8 @@ def plot_rmse_change(
             "two iterations to plot the change in RMSE values."
         )
 
+    targets_by_id = {target.id: target for target in optimization.targets}
+
     final_iteration = sorted(optimization_result.target_results)[-1]
 
     for target_id, initial_result in optimization_result.target_results[0].items():
@@ -518,6 +483,7 @@ def plot_rmse_change(
         final_result = optimization_result.target_results[final_iteration][target_id]
 
         plot_target_rmse(
+            [targets_by_id[target_id], targets_by_id[target_id]],
             [initial_result, final_result],
             ["Initial", "Final"],
             target_id,
