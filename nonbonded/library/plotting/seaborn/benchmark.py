@@ -9,13 +9,11 @@ from typing_extensions import Literal
 from nonbonded.library.models.datasets import DataSet
 from nonbonded.library.models.projects import Benchmark
 from nonbonded.library.models.results import BenchmarkResult
-from nonbonded.library.plotting.seaborn.utilities import (
-    plot_scatter,
-    sort_categories_key,
-)
+from nonbonded.library.plotting.seaborn.utilities import plot_scatter
 from nonbonded.library.plotting.utilities import (
     combine_data_set_results,
     property_type_to_title,
+    sort_categories_key,
 )
 from nonbonded.library.statistics.statistics import StatisticType
 from nonbonded.library.utilities.string import camel_to_kebab_case
@@ -175,6 +173,9 @@ def plot_categorized_rmse(
     ]
 
     plot_data = pandas.DataFrame(data_rows)
+
+    if len(plot_data) == 0:
+        return
 
     # Extract the unique data types (e.g. property types) which will be plotted
     # in separate figures.

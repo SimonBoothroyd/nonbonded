@@ -1,7 +1,8 @@
 from collections import defaultdict
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from nonbonded.library.models.plotly import (
+    ErrorBar,
     Figure,
     Legend,
     MarkerStyle,
@@ -9,8 +10,10 @@ from nonbonded.library.models.plotly import (
     Subplot,
 )
 from nonbonded.library.models.projects import Optimization
-from nonbonded.library.models.results import OptimizationResult
+from nonbonded.library.models.results import OptimizationResult, TargetResultType
+from nonbonded.library.models.targets import OptimizationTarget
 from nonbonded.library.plotting.plotly.utilities import unique_colors, unique_markers
+from nonbonded.library.plotting.utilities import combine_target_rmse
 
 
 def plot_objective_per_iteration(
@@ -88,3 +91,88 @@ def plot_objective_per_iteration(
         ],
         legend=Legend(orientation="h"),
     )
+
+
+def plot_target_rmse(
+    targets: List[OptimizationTarget],
+    target_results: List[TargetResultType],
+    target_labels: List[str],
+) -> Dict[str, Figure]:
+    """Plots the RMSE for each of the specified targets and for each data type
+    contained within the target results.
+
+    Parameters
+    ----------
+    targets
+        The targets which the results were collected for.
+    target_results
+        The target results to plot.
+    target_labels
+        The label associated with each target result.
+    """
+
+    plot_data = combine_target_rmse(targets, target_results, target_labels)
+
+    if len(plot_data) == 0:
+        return {}
+
+    # Extract the unique data types (e.g. property types) which will be plotted
+    # in separate figures.
+    data_types = plot_data["Data Type"].unique()
+
+    # Select a set of colors for each label
+    color_palette = (
+        ["skyblue", "limegreen"] + []
+        if len(target_labels) < 3
+        else [f"rgb{color}" for color in unique_colors(10)]
+    )
+    colors = {label: color_palette[index] for index, label in enumerate(target_labels)}
+
+    figures = {}
+
+    for data_type in data_types:
+
+        # Extract a data frame containing only the data type which should
+        # be included in this figure.
+        if data_type is not None:
+            type_plot_data = plot_data[plot_data["Data Type"] == data_type]
+        else:
+            type_plot_data = plot_data[plot_data["Data Type"].isna()]
+
+        # categories = sorted(
+        #     type_plot_data["Category"].unique(), key=sort_categories_key, reverse=True
+        # )
+
+        labels = type_plot_data["Label"].unique()
+
+        # Plot data for each label.
+        traces = []
+
+        for label in labels:
+
+            label_plot_data = type_plot_data[type_plot_data["Label"] == label]
+
+            traces.append(
+                ScatterTrace(
+                    name=label,
+                    x=label_plot_data["Value"].to_list(),
+                    y=label_plot_data["Category"].to_list(),
+                    error_x=ErrorBar(
+                        symmetric=False,
+                        array=label_plot_data["Upper CI"].to_list(),
+                        arrayminus=label_plot_data["Lower CI"].to_list(),
+                    ),
+                    marker=MarkerStyle(color=colors[label]),
+                    legendgroup=label,
+                    showlegend=True,
+                    mode="markers",
+                    hoverinfo="none",
+                )
+            )
+
+        figures[data_type] = Figure(
+            subplots=[Subplot(x_axis_label="RMSE", traces=traces)],
+            legend=Legend(),
+        )
+
+    return figures
