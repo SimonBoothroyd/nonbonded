@@ -269,9 +269,7 @@ class DataSet(_BaseSet):
         "numbers are incompatible.",
     )
 
-    entries: conlist(DataSetEntry, min_items=1) = Field(
-        ..., description="The entries in the data set."
-    )
+    entries: List[DataSetEntry] = Field(..., description="The entries in the data set.")
 
     @classmethod
     def from_pandas(

@@ -63,6 +63,11 @@ class DataSetEntryCRUD:
 
 class DataSetCRUD:
     @staticmethod
+    def n_total(db: Session):
+        """Returns the total number of data sets in the database."""
+        return db.query(models.DataSet.id).count()
+
+    @staticmethod
     def query(db: Session, data_set_id: str):
 
         db_data_set = (
@@ -148,6 +153,11 @@ class DataSetCRUD:
 
 
 class QCDataSetCRUD:
+    @staticmethod
+    def n_total(db: Session):
+        """Returns the total number of data sets in the database."""
+        return db.query(models.QCDataSet.id).count()
+
     @staticmethod
     def query(db: Session, qc_data_set_id: str):
 

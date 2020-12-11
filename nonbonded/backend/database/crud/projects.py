@@ -858,6 +858,11 @@ class StudyCRUD:
 
 class ProjectCRUD:
     @staticmethod
+    def n_total(db: Session):
+        """Returns the total number of projects in the database."""
+        return db.query(models.Project.id).count()
+
+    @staticmethod
     def query(db: Session, project_id: str):
 
         db_project = (
