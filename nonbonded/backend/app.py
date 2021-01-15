@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.cors import CORSMiddleware
 
 from nonbonded.backend.api.dev.api import api_router
@@ -15,5 +16,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(GZipMiddleware)
 
 app.include_router(api_router, prefix=settings.API_DEV_STR)
