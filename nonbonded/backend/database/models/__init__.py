@@ -14,6 +14,7 @@ from .engines import ForceBalance, ForceBalancePrior  # isort:skip
 from .forcefield import ForceField, Parameter  # isort:skip
 from .results import (  # isort:skip
     Statistic,
+    DataSetCategory,
     DataSetStatistic,
     DataSetResultEntry,
     DataSetResult,
@@ -47,6 +48,7 @@ __all__ = [
     ChemicalEnvironment,
     Component,
     DataSet,
+    DataSetCategory,
     DataSetEntry,
     DataSetResult,
     DataSetResultEntry,

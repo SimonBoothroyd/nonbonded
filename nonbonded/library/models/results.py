@@ -13,7 +13,7 @@ from nonbonded.library.models.datasets import DataSet, DataSetCollection, DataSe
 from nonbonded.library.models.forcefield import ForceField
 from nonbonded.library.models.validators.string import IdentifierStr, NonEmptyStr
 from nonbonded.library.statistics.statistics import StatisticType, compute_statistics
-from nonbonded.library.utilities.checkmol import components_to_category
+from nonbonded.library.utilities.checkmol import components_to_categories
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 from nonbonded.library.utilities.exceptions import UnsupportedEndpointError
 
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 class Statistic(BaseORM):
     """An object which contains information about a statistic (e.g. the RMSE) computed
-    from a set of reference and estimated points."""
+    from a set of reference and estimated points within a particular category."""
 
     statistic_type: StatisticType = Field(
         ..., description="The type of statistic recorded by this entry."
@@ -76,10 +76,12 @@ class DataSetResultEntry(BaseORM):
     estimated_value: float = Field(..., description="The estimated value.")
     estimated_std_error: float = Field(..., description="The estimated std error")
 
-    category: Optional[str] = Field(
+    categories: List[str] = Field(
         ...,
-        description="The category which this result has been assigned. This may "
-        "indicate, for example, the measurement was made for a system of alcohols.",
+        description="The categories which this result has been assigned into. This may "
+        "indicate, for example, the measurement was made for a system of alcohols."
+        "Multiple categories are possible, e.g., when measurements are made for systems "
+        "containing molecules with multiple functional groups present.",
     )
 
 
@@ -155,24 +157,30 @@ class DataSetResult(BaseORM):
                 estimated_std_error=estimated_entry.uncertainty.to(
                     internal_unit
                 ).magnitude,
-                category=components_to_category(
+                categories=components_to_categories(
                     reference_entry.components, analysis_environments
                 ),
             )
 
             results_entries.append(results_entry)
 
-            results_rows.append(
-                {
-                    "Property Type": reference_entry.property_type,
-                    "N Components": len(reference_entry.components),
-                    "Reference Value": reference_entry.value,
-                    "Reference Std": reference_entry.std_error,
-                    "Estimated Value": results_entry.estimated_value,
-                    "Estimated Std": results_entry.estimated_std_error,
-                    "Category": results_entry.category,
-                }
-            )
+            for category in (
+                [None]
+                if len(results_entry.categories) == 0
+                else results_entry.categories
+            ):
+
+                results_rows.append(
+                    {
+                        "Property Type": reference_entry.property_type,
+                        "N Components": len(reference_entry.components),
+                        "Reference Value": reference_entry.value,
+                        "Reference Std": reference_entry.std_error,
+                        "Estimated Value": results_entry.estimated_value,
+                        "Estimated Std": results_entry.estimated_std_error,
+                        "Category": category,
+                    }
+                )
 
         results_frame = pandas.DataFrame(results_rows)
 
@@ -225,7 +233,6 @@ class DataSetResult(BaseORM):
     ) -> "DataSetResult":
 
         if statistic_types is None:
-
             statistic_types = [StatisticType.RMSE, StatisticType.R2, StatisticType.MSE]
 
         results_entries, results_frame = cls._evaluator_to_results_entries(

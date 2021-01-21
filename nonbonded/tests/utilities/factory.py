@@ -279,10 +279,13 @@ def create_data_set_statistic(category: Optional[str] = "None"):
     )
 
 
-def create_data_set_result_entry(category: Optional[str] = "None"):
+def create_data_set_result_entry(category: str = "None"):
 
     return DataSetResultEntry(
-        reference_id=1, estimated_value=1.0, estimated_std_error=2.0, category=category
+        reference_id=1,
+        estimated_value=1.0,
+        estimated_std_error=2.0,
+        categories=[category],
     )
 
 
@@ -312,7 +315,7 @@ def _results_entries_from_data_sets(
             reference_id=data_entry.id,
             estimated_value=data_entry.value,
             estimated_std_error=data_entry.std_error,
-            category="Category",
+            categories=["Category"],
         )
         for data_entry in data_entries
     ]
@@ -324,7 +327,7 @@ def _statistics_from_result_entries(
     result_entries: List[DataSetResultEntry],
 ) -> List[DataSetStatistic]:
 
-    categories = list({None, *(x.category for x in result_entries)})
+    categories = list({None, *(x for y in result_entries for x in y.categories)})
     return [create_data_set_statistic(x) for x in categories]
 
 

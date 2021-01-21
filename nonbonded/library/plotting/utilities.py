@@ -53,7 +53,7 @@ def format_category(category: Optional[str]) -> str:
     """Formats a category ready for plotting."""
 
     if category is None:
-        category = "Uncategorized"
+        category = "Other"
 
     category = re.sub("Carboxylic Acid Ester", "Ester", category)
     category = re.sub("Carboxylic Acid", "Acid", category)
@@ -115,31 +115,35 @@ def combine_data_set_results(
 
             # For now trim down the number of different categories and
             # shorten certain category names.
-            category = format_category(result_entry.category)
-            category = re.sub("[<>~]", "+", category)
+            for category in (
+                [None] if len(result_entry.categories) == 0 else result_entry.categories
+            ):
 
-            property_type = (
-                f"{reference_data_point.property_type}-"
-                f"{len(reference_data_point.components)}"
-            )
+                category = re.sub("[<>~]", "+", format_category(category))
 
-            # Generate a meaningful title for the plot.
-            property_title = property_type_to_title(
-                reference_data_point.property_type, len(reference_data_point.components)
-            )
+                property_type = (
+                    f"{reference_data_point.property_type}-"
+                    f"{len(reference_data_point.components)}"
+                )
 
-            data_row = {
-                "Benchmark Id": benchmark.id,
-                "Benchmark Name": benchmark.name,
-                "Property Type": property_type,
-                "Property Title": property_title,
-                "Estimated Value": estimated_value,
-                "Estimated Std": estimated_std,
-                "Reference Value": reference_value,
-                "Reference Std": reference_std,
-                "Category": category,
-            }
-            data_rows.append(data_row)
+                # Generate a meaningful title for the plot.
+                property_title = property_type_to_title(
+                    reference_data_point.property_type,
+                    len(reference_data_point.components),
+                )
+
+                data_row = {
+                    "Benchmark Id": benchmark.id,
+                    "Benchmark Name": benchmark.name,
+                    "Property Type": property_type,
+                    "Property Title": property_title,
+                    "Estimated Value": estimated_value,
+                    "Estimated Std": estimated_std,
+                    "Reference Value": reference_value,
+                    "Reference Std": reference_std,
+                    "Category": category,
+                }
+                data_rows.append(data_row)
 
     return pandas.DataFrame(data_rows)
 
