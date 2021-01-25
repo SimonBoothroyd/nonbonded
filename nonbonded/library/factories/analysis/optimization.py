@@ -8,7 +8,7 @@ from typing import Optional
 
 from nonbonded.library.factories.analysis import AnalysisFactory
 from nonbonded.library.models.authors import Author
-from nonbonded.library.models.datasets import DataSet
+from nonbonded.library.models.datasets import Component, DataSet
 from nonbonded.library.models.forcefield import ForceField
 from nonbonded.library.models.projects import Optimization
 from nonbonded.library.models.results import (
@@ -20,7 +20,7 @@ from nonbonded.library.models.results import (
 )
 from nonbonded.library.models.targets import EvaluatorTarget, RechargeTarget
 from nonbonded.library.statistics.statistics import StatisticType, bootstrap_residuals
-from nonbonded.library.utilities.checkmol import components_to_category
+from nonbonded.library.utilities.checkmol import components_to_categories
 from nonbonded.library.utilities.migration import reindex_results
 
 logger = logging.getLogger(__name__)
@@ -147,10 +147,13 @@ class OptimizationAnalysisFactory(AnalysisFactory):
 
         for smiles in squared_residuals:
 
-            category = components_to_category(
-                [smiles], optimization.analysis_environments
+            categories = components_to_categories(
+                [Component(smiles=smiles, mole_fraction=0.0, exact_amount=1)],
+                optimization.analysis_environments,
             )
-            smiles_per_category[category].append(smiles)
+
+            for category in categories:
+                smiles_per_category[category].append(smiles)
 
         # Compute RMSE statistics for this target.
         statistic_entries = []

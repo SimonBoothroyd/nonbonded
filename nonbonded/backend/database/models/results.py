@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Float, ForeignKey, Integer, String, Table
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Query, Session, relationship
 
-from nonbonded.backend.database.models import Base
+from nonbonded.backend.database.models import Base, UniqueMixin
 
 results_force_field_table = Table(
     "results_force_fields",
@@ -10,6 +10,17 @@ results_force_field_table = Table(
         "results_id", Integer, ForeignKey("optimization_results.id"), primary_key=True
     ),
     Column("force_field_id", Integer, ForeignKey("force_fields.id"), primary_key=True),
+)
+
+data_set_result_categories_table = Table(
+    "data_set_result_categories",
+    Base.metadata,
+    Column(
+        "entry_id", Integer, ForeignKey("data_set_result_entries.id"), primary_key=True
+    ),
+    Column(
+        "category_id", Integer, ForeignKey("data_set_categories.id"), primary_key=True
+    ),
 )
 
 
@@ -30,6 +41,25 @@ class Statistic(Base):
     category = Column(String)
 
     __mapper_args__ = {"polymorphic_on": type, "polymorphic_identity": "base"}
+
+
+class DataSetCategory(UniqueMixin, Base):
+
+    __tablename__ = "data_set_categories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    value = Column(String(64), nullable=False)
+
+    @classmethod
+    def _hash(cls, db_instance: "DataSetCategory"):
+        return hash((db_instance.value,))
+
+    @classmethod
+    def _query(cls, db: Session, db_instance: "DataSetCategory") -> Query:
+
+        return db.query(DataSetCategory).filter(
+            DataSetCategory.value == db_instance.value
+        )
 
 
 class DataSetStatistic(Statistic):
@@ -58,7 +88,9 @@ class DataSetResultEntry(Base):
     estimated_value = Column(Float)
     estimated_std_error = Column(Float)
 
-    category = Column(String)
+    categories = relationship(
+        "DataSetCategory", secondary=data_set_result_categories_table
+    )
 
 
 class DataSetResult(Base):

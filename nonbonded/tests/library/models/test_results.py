@@ -110,7 +110,7 @@ def test_evaluator_to_results_entries(estimated_reference_sets):
             results_entry.estimated_std_error, reference_entry.std_error
         )
 
-        assert results_entry.category == "Aldehyde ~ Aqueous"
+        assert results_entry.categories == ["Aldehyde ~ Aqueous"]
 
 
 def test_analysed_result_from_evaluator():

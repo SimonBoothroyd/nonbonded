@@ -27,6 +27,7 @@ from nonbonded.backend.database.utilities.exceptions import (
     UnableToUpdateError,
 )
 from nonbonded.library.models import results
+from nonbonded.library.models.results import BenchmarkResult
 
 
 class ResultCRUD(abc.ABC):
@@ -305,7 +306,17 @@ class BenchmarkResultCRUD(ResultCRUD):
         result_kwargs = dict(
             **super(BenchmarkResultCRUD, cls)._model_kwargs(db_sub_study_result),
             data_set_result=results.DataSetResult(
-                result_entries=db_results_entries,
+                result_entries=[
+                    results.DataSetResultEntry(
+                        reference_id=db_entry.reference_id,
+                        estimated_value=db_entry.estimated_value,
+                        estimated_std_error=db_entry.estimated_std_error,
+                        categories=[
+                            db_category.value for db_category in db_entry.categories
+                        ],
+                    )
+                    for db_entry in db_results_entries
+                ],
                 statistic_entries=db_statistic_entries,
             ),
         )
@@ -313,7 +324,11 @@ class BenchmarkResultCRUD(ResultCRUD):
         return result_kwargs
 
     @classmethod
-    def _db_model_kwargs(cls, sub_study_result, db_parent) -> Dict[str, Any]:
+    def _db_model_kwargs(
+        cls, sub_study_result: BenchmarkResult, db_parent
+    ) -> Dict[str, Any]:
+
+        db = object_session(db_parent)
 
         # noinspection PyTypeChecker
         return dict(
@@ -329,7 +344,15 @@ class BenchmarkResultCRUD(ResultCRUD):
                     for statistic in sub_study_result.data_set_result.statistic_entries
                 ],
                 result_entries=[
-                    models.DataSetResultEntry(**x.dict())
+                    models.DataSetResultEntry(
+                        **x.dict(exclude={"categories"}),
+                        categories=[
+                            models.DataSetCategory.unique(
+                                db, models.DataSetCategory(value=category)
+                            )
+                            for category in x.categories
+                        ],
+                    )
                     for x in sub_study_result.data_set_result.result_entries
                 ],
             ),

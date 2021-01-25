@@ -1,6 +1,6 @@
 import functools
 import logging
-from typing import List, Optional, Union
+from typing import List
 
 from nonbonded.library.models.datasets import Component
 from nonbonded.library.utilities.environments import ChemicalEnvironment
@@ -298,12 +298,55 @@ def analyse_functional_groups(smiles):
     return groups
 
 
-def components_to_category(
-    components: Union[List[str], List[Component]],
+def components_to_categories(
+    components: List[Component],
     environments: List[ChemicalEnvironment],
-) -> Optional[str]:
-    """Attempts to assign a category to a list of components (or SMILES patterns)
-    based off of the chemical environments that they contain.
+) -> List[str]:
+    """Attempts to categorize a list of components based off of the chemical
+    environments that they contain.
+
+    For a single component:
+
+        * the assigned categories will be the chemical environments present in the
+          component *and* also appear in the ``environments`` list.
+
+    For two components present in only mole fraction amounts:
+
+        * the assigned categories will be of the form
+
+          `[ENV 1] [SIGN] [ENV 2]`
+
+          whereby `[ENV 1]` will be a chemical environment present in one the components
+          and `[ENV 2]` an environment in the other, provided that `[ENV 1]` and
+          `[ENV 2]` are different.
+
+          `[ENV 1]` will always be alphabetically before `[ENV 2]`, i.e. if component 1
+          contains only ester functionality and component 2 only alcohol functionality
+          then `[ENV 1]='Alcohol'` and `[ENV 2]='Carboxylic Acid Ester`.
+
+          The `[SIGN]` will be one of `<`, `~`, `>` depending on whether, based on the
+          mole fraction amounts, `[ENV 1]` is in excess of `[ENV 2]`, `[ENV 2]` is in
+          excess of `[ENV 1]`, or the two amount are in roughly equal amounts
+          respectively.
+
+          If `[ENV 1]` and `[ENV 2]` are the same, then the category used will just be
+          `[ENV 1] + [ENV 2]`.
+
+    For two components where one is defined in terms of a mole fraction and there other
+    in terms of an exact amount (e.g. solvation free energies):
+
+        * the assigned categories will be of the form
+
+          [ENV 1] (x=1.0) + [ROLE 2] (n=N)
+
+          where `[ENV 1]` is the chemical environment present in the component defined
+          in terms of a mole fraction and `[ENV 2]` is the chemical environment present
+          in the component defined in an exact amount.
+
+    Three or more components cannot currently be assigned a category.
+
+    If a component contains non of the environments specified in ``environments``
+    then 'Other' will be used in place of an environment string.
 
     Parameters
     ----------
@@ -316,93 +359,93 @@ def components_to_category(
     import numpy
 
     if len(environments) == 0:
-        return None
+        return []
 
-    if not all(
-        isinstance(component, Component) for component in components
-    ) and not all(isinstance(component, str) for component in components):
+    if len(components) >= 3:
+        raise NotImplementedError("Only two or less components can be categorised.")
 
-        raise TypeError(
-            "The components must either all be `Component` objects or all SMILES "
-            "patterns."
-        )
+    component_environments = []
 
-    components = [
-        component
-        if isinstance(component, Component)
-        else Component(smiles=component, mole_fraction=1.0)
-        for component in components
-    ]
-
-    sorted_components = [*sorted(components, key=lambda x: x.smiles)]
-    assigned_environments = []
-
-    for component in sorted_components:
+    for component in components:
 
         # Determine which environments are present in this component.
-        component_environments = analyse_functional_groups(component.smiles)
+        matched_environments = analyse_functional_groups(component.smiles)
         # Filter out any environments which we are not interested in.
-        component_environments = {
-            x: y for x, y in component_environments.items() if x in environments
-        }
+        matched_environments = [
+            x.value for x in matched_environments if x in environments
+        ]
 
-        if len(component_environments) == 0:
+        if len(matched_environments) == 0:
             logger.info(
-                f"The substance with SMILES={[x.smiles for x in components]} "
-                f"could not be assigned a category. More than likely one or more "
-                f"of the components contains only environments which were not "
-                f"marked for analysis. It will be assigned a category of "
-                f"'Uncategorized' instead."
+                f"No chemical environments could be identified for the component with "
+                f"SMILES={component.smiles}. More than likely the environments which it "
+                f"does contain are not marked for analysis, and hence were ignored. It "
+                f"will be assigned an environment of 'Other' instead."
             )
-            return "Uncategorized"
+            matched_environments = ["Other"]
 
-        # Try to find the environment which appears the most times in a molecule.
-        # We sort the environments to try and make the case where multiple
-        # environments appear with the same frequency deterministic.
-        component_environment_keys = sorted(
-            component_environments.keys(), key=lambda x: x.value
-        )
+        component_environments.append(matched_environments)
 
-        most_common_environment = "None"
-        most_occurrences = -1
+    # Handle the simple case of a single component.
+    if len(components) == 1:
+        return sorted(component_environments[0])
 
-        for key in component_environment_keys:
+    categories = set()
 
-            if component_environments[key] > most_occurrences:
-                most_common_environment = key.value
-                most_occurrences = component_environments[key]
+    environment_pairs = [
+        (environment_1, environment_2)
+        for environment_1 in component_environments[0]
+        for environment_2 in component_environments[1]
+    ]
 
-        assigned_environments.append(most_common_environment)
+    # Handle the case of two components in a binary mixture
+    if all(component.exact_amount == 0 for component in components):
 
-    # Sort the assignments to try and make the categories deterministic.
-    sorted_assigned_environments = [*sorted(assigned_environments)]
-    category = ""
+        for environment_pair in environment_pairs:
 
-    for index, assigned_environment in enumerate(sorted_assigned_environments):
+            if environment_pair[0] == environment_pair[1]:
 
-        if index == 0:
-            category = assigned_environment
-            continue
+                categories.add(f"{environment_pair[0]} + {environment_pair[1]}")
+                continue
 
-        previous_environment = sorted_assigned_environments[index - 1]
+            if environment_pair[0] < environment_pair[1]:
 
-        previous_component = sorted_components[
-            assigned_environments.index(previous_environment)
-        ]
-        current_component = sorted_components[
-            assigned_environments.index(assigned_environment)
-        ]
+                amount_1 = components[0].mole_fraction
+                environment_1 = environment_pair[0]
+                amount_2 = components[1].mole_fraction
+                environment_2 = environment_pair[1]
 
-        if numpy.isclose(
-            previous_component.mole_fraction, 1.0 / len(components), rtol=0.1
-        ) and numpy.isclose(
-            current_component.mole_fraction, 1.0 / len(components), rtol=0.1
-        ):
-            category = f"{category} ~ {assigned_environment}"
+            else:
 
-        elif previous_component.mole_fraction < current_component.mole_fraction:
-            category = f"{category} < {assigned_environment}"
-        else:
-            category = f"{category} > {assigned_environment}"
+                amount_1 = components[1].mole_fraction
+                environment_1 = environment_pair[1]
+                amount_2 = components[0].mole_fraction
+                environment_2 = environment_pair[0]
 
-    return category
+            if numpy.isclose(
+                amount_1, 1.0 / len(components), rtol=0.1
+            ) and numpy.isclose(amount_2, 1.0 / len(components), rtol=0.1):
+                sign_str = "~"
+            elif amount_1 < amount_2:
+                sign_str = "<"
+            else:
+                sign_str = ">"
+
+            categories.add(f"{environment_1} {sign_str} {environment_2}")
+
+    # Handle the case of a single molecule in solution.
+    else:
+
+        solute_index = 0 if components[0].exact_amount > 0 else 1
+        solvent_index = 1 - solute_index
+
+        for environment_pair in environment_pairs:
+            categories.add(
+                f"{environment_pair[solvent_index]} "
+                f"(x=1.0) "
+                f"+ "
+                f"{environment_pair[solute_index]} "
+                f"(n={components[solute_index].exact_amount})"
+            )
+
+    return sorted(categories)

@@ -3,7 +3,7 @@ import pytest
 from nonbonded.library.models.datasets import Component
 from nonbonded.library.utilities.checkmol import (
     analyse_functional_groups,
-    components_to_category,
+    components_to_categories,
 )
 from nonbonded.library.utilities.environments import ChemicalEnvironment
 
@@ -31,65 +31,72 @@ def test_analyse_functional_groups_error():
 
 
 @pytest.mark.parametrize(
-    "components, expected_category",
+    "components, expected_categories",
     [
-        ([Component(smiles="CC(O)CC", mole_fraction=1.0)], "Alcohol"),
-        (["CC(O)CC"], "Alcohol"),
-        ([Component(smiles="CC(=O)CC", mole_fraction=1.0)], "Ketone"),
-        (["CC(=O)CC"], "Ketone"),
+        ([Component(smiles="CC(O)CC", mole_fraction=1.0)], ["Alcohol"]),
+        ([Component(smiles="CC(=O)CC", mole_fraction=1.0)], ["Ketone"]),
+        ([Component(smiles="C(=O)CC", mole_fraction=1.0)], ["Other"]),
+        ([Component(smiles="CC(=O)CO", mole_fraction=1.0)], ["Alcohol", "Ketone"]),
         (
             [
                 Component(smiles="CC(O)CC", mole_fraction=0.5),
-                Component(smiles="CC(=O)CC", mole_fraction=0.5),
+                Component(smiles="CC(O)C", mole_fraction=0.5),
             ],
-            "Alcohol ~ Ketone",
+            ["Alcohol + Alcohol"],
+        ),
+        (
+            [
+                Component(smiles="CC(O)CC", mole_fraction=0.5),
+                Component(smiles="CC(=O)CO", mole_fraction=0.5),
+            ],
+            ["Alcohol + Alcohol", "Alcohol ~ Ketone"],
         ),
         (
             [
                 Component(smiles="CC(O)CC", mole_fraction=0.44),
-                Component(smiles="CC(=O)CC", mole_fraction=0.56),
+                Component(smiles="CC(=O)CO", mole_fraction=0.56),
             ],
-            "Alcohol < Ketone",
+            ["Alcohol + Alcohol", "Alcohol < Ketone"],
         ),
         (
             [
-                Component(smiles="CC(=O)CC", mole_fraction=0.56),
+                Component(smiles="CC(=O)CO", mole_fraction=0.56),
                 Component(smiles="CC(O)CC", mole_fraction=0.44),
             ],
-            "Alcohol < Ketone",
+            ["Alcohol + Alcohol", "Alcohol < Ketone"],
         ),
         (
             [
                 Component(smiles="CC(O)CC", mole_fraction=0.56),
                 Component(smiles="CC(=O)CC", mole_fraction=0.44),
             ],
-            "Alcohol > Ketone",
+            ["Alcohol > Ketone"],
         ),
         (
             [
                 Component(smiles="CC(=O)CC", mole_fraction=0.44),
                 Component(smiles="CC(O)CC", mole_fraction=0.56),
             ],
-            "Alcohol > Ketone",
+            ["Alcohol > Ketone"],
         ),
         (
             [
-                Component(smiles="CC(O)CC", mole_fraction=0.56),
-                Component(smiles="O", mole_fraction=0.44),
+                Component(smiles="O", mole_fraction=1.0),
+                Component(smiles="CC(O)CC", mole_fraction=0.0, exact_amount=2),
             ],
-            "Alcohol > Aqueous",
+            ["Aqueous (x=1.0) + Alcohol (n=2)"],
         ),
         (
             [
-                Component(smiles="O", mole_fraction=0.44),
-                Component(smiles="CC(O)CC", mole_fraction=0.56),
+                Component(smiles="CC(O)CC", mole_fraction=0.0, exact_amount=2),
+                Component(smiles="O", mole_fraction=1.0),
             ],
-            "Alcohol > Aqueous",
+            ["Aqueous (x=1.0) + Alcohol (n=2)"],
         ),
     ],
 )
-def test_components_to_category(components, expected_category):
-    """Tests the private `_components_to_category` function of `AnalysedResult`"""
+def test_components_to_category(components, expected_categories):
+    """Tests the `components_to_categories` function"""
 
     environments = [
         ChemicalEnvironment.Alcohol,
@@ -97,13 +104,20 @@ def test_components_to_category(components, expected_category):
         ChemicalEnvironment.Aqueous,
     ]
 
-    assert components_to_category(components, environments) == expected_category
+    assert components_to_categories(components, environments) == expected_categories
 
 
-def test_components_to_category_type():
+def test_three_components_to_categories():
 
-    with pytest.raises(TypeError):
-        components_to_category(
-            ["C", Component(smiles="C", mole_fraction=1.0)],
+    with pytest.raises(NotImplementedError):
+        components_to_categories(
+            [Component(smiles="C", mole_fraction=1.0)] * 3,
             [ChemicalEnvironment.Alkane],
         )
+
+
+def test_components_to_categories_empty():
+
+    assert (
+        components_to_categories([Component(smiles="C", mole_fraction=1.0)], []) == []
+    )
