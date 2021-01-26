@@ -25,6 +25,7 @@ from .results import (  # isort:skip
     EvaluatorTargetResult,
     RechargeTargetResult,
     OptimizationResult,
+    SoftwareProvenance,
 )
 from .targets.evaluator import EvaluatorDenominator, EvaluatorTarget  # isort:skip
 from .targets.recharge import (  # isort:skip
@@ -71,6 +72,7 @@ __all__ = [
     RechargeTarget,
     RechargeTargetResult,
     TargetResult,
+    SoftwareProvenance,
     Statistic,
     Study,
     SubStudy,

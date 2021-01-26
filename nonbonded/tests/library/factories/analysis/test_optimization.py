@@ -166,7 +166,7 @@ def test_analyze_recharge_target_missing(tmpdir):
     )
 
 
-def test_optimization_analysis(monkeypatch, force_field):
+def test_optimization_analysis(monkeypatch, force_field, dummy_conda_env):
 
     optimization = create_optimization(
         "project-1",
@@ -179,7 +179,7 @@ def test_optimization_analysis(monkeypatch, force_field):
     )
     optimization.force_field = force_field
 
-    with temporary_cd():
+    with temporary_cd(os.path.dirname(dummy_conda_env)):
 
         # Save the expected results files.
         os.makedirs(os.path.join("result", "optimize"))

@@ -6,6 +6,7 @@ from nonbonded.library.models.datasets import DataSetCollection
 from nonbonded.library.models.projects import Benchmark
 from nonbonded.library.models.results import BenchmarkResult
 from nonbonded.library.utilities.migration import reindex_results
+from nonbonded.library.utilities.provenance import summarise_current_versions
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,8 @@ class BenchmarkAnalysisFactory(AnalysisFactory):
             estimated_data_set=estimated_data_set,
             analysis_environments=benchmark.analysis_environments,
         )
+        benchmark_results.calculation_environment = cls._parse_calculation_environment()
+        benchmark_results.analysis_environment = summarise_current_versions()
 
         # Save the results
         with open(

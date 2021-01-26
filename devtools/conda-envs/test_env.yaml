@@ -25,6 +25,7 @@ dependencies:
   - pandas
   - jinja2
   - email_validator
+  - pyyaml
 
     # Benchmark / optimization target dependencies
   - forcebalance >=1.7.5

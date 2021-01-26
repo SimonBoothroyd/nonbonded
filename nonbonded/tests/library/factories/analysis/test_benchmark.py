@@ -3,11 +3,12 @@ import os
 
 from nonbonded.library.factories.analysis.benchmark import BenchmarkAnalysisFactory
 from nonbonded.library.models.datasets import DataSetCollection
+from nonbonded.library.models.results import BenchmarkResult
 from nonbonded.library.utilities import temporary_cd
 from nonbonded.tests.utilities.factory import create_benchmark, create_data_set
 
 
-def test_benchmark_analysis(caplog, monkeypatch):
+def test_benchmark_analysis(caplog, monkeypatch, dummy_conda_env):
 
     from openff.evaluator.client import RequestResult
     from openff.evaluator.datasets import PhysicalPropertyDataSet
@@ -33,7 +34,7 @@ def test_benchmark_analysis(caplog, monkeypatch):
     results.estimated_properties = estimated_data_set
     results.unsuccessful_properties = unsuccessful_properties
 
-    with temporary_cd():
+    with temporary_cd(os.path.dirname(dummy_conda_env)):
 
         # Save the expected input files.
         with open("benchmark.json", "w") as file:
@@ -54,3 +55,9 @@ def test_benchmark_analysis(caplog, monkeypatch):
 
         assert os.path.isdir("analysis")
         assert os.path.isfile(os.path.join("analysis", "benchmark-results.json"))
+
+        results_object = BenchmarkResult.parse_file(
+            os.path.join("analysis", "benchmark-results.json")
+        )
+        assert len(results_object.calculation_environment) > 0
+        assert len(results_object.analysis_environment) > 0

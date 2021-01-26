@@ -22,6 +22,7 @@ from nonbonded.library.models.targets import EvaluatorTarget, RechargeTarget
 from nonbonded.library.statistics.statistics import StatisticType, bootstrap_residuals
 from nonbonded.library.utilities.checkmol import components_to_categories
 from nonbonded.library.utilities.migration import reindex_results
+from nonbonded.library.utilities.provenance import summarise_current_versions
 
 logger = logging.getLogger(__name__)
 
@@ -263,6 +264,8 @@ class OptimizationAnalysisFactory(AnalysisFactory):
             project_id=optimization.project_id,
             study_id=optimization.study_id,
             id=optimization.id,
+            calculation_environment=cls._parse_calculation_environment(),
+            analysis_environment=summarise_current_versions(),
             target_results=target_results,
             refit_force_field=refit_force_field,
         )
