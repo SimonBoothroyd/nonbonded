@@ -23,6 +23,67 @@ data_set_result_categories_table = Table(
     ),
 )
 
+benchmark_calculation_environment_table = Table(
+    "benchmark_calculation_environment",
+    Base.metadata,
+    Column("results_id", Integer, ForeignKey("benchmark_results.id"), primary_key=True),
+    Column(
+        "software_id", Integer, ForeignKey("software_provenance.id"), primary_key=True
+    ),
+)
+benchmark_analysis_environment_table = Table(
+    "benchmark_analysis_environment",
+    Base.metadata,
+    Column("results_id", Integer, ForeignKey("benchmark_results.id"), primary_key=True),
+    Column(
+        "software_id", Integer, ForeignKey("software_provenance.id"), primary_key=True
+    ),
+)
+
+optimization_calculation_environment_table = Table(
+    "optimization_calculation_environment",
+    Base.metadata,
+    Column(
+        "results_id", Integer, ForeignKey("optimization_results.id"), primary_key=True
+    ),
+    Column(
+        "software_id", Integer, ForeignKey("software_provenance.id"), primary_key=True
+    ),
+)
+optimization_analysis_environment_table = Table(
+    "optimization_analysis_environment",
+    Base.metadata,
+    Column(
+        "results_id", Integer, ForeignKey("optimization_results.id"), primary_key=True
+    ),
+    Column(
+        "software_id", Integer, ForeignKey("software_provenance.id"), primary_key=True
+    ),
+)
+
+
+class SoftwareProvenance(UniqueMixin, Base):
+
+    __tablename__ = "software_provenance"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    name = Column(String(20), nullable=False)
+    version = Column(String(32), unique=True, nullable=False)
+
+    @classmethod
+    def _hash(cls, db_instance: "SoftwareProvenance"):
+        return hash((db_instance.name, db_instance.version))
+
+    @classmethod
+    def _query(cls, db: Session, db_instance: "SoftwareProvenance") -> Query:
+
+        return (
+            db.query(SoftwareProvenance)
+            .filter(SoftwareProvenance.name == db_instance.name)
+            .filter(SoftwareProvenance.version == db_instance.version)
+        )
+
 
 class Statistic(Base):
 
@@ -136,6 +197,15 @@ class BenchmarkResult(Base):
         "DataSetResult", uselist=False, cascade="all, delete-orphan", single_parent=True
     )
 
+    calculation_environment = relationship(
+        "SoftwareProvenance",
+        secondary=benchmark_calculation_environment_table,
+    )
+    analysis_environment = relationship(
+        "SoftwareProvenance",
+        secondary=benchmark_analysis_environment_table,
+    )
+
 
 class TargetResult(Base):
 
@@ -206,4 +276,13 @@ class OptimizationResult(Base):
         secondary=results_force_field_table,
         backref="results",
         uselist=False,
+    )
+
+    calculation_environment = relationship(
+        "SoftwareProvenance",
+        secondary=optimization_calculation_environment_table,
+    )
+    analysis_environment = relationship(
+        "SoftwareProvenance",
+        secondary=optimization_analysis_environment_table,
     )

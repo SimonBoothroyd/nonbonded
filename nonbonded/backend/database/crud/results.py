@@ -195,6 +195,14 @@ class ResultCRUD(abc.ABC):
             id=db_parent.identifier,
             study_id=db_parent_study.identifier,
             project_id=db_parent_project.identifier,
+            calculation_environment={
+                environment.name: environment.version
+                for environment in db_sub_study_result.calculation_environment
+            },
+            analysis_environment={
+                environment.name: environment.version
+                for environment in db_sub_study_result.analysis_environment
+            },
         )
 
     @classmethod
@@ -325,7 +333,7 @@ class BenchmarkResultCRUD(ResultCRUD):
 
     @classmethod
     def _db_model_kwargs(
-        cls, sub_study_result: BenchmarkResult, db_parent
+        cls, sub_study_result: BenchmarkResult, db_parent: models.Benchmark
     ) -> Dict[str, Any]:
 
         db = object_session(db_parent)
@@ -333,6 +341,18 @@ class BenchmarkResultCRUD(ResultCRUD):
         # noinspection PyTypeChecker
         return dict(
             parent=db_parent,
+            calculation_environment=[
+                models.SoftwareProvenance.unique(
+                    db, models.SoftwareProvenance(name=name, version=version)
+                )
+                for name, version in sub_study_result.calculation_environment.items()
+            ],
+            analysis_environment=[
+                models.SoftwareProvenance.unique(
+                    db, models.SoftwareProvenance(name=name, version=version)
+                )
+                for name, version in sub_study_result.analysis_environment.items()
+            ],
             data_set_result=models.DataSetResult(
                 statistic_entries=[
                     models.DataSetStatistic(
@@ -501,6 +521,18 @@ class OptimizationResultCRUD(ResultCRUD):
         # noinspection PyTypeChecker
         return dict(
             parent=db_parent,
+            calculation_environment=[
+                models.SoftwareProvenance.unique(
+                    db, models.SoftwareProvenance(name=name, version=version)
+                )
+                for name, version in sub_study_result.calculation_environment.items()
+            ],
+            analysis_environment=[
+                models.SoftwareProvenance.unique(
+                    db, models.SoftwareProvenance(name=name, version=version)
+                )
+                for name, version in sub_study_result.analysis_environment.items()
+            ],
             evaluator_target_results=[
                 EvaluatorTargetResultCRUD.model_to_db(
                     sub_study_result.target_results[iteration][db_target.identifier],

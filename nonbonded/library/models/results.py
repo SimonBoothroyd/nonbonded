@@ -313,6 +313,20 @@ class SubStudyResult(BaseREST, abc.ABC):
     study_id: IdentifierStr = Field(..., description="The id of the parent study.")
     project_id: IdentifierStr = Field(..., description="The id of the parent project.")
 
+    calculation_environment: Dict[str, str] = Field(
+        {},
+        description="The versions of the main software packages used to generate the "
+        "raw data described by this results object. These will usually include the "
+        "version of `openff-evaluator`, `openff-recharge`, `openff-toolkit`.",
+    )
+    analysis_environment: Dict[str, str] = Field(
+        {},
+        description="The versions of the main software packages used to analyse the "
+        "raw data of a calculation and generate this results object. These will usually "
+        "include the version of `nonbonded`, `openff-evaluator`, `openff-recharge`, "
+        "`openff-toolkit` and `checkmol`.",
+    )
+
     @classmethod
     def _url_name(cls):
         return cls.__name__.replace("Result", "").lower() + "s"

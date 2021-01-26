@@ -358,6 +358,8 @@ def create_benchmark_result(
         id=benchmark_id,
         study_id=study_id,
         project_id=project_id,
+        calculation_environment={"openff-evaluator": "1.0.0"},
+        analysis_environment={"nonbonded": "0.0.01a5"},
         data_set_result=DataSetResult(
             statistic_entries=statistics_entries, result_entries=results_entries
         ),
@@ -390,6 +392,8 @@ def create_optimization_result(
         id=optimization_id,
         study_id=study_id,
         project_id=project_id,
+        calculation_environment={"forcebalance": "1.0.0"},
+        analysis_environment={"nonbonded": "0.0.01a5"},
         target_results={
             0: {
                 **{
