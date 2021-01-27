@@ -155,6 +155,11 @@ class ResultCRUD(abc.ABC):
         return db_model
 
     @classmethod
+    @abc.abstractmethod
+    def update(cls, db: Session, sub_study_result: results.SubStudyResult):
+        raise NotImplementedError
+
+    @classmethod
     def read(cls, db: Session, project_id: str, study_id: str, sub_study_id: str):
 
         db_parent = cls.parent_crud().query(db, project_id, study_id, sub_study_id)
@@ -253,7 +258,7 @@ class BenchmarkResultCRUD(ResultCRUD):
     @classmethod
     def _check_dependencies_exist(
         cls, db: Session, sub_study_result: results.BenchmarkResult
-    ) -> models.SubStudy:
+    ) -> models.Benchmark:
 
         db_parent = super(BenchmarkResultCRUD, cls)._check_dependencies_exist(
             db, sub_study_result
@@ -378,6 +383,43 @@ class BenchmarkResultCRUD(ResultCRUD):
             ),
         )
 
+    @classmethod
+    def update(cls, db: Session, sub_study_result: results.BenchmarkResult):
+
+        db_result: models.BenchmarkResult = cls.query(
+            db,
+            sub_study_result.project_id,
+            sub_study_result.study_id,
+            sub_study_result.id,
+        )
+
+        # Make sure the result to update actually exists.
+        if db_result is None:
+            raise cls.not_found_error()(
+                sub_study_result.project_id,
+                sub_study_result.study_id,
+                sub_study_result.id,
+            )
+
+        cls._check_dependencies_exist(db, sub_study_result)
+
+        # noinspection PyArgumentList
+        updated_kwargs = cls._db_model_kwargs(
+            sub_study_result=sub_study_result, db_parent=db_result.parent
+        )
+
+        updated_data_set_result = updated_kwargs["data_set_result"]
+
+        updated_data_set_result.parent = db_result
+        db.add(updated_data_set_result)
+
+        db_result.data_set_result = updated_data_set_result
+
+        db_result.calculation_environment = updated_kwargs["calculation_environment"]
+        db_result.analysis_environment = updated_kwargs["analysis_environment"]
+
+        return db_result
+
 
 class OptimizationResultCRUD(ResultCRUD):
     @classmethod
@@ -408,29 +450,12 @@ class OptimizationResultCRUD(ResultCRUD):
     @classmethod
     def _check_dependencies_exist(
         cls, db: Session, sub_study_result: results.OptimizationResult
-    ) -> models.SubStudy:
+    ) -> models.Optimization:
 
         # noinspection PyTypeChecker
         db_parent: models.Optimization = super(
             OptimizationResultCRUD, cls
         )._check_dependencies_exist(db, sub_study_result)
-
-        # Make sure the refit force field does not yet exist
-        # in the database. This should not be possible.
-        if (
-            db.query(models.ForceField.inner_content)
-            .filter(
-                models.ForceField.inner_content
-                == sub_study_result.refit_force_field.inner_content
-            )
-            .count()
-            > 0
-        ):
-            raise ForceFieldExistsError(
-                sub_study_result.project_id,
-                sub_study_result.study_id,
-                sub_study_result.id,
-            )
 
         # Make sure the results of all targets have been provided.
         expected_target_results = {
@@ -585,3 +610,80 @@ class OptimizationResultCRUD(ResultCRUD):
             target_results=target_results,
             refit_force_field=db_sub_study_result.refit_force_field,
         )
+
+    @classmethod
+    def create(
+        cls, db: Session, sub_study_result: results.OptimizationResult
+    ) -> Union[models.BenchmarkResult, models.OptimizationResult]:
+
+        db_model = super(OptimizationResultCRUD, cls).create(db, sub_study_result)
+
+        # Double check that the refit force field does not yet exist
+        # in the database. This should not be possible.
+        if (
+            db.query(models.ForceField.inner_content)
+            .filter(
+                models.ForceField.inner_content
+                == sub_study_result.refit_force_field.inner_content
+            )
+            .count()
+            > 0
+        ):
+            raise ForceFieldExistsError(
+                sub_study_result.project_id,
+                sub_study_result.study_id,
+                sub_study_result.id,
+            )
+
+        return db_model
+
+    @classmethod
+    def update(cls, db: Session, sub_study_result: results.OptimizationResult):
+
+        db_result: models.OptimizationResult = cls.query(
+            db,
+            sub_study_result.project_id,
+            sub_study_result.study_id,
+            sub_study_result.id,
+        )
+
+        # Make sure the result to update actually exists.
+        if db_result is None:
+
+            raise cls.not_found_error()(
+                sub_study_result.project_id,
+                sub_study_result.study_id,
+                sub_study_result.id,
+            )
+
+        # Raise an exception if another optimization / benchmark makes use of the
+        # already uploaded force field and this update would alter that force field.
+        if (
+            sub_study_result.refit_force_field.inner_content
+            != db_result.refit_force_field.inner_content
+        ):
+
+            cls._check_has_dependants(db, db_result, UnableToUpdateError)
+
+        cls._check_dependencies_exist(db, sub_study_result)
+
+        updated_kwargs = cls._db_model_kwargs(
+            sub_study_result=sub_study_result, db_parent=db_result.parent
+        )
+
+        for db_target_result in [
+            *updated_kwargs["evaluator_target_results"],
+            *updated_kwargs["recharge_target_results"],
+        ]:
+            db_target_result.parent = db_result
+            db.add(db_target_result)
+
+        db_result.refit_force_field = updated_kwargs["refit_force_field"]
+
+        db_result.evaluator_target_results = updated_kwargs["evaluator_target_results"]
+        db_result.recharge_target_results = updated_kwargs["recharge_target_results"]
+
+        db_result.calculation_environment = updated_kwargs["calculation_environment"]
+        db_result.analysis_environment = updated_kwargs["analysis_environment"]
+
+        return db_result
