@@ -24,18 +24,110 @@ from nonbonded.backend.database.utilities.exceptions import (
     TargetResultNotFoundError,
     TargetResultTypeError,
     UnableToDeleteError,
+    UnableToUpdateError,
 )
+from nonbonded.library.models.forcefield import ForceField
 from nonbonded.library.models.projects import Optimization
+from nonbonded.library.models.results import (
+    DataSetResult,
+    DataSetResultEntry,
+    DataSetStatistic,
+    EvaluatorTargetResult,
+    RechargeTargetResult,
+)
+from nonbonded.library.statistics.statistics import StatisticType
 from nonbonded.tests.backend.crud.utilities import BaseCRUDTest, create_dependencies
+from nonbonded.tests.utilities.comparison import compare_pydantic_models, does_not_raise
 from nonbonded.tests.utilities.factory import (
     create_benchmark,
     create_benchmark_result,
     create_data_set,
+    create_data_set_statistic,
     create_evaluator_target,
     create_force_field,
     create_optimization,
     create_optimization_result,
+    create_statistic,
 )
+
+
+def optimization_result_perturbations():
+
+    return [
+        ({"calculation_environment": {}}, lambda db: [], does_not_raise()),
+        ({"analysis_environment": {}}, lambda db: [], does_not_raise()),
+        (
+            {"refit_force_field": ForceField(inner_content="update-ff")},
+            lambda db: [],
+            does_not_raise(),
+        ),
+        # Test updating the test_sets.
+        (
+            {
+                "target_results": {
+                    0: {
+                        "evaluator-target-1": EvaluatorTargetResult(
+                            objective_function=1.0,
+                            statistic_entries=[create_data_set_statistic()],
+                        ),
+                        "recharge-target-1": RechargeTargetResult(
+                            objective_function=0.5,
+                            statistic_entries=[create_statistic()],
+                        ),
+                    },
+                }
+            },
+            lambda db: [
+                db.query(models.DataSetStatistic.id).count() == 1,
+                db.query(models.DataSetResult.id).count() == 1,
+                db.query(models.QCDataSetStatistic.id).count() == 1,
+                db.query(models.QCDataSetResult.id).count() == 1,
+                db.query(models.TargetResult.id).count() == 2,
+                db.query(models.EvaluatorTargetResult.id).count() == 1,
+                db.query(models.RechargeTargetResult.id).count() == 1,
+            ],
+            does_not_raise(),
+        ),
+    ]
+
+
+def benchmark_result_perturbations():
+
+    return [
+        ({"calculation_environment": {}}, lambda db: [], does_not_raise()),
+        ({"analysis_environment": {}}, lambda db: [], does_not_raise()),
+        # Test updating the test_sets.
+        (
+            {
+                "data_set_result": DataSetResult(
+                    result_entries=[
+                        DataSetResultEntry(
+                            reference_id=1,
+                            estimated_value=5.0,
+                            estimated_std_error=5.0,
+                            categories=["a", "b"],
+                        ),
+                    ],
+                    statistic_entries=[
+                        DataSetStatistic(
+                            statistic_type=StatisticType.RMSE,
+                            value=0.0,
+                            lower_95_ci=0.0,
+                            upper_95_ci=0.0,
+                            category="a",
+                            property_type="Density",
+                            n_components=1,
+                        )
+                    ],
+                )
+            },
+            lambda db: [
+                db.query(models.DataSetStatistic.id).count() == 1,
+                db.query(models.DataSetResult.id).count() == 1,
+            ],
+            does_not_raise(),
+        ),
+    ]
 
 
 class TestOptimizationResultCRUD(BaseCRUDTest):
@@ -111,13 +203,101 @@ class TestOptimizationResultCRUD(BaseCRUDTest):
         remaining_force_field = db.query(models.ForceField.inner_content).first()
         assert "Refit" not in remaining_force_field
 
-    @pytest.mark.skip("Optimization results cannot be updated.")
+    @pytest.mark.parametrize(
+        "perturbation, database_checks, expected_raise",
+        optimization_result_perturbations(),
+    )
     def test_update(self, db: Session, perturbation, database_checks, expected_raise):
-        pass
+        super(TestOptimizationResultCRUD, self).test_update(
+            db, perturbation, database_checks, expected_raise
+        )
 
-    @pytest.mark.skip("Optimization results cannot be updated.")
-    def test_update_not_found(self, db: Session):
-        pass
+    @pytest.mark.parametrize(
+        "create_dependant_child, delete_dependant_child",
+        [
+            (
+                functools.partial(
+                    BenchmarkCRUD.create,
+                    sub_study=create_benchmark(
+                        "project-1",
+                        "study-1",
+                        "benchmark-1",
+                        ["data-set-1"],
+                        "optimization-1",
+                        None,
+                    ),
+                ),
+                functools.partial(
+                    BenchmarkCRUD.delete,
+                    project_id="project-1",
+                    study_id="study-1",
+                    sub_study_id="benchmark-1",
+                ),
+            ),
+            (
+                functools.partial(
+                    OptimizationCRUD.create,
+                    sub_study=Optimization(
+                        **create_optimization(
+                            "project-1",
+                            "study-1",
+                            "optimization-2",
+                            [
+                                create_evaluator_target(
+                                    "evaluator-target-1", ["data-set-1"]
+                                )
+                            ],
+                        ).dict(exclude={"force_field", "optimization_id"}),
+                        optimization_id="optimization-1",
+                    ),
+                ),
+                functools.partial(
+                    OptimizationCRUD.delete,
+                    project_id="project-1",
+                    study_id="study-1",
+                    sub_study_id="optimization-2",
+                ),
+            ),
+        ],
+    )
+    def test_update_with_child(
+        self, db: Session, create_dependant_child, delete_dependant_child
+    ):
+        """Test that optimization results which are being targeted by a benchmark
+        / other optimization can only be updated if the refit force field does not
+         change.
+        """
+
+        create_dependencies(db, self.dependencies())
+        model = self.create_model()
+
+        db.add(self.crud_class().create(db, model))
+        db.commit()
+
+        db.add(create_dependant_child(db))
+        db.commit()
+
+        # We should be able to update without changing the force field.
+        db.begin_nested()
+        self.crud_class().update(db, model)
+        db.rollback()
+
+        model.refit_force_field.inner_content += " refit"
+
+        db.begin_nested()
+
+        with pytest.raises(UnableToUpdateError):
+            self.crud_class().update(db, model)
+
+        db.rollback()
+
+        # Delete the benchmark and results and try again.
+        delete_dependant_child(db)
+        db.commit()
+        db_updated_result = self.crud_class().update(db, model)
+        db.commit()
+
+        compare_pydantic_models(self.crud_class().db_to_model(db_updated_result), model)
 
     @pytest.mark.skip("Optimization results cannot be paginated.")
     def test_pagination(self, db: Session):
@@ -347,13 +527,14 @@ class TestBenchmarkResultCRUD(BaseCRUDTest):
 
         assert db.query(models.BenchmarkResult.id).count() == 0
 
-    @pytest.mark.skip("Benchmark results cannot be updated.")
+    @pytest.mark.parametrize(
+        "perturbation, database_checks, expected_raise",
+        benchmark_result_perturbations(),
+    )
     def test_update(self, db: Session, perturbation, database_checks, expected_raise):
-        pass
-
-    @pytest.mark.skip("Benchmark results cannot be updated.")
-    def test_update_not_found(self, db: Session):
-        pass
+        super(TestBenchmarkResultCRUD, self).test_update(
+            db, perturbation, database_checks, expected_raise
+        )
 
     @pytest.mark.skip("Benchmark results cannot be paginated.")
     def test_pagination(self, db: Session):

@@ -197,6 +197,8 @@ def update_and_compare_model(
         expected_model = model_to_update
 
     db_updated_model = update_function(db, model_to_update)
+    db.flush()
+
     compare_pydantic_models(expected_model, db_model_to_model(db_updated_model))
 
     db.commit()
