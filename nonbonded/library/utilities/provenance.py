@@ -43,13 +43,14 @@ def summarise_conda_environment(environment_path: str) -> Dict[str, str]:
     dependencies = {
         version_string.split("=")[0]: version_string.split("=")[1]
         for version_string in environment["dependencies"]
-        if version_string != "pip"
+        if not isinstance(version_string, dict)
     }
     dependencies.update(
         {
-            dependency.split("==")[0]: dependency.split("==")[1]
-            for dependency in environment["dependencies"].get("pip", [])
-            if dependency.find("ambertools") >= 0
+            pip_dependency.split("==")[0]: pip_dependency.split("==")[1]
+            for dependency_dict in environment["dependencies"]
+            if isinstance(dependency_dict, dict) and "pip" in dependency_dict
+            for pip_dependency in dependency_dict.get("pip", [])
         }
     )
 
