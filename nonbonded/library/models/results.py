@@ -15,7 +15,6 @@ from nonbonded.library.models.validators.string import IdentifierStr, NonEmptySt
 from nonbonded.library.statistics.statistics import StatisticType, compute_statistics
 from nonbonded.library.utilities.checkmol import components_to_categories
 from nonbonded.library.utilities.environments import ChemicalEnvironment
-from nonbonded.library.utilities.exceptions import UnsupportedEndpointError
 
 if TYPE_CHECKING:
 
@@ -343,7 +342,7 @@ class SubStudyResult(BaseREST, abc.ABC):
             f"/results/"
         )
 
-    def _post_endpoint(self):
+    def _edit_endpoint(self):
 
         return (
             f"{settings.API_URL}/projects/"
@@ -354,22 +353,15 @@ class SubStudyResult(BaseREST, abc.ABC):
             f"{self.id}"
             f"/results/"
         )
+
+    def _post_endpoint(self):
+        return self._edit_endpoint()
 
     def _put_endpoint(self):
-
-        raise UnsupportedEndpointError("Results cannot be updated via the RESTful API.")
+        return self._edit_endpoint()
 
     def _delete_endpoint(self):
-
-        return (
-            f"{settings.API_URL}/projects/"
-            f"{self.project_id}"
-            f"/studies/"
-            f"{self.study_id}"
-            f"/{self._url_name()}/"
-            f"{self.id}"
-            f"/results/"
-        )
+        return self._edit_endpoint()
 
     @classmethod
     def from_rest(

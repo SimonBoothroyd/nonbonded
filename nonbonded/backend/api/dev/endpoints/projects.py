@@ -210,7 +210,7 @@ class OptimizationResultEndpoints(BaseCRUDEndpoint):
     @router.get(
         "/{project_id}/studies/{study_id}/optimizations/{optimization_id}/results/"
     )
-    async def get_optimization_result(
+    async def get(
         project_id,
         study_id,
         optimization_id,
@@ -230,7 +230,7 @@ class OptimizationResultEndpoints(BaseCRUDEndpoint):
     @router.post(
         "/{project_id}/studies/{study_id}/optimizations/{optimization_id}/results/"
     )
-    async def post_optimization_result_result(
+    async def post(
         optimization_result: OptimizationResult,
         db: Session = Depends(depends.get_db),
         _: APIKey = Depends(check_access_token),
@@ -238,10 +238,21 @@ class OptimizationResultEndpoints(BaseCRUDEndpoint):
         return OptimizationResultEndpoints._post(db, optimization_result)
 
     @staticmethod
+    @router.put(
+        "/{project_id}/studies/{study_id}/optimizations/{optimization_id}/results/"
+    )
+    async def put(
+        optimization_result: OptimizationResult,
+        db: Session = Depends(depends.get_db),
+        _: APIKey = Depends(check_access_token),
+    ):
+        return OptimizationResultEndpoints._put(db, optimization_result)
+
+    @staticmethod
     @router.delete(
         "/{project_id}/studies/{study_id}/optimizations/{optimization_id}/results/"
     )
-    async def delete_optimization_result(
+    async def delete(
         project_id,
         study_id,
         optimization_id,
@@ -351,6 +362,15 @@ class BenchmarkResultEndpoints(BaseCRUDEndpoint):
         _: APIKey = Depends(check_access_token),
     ):
         return BenchmarkResultEndpoints._post(db, benchmark_result)
+
+    @staticmethod
+    @router.put("/{project_id}/studies/{study_id}/benchmarks/{benchmark_id}/results/")
+    async def put(
+        benchmark_result: BenchmarkResult,
+        db: Session = Depends(depends.get_db),
+        _: APIKey = Depends(check_access_token),
+    ):
+        return BenchmarkResultEndpoints._put(db, benchmark_result)
 
     @staticmethod
     @router.delete(
