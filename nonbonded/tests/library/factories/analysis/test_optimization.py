@@ -1,38 +1,28 @@
-import json
 import os
 
-import numpy
 import pytest
 from forcebalance.nifty import lp_dump
-from openff.evaluator.client import RequestResult
 
 from nonbonded.library.factories.analysis.optimization import (
     OptimizationAnalysisFactory,
 )
-from nonbonded.library.models.datasets import DataSetCollection
+from nonbonded.library.factories.analysis.targets.evaluator import (
+    EvaluatorAnalysisFactory,
+)
+from nonbonded.library.factories.analysis.targets.recharge import (
+    RechargeAnalysisFactory,
+)
 from nonbonded.library.models.results import (
     EvaluatorTargetResult,
     OptimizationResult,
     RechargeTargetResult,
 )
 from nonbonded.library.utilities import temporary_cd
-from nonbonded.library.utilities.environments import ChemicalEnvironment
 from nonbonded.tests.utilities.factory import (
-    create_data_set,
     create_evaluator_target,
     create_optimization,
     create_recharge_target,
 )
-
-
-def test_read_objective_function(tmpdir):
-
-    # Save an objective function file.
-    lp_dump({"X": 1.0}, os.path.join(tmpdir, "objective.p"))
-
-    assert numpy.isclose(
-        OptimizationAnalysisFactory._read_objective_function(tmpdir), 1.0
-    )
 
 
 def test_load_refit_force_field(tmpdir, smirnoff_force_field):
@@ -57,116 +47,7 @@ def test_load_refit_force_field_missing(smirnoff_force_field):
         OptimizationAnalysisFactory._load_refit_force_field()
 
 
-def test_analyze_evaluator_target(tmpdir):
-
-    with temporary_cd(str(tmpdir)):
-
-        # Mock the target to analyze.
-        target = create_evaluator_target("evaluator-target-1", ["data-set-1"])
-        os.makedirs(os.path.join("targets", target.id))
-
-        optimization = create_optimization(
-            "project-1", "study-1", "optimization-1", [target]
-        )
-        optimization.analysis_environments = []
-
-        # Create a dummy data set and estimated result.
-        reference_data_set = create_data_set("data-set-1", 1)
-        DataSetCollection(data_sets=[reference_data_set]).to_evaluator().json(
-            os.path.join("targets", target.id, "training-set.json")
-        )
-
-        results = RequestResult()
-        results.estimated_properties = reference_data_set.to_evaluator()
-        results.json("results.json")
-
-        lp_dump({"X": 1.0}, "objective.p")
-
-        # Analyze the mocked results
-        target_result = OptimizationAnalysisFactory._analyze_evaluator_target(
-            optimization=optimization, target=target, target_directory="", reindex=True
-        )
-
-    assert numpy.isclose(target_result.objective_function, 1.0)
-    assert len(target_result.statistic_entries) == 1
-
-
-def test_analyze_evaluator_target_missing(tmpdir):
-
-    target = create_evaluator_target("evaluator-target-1", ["data-set-1"])
-
-    optimization = create_optimization(
-        "project-1", "study-1", "optimization-1", [target]
-    )
-
-    assert (
-        OptimizationAnalysisFactory._analyze_evaluator_target(
-            optimization=optimization, target=target, target_directory="", reindex=True
-        )
-        is None
-    )
-
-
-def test_analyze_recharge_target(tmpdir):
-
-    with temporary_cd(str(tmpdir)):
-
-        # Mock the target to analyze.
-        target = create_recharge_target("recharge-target-1", ["qc-data-set-1"])
-        os.makedirs(os.path.join("targets", target.id))
-
-        optimization = create_optimization(
-            "project-1", "study-1", "optimization-1", [target]
-        )
-        optimization.analysis_environments = [
-            ChemicalEnvironment.Alkane,
-            ChemicalEnvironment.Alcohol,
-        ]
-
-        # Create a dummy set of residuals.
-        with open("residuals.json", "w") as file:
-            json.dump({"C": 9.0, "CO": 4.0}, file)
-
-        lp_dump({"X": 1.0}, "objective.p")
-
-        # Analyze the mocked results
-        target_result = OptimizationAnalysisFactory._analyze_recharge_target(
-            optimization=optimization,
-            target=target,
-            target_directory="",
-        )
-
-    assert numpy.isclose(target_result.objective_function, 1.0)
-    assert len(target_result.statistic_entries) == 3
-
-    statistic_per_category = {
-        statistic.category: statistic.value
-        for statistic in target_result.statistic_entries
-    }
-
-    assert numpy.isclose(statistic_per_category["Alkane"], 3.0)
-    assert numpy.isclose(statistic_per_category["Alcohol"], 2.0)
-
-    assert numpy.isclose(statistic_per_category[None], numpy.sqrt(13.0 / 2.0))
-
-
-def test_analyze_recharge_target_missing(tmpdir):
-
-    target = create_recharge_target("recharge-target-1", ["qc-data-set-1"])
-
-    optimization = create_optimization(
-        "project-1", "study-1", "optimization-1", [target]
-    )
-
-    assert (
-        OptimizationAnalysisFactory._analyze_recharge_target(
-            optimization=optimization, target=target, target_directory=""
-        )
-        is None
-    )
-
-
-def test_optimization_analysis(monkeypatch, force_field, dummy_conda_env):
+def test_analysis(monkeypatch, force_field, dummy_conda_env):
 
     optimization = create_optimization(
         "project-1",
@@ -216,15 +97,15 @@ def test_optimization_analysis(monkeypatch, force_field, dummy_conda_env):
             OptimizationAnalysisFactory, "_load_refit_force_field", lambda: force_field
         )
         monkeypatch.setattr(
-            OptimizationAnalysisFactory,
-            "_analyze_evaluator_target",
+            EvaluatorAnalysisFactory,
+            "analyze",
             lambda *args: EvaluatorTargetResult(
                 objective_function=1.0, statistic_entries=[]
             ),
         )
         monkeypatch.setattr(
-            OptimizationAnalysisFactory,
-            "_analyze_recharge_target",
+            RechargeAnalysisFactory,
+            "analyze",
             lambda *args: RechargeTargetResult(
                 objective_function=1.0, statistic_entries=[]
             ),
@@ -252,7 +133,7 @@ def test_optimization_analysis(monkeypatch, force_field, dummy_conda_env):
         assert result.refit_force_field.inner_content == force_field.inner_content
 
 
-def test_optimization_analysis_n_iteration(monkeypatch, force_field):
+def test_analysis_n_iteration(monkeypatch, force_field):
     """Test that the correction exception is raised in the case where a refit
     force field is found but no target outputs are."""
 
@@ -284,7 +165,7 @@ def test_optimization_analysis_n_iteration(monkeypatch, force_field):
         assert "No iteration results could be found" in str(error_info.value)
 
 
-def test_optimization_analysis_missing_result(monkeypatch, force_field):
+def test_analysis_missing_result(monkeypatch, force_field):
     """Test that the correction exception is raised in the case where a the
     expected results of a target are missing."""
 
@@ -322,15 +203,15 @@ def test_optimization_analysis_missing_result(monkeypatch, force_field):
 
         # Mock a missing target result.
         monkeypatch.setattr(
-            OptimizationAnalysisFactory,
-            "_analyze_evaluator_target",
+            EvaluatorAnalysisFactory,
+            "analyze",
             lambda *args: EvaluatorTargetResult(
                 objective_function=1.0, statistic_entries=[]
             ),
         )
         monkeypatch.setattr(
-            OptimizationAnalysisFactory,
-            "_analyze_recharge_target",
+            RechargeAnalysisFactory,
+            "analyze",
             lambda *args: None,
         )
 
