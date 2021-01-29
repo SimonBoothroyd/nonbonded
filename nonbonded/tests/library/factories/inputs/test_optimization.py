@@ -79,11 +79,8 @@ class TestOptimizationInputFactory:
         bcc_handler = off_force_field.get_parameter_handler("ChargeIncrementModel")
         assert len(bcc_handler.parameters) == 1
         parameter = bcc_handler.parameters["[#6:1]-[#6:2]"]
+        assert len(parameter.charge_increment) == 1
         assert parameter._parameterize == "charge_increment1"
-        assert parameter._parameter_eval == (
-            "charge_increment2=-PRM['ChargeIncrementModel/ChargeIncrement/"
-            "charge_increment1/[#6:1]-[#6:2]']"
-        )
 
     def test_generate_force_balance_input(self, optimization):
 

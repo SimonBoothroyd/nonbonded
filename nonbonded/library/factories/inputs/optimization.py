@@ -3,6 +3,8 @@ import os
 from collections import defaultdict
 from typing import TYPE_CHECKING, List, Union
 
+import numpy
+
 from nonbonded.library.factories.inputs import InputFactory
 from nonbonded.library.models.datasets import DataSet, DataSetCollection, QCDataSet
 from nonbonded.library.models.forcefield import ForceField
@@ -40,6 +42,8 @@ class OptimizationInputFactory(InputFactory):
         to refit it in the correct ``forcefield`` directory.
         """
 
+        from simtk import unit as simtk_unit
+
         force_field_directory = "forcefield"
         os.makedirs(force_field_directory, exist_ok=True)
 
@@ -71,12 +75,31 @@ class OptimizationInputFactory(InputFactory):
 
                 if handler_type == "ChargeIncrementModel":
 
-                    parameter.add_cosmetic_attribute(
-                        "parameter_eval",
-                        "charge_increment2="
-                        "-PRM['ChargeIncrementModel/ChargeIncrement/charge_increment1/"
-                        f"{parameter.smirks}']",
-                    )
+                    if len(parameter.charge_increment) > 2:
+                        raise NotImplementedError
+                    if attributes != ["charge_increment1"]:
+                        raise NotImplementedError
+
+                    # Make use of the behavior introduced in 0.8.0 of the toolkit and
+                    # only set `charge_increment1`. `charge_increment2` will then be
+                    # set automatically.
+                    if len(parameter.charge_increment) == 2:
+
+                        if not numpy.isclose(
+                            parameter.charge_increment1.value_in_unit(
+                                simtk_unit.elementary_charge
+                            ),
+                            -parameter.charge_increment2.value_in_unit(
+                                simtk_unit.elementary_charge
+                            ),
+                        ):
+
+                            raise RuntimeError(
+                                "The `charge_increment2` should be equal in magnitude "
+                                "but opposite in sign to `charge_increment1`"
+                            )
+
+                        parameter.charge_increment = [parameter.charge_increment1]
 
         force_field_path = os.path.join(force_field_directory, "force-field.offxml")
         off_force_field.to_file(
