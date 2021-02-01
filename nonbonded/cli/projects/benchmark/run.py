@@ -213,6 +213,9 @@ def run_command():
         # Load the server configuration.
         server_config = EvaluatorServerConfig.parse_file(kwargs.pop("server_config"))
 
+        if server_config.enable_data_caching is None:
+            server_config.enable_data_caching = False
+
         # Load in the request options
         request_options = RequestOptions.from_json(kwargs.pop("request_options"))
 

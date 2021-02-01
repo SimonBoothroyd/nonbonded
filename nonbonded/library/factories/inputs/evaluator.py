@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
 from pydantic import BaseModel, Field
 from typing_extensions import Literal
@@ -144,6 +144,15 @@ class EvaluatorServerConfig(BaseModel):
         description="The directory in which to store any working files and directories",
     )
 
+    enable_data_caching: Optional[bool] = Field(
+        None,
+        description="Whether the server should attempt to cache any data, mainly the "
+        "output of simulations, produced by estimation requests for future "
+        "re-processing (e.g for reweighting).\n\n"
+        "If unspecified this value will be automatically set depending on the "
+        "properties to be estimated.",
+    )
+
     def to_backend(self):
         return self.backend_config.to_evaluator()
 
@@ -155,6 +164,7 @@ class EvaluatorServerConfig(BaseModel):
             calculation_backend=evaluator_backend,
             working_directory=self.working_directory,
             port=self.port,
+            enable_data_caching=self.enable_data_caching,
         )
 
         return evaluator_server
