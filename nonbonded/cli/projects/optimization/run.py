@@ -143,6 +143,18 @@ def _launch_required_services(optimization: Optimization, server_config: Optiona
         )
 
     server_config = EvaluatorServerConfig.parse_file(server_config)
+
+    # Disable data caching when re-weighting is disabled and the user hasn't
+    # explicitly requested it.
+    requires_cached_data = any(
+        target.allow_reweighting
+        for target in optimization.targets
+        if isinstance(target, EvaluatorTarget)
+    )
+
+    if server_config.enable_data_caching is None:
+        server_config.enable_data_caching = requires_cached_data
+
     calculation_backend = server_config.to_backend()
 
     with calculation_backend:
