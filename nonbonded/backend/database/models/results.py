@@ -69,7 +69,7 @@ class SoftwareProvenance(UniqueMixin, Base):
     id = Column(Integer, primary_key=True, index=True)
 
     name = Column(String(20), nullable=False)
-    version = Column(String(32), unique=True, nullable=False)
+    version = Column(String(32), nullable=False)
 
     @classmethod
     def _hash(cls, db_instance: "SoftwareProvenance"):
