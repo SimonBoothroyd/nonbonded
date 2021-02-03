@@ -1,16 +1,37 @@
 # Changelog
 
-## [0.0.1-alpha.7](https://github.com/SimonBoothroyd/nonbonded/tree/0.0.1-alpha.7) (2021-01-28)
+## [0.0.1-alpha.9](https://github.com/simonboothroyd/nonbonded/tree/0.0.1-alpha.9) (2021-02-03)
 
-[Full Changelog](https://github.com/SimonBoothroyd/nonbonded/compare/0.0.1-alpha.6...0.0.1-alpha.7)
+[Full Changelog](https://github.com/simonboothroyd/nonbonded/compare/0.0.1-alpha.8...0.0.1-alpha.9)
+
+**Implemented enhancements:**
+
+- Drop Parameter Evals for BCC Parameters [\#74](https://github.com/SimonBoothroyd/nonbonded/pull/74) ([SimonBoothroyd](https://github.com/SimonBoothroyd))
+
+**Fixed bugs:**
+
+- Remove Unique Constraint from Software Version [\#76](https://github.com/SimonBoothroyd/nonbonded/pull/76) ([SimonBoothroyd](https://github.com/SimonBoothroyd))
+
+## [0.0.1-alpha.8](https://github.com/simonboothroyd/nonbonded/tree/0.0.1-alpha.8) (2021-02-01)
+
+[Full Changelog](https://github.com/simonboothroyd/nonbonded/compare/0.0.1-alpha.7...0.0.1-alpha.8)
+
+**Implemented enhancements:**
+
+- Optional Evaluator Data Caching [\#75](https://github.com/SimonBoothroyd/nonbonded/pull/75) ([SimonBoothroyd](https://github.com/SimonBoothroyd))
+- Split Target Analysis into Separate Classes [\#73](https://github.com/SimonBoothroyd/nonbonded/pull/73) ([SimonBoothroyd](https://github.com/SimonBoothroyd))
+
+## [0.0.1-alpha.7](https://github.com/simonboothroyd/nonbonded/tree/0.0.1-alpha.7) (2021-01-28)
+
+[Full Changelog](https://github.com/simonboothroyd/nonbonded/compare/0.0.1-alpha.6...0.0.1-alpha.7)
 
 **Fixed bugs:**
 
 - Fix Parsing Pip Dependencies [\#72](https://github.com/SimonBoothroyd/nonbonded/pull/72) ([SimonBoothroyd](https://github.com/SimonBoothroyd))
 
-## [0.0.1-alpha.6](https://github.com/SimonBoothroyd/nonbonded/tree/0.0.1-alpha.6) (2021-01-28)
+## [0.0.1-alpha.6](https://github.com/simonboothroyd/nonbonded/tree/0.0.1-alpha.6) (2021-01-28)
 
-[Full Changelog](https://github.com/SimonBoothroyd/nonbonded/compare/0.0.1-alpha.5...0.0.1-alpha.6)
+[Full Changelog](https://github.com/simonboothroyd/nonbonded/compare/0.0.1-alpha.5...0.0.1-alpha.6)
 
 **Implemented enhancements:**
 
@@ -28,18 +49,18 @@
 
 - Fix Multi-Target and Empty Recharge Target Plotting [\#60](https://github.com/SimonBoothroyd/nonbonded/pull/60) ([SimonBoothroyd](https://github.com/SimonBoothroyd))
 
-## [0.0.1-alpha.5](https://github.com/SimonBoothroyd/nonbonded/tree/0.0.1-alpha.5) (2020-12-08)
+## [0.0.1-alpha.5](https://github.com/simonboothroyd/nonbonded/tree/0.0.1-alpha.5) (2020-12-08)
 
-[Full Changelog](https://github.com/SimonBoothroyd/nonbonded/compare/0.0.1-alpha.4...0.0.1-alpha.5)
+[Full Changelog](https://github.com/simonboothroyd/nonbonded/compare/0.0.1-alpha.4...0.0.1-alpha.5)
 
 **Fixed bugs:**
 
 - Fix Creating Inputs for Optimizations of Trained Force Fields [\#59](https://github.com/SimonBoothroyd/nonbonded/pull/59) ([SimonBoothroyd](https://github.com/SimonBoothroyd))
 - Fix Optimization ID Not Returned by Optimization CRUD [\#58](https://github.com/SimonBoothroyd/nonbonded/pull/58) ([SimonBoothroyd](https://github.com/SimonBoothroyd))
 
-## [0.0.1-alpha.4](https://github.com/SimonBoothroyd/nonbonded/tree/0.0.1-alpha.4) (2020-12-04)
+## [0.0.1-alpha.4](https://github.com/simonboothroyd/nonbonded/tree/0.0.1-alpha.4) (2020-12-04)
 
-[Full Changelog](https://github.com/SimonBoothroyd/nonbonded/compare/0.0.1-alpha.3...0.0.1-alpha.4)
+[Full Changelog](https://github.com/simonboothroyd/nonbonded/compare/0.0.1-alpha.3...0.0.1-alpha.4)
 
 **Implemented enhancements:**
 
@@ -53,9 +74,9 @@
 - \[PLOTLY\] Fix REST Dependencies [\#52](https://github.com/SimonBoothroyd/nonbonded/pull/52) ([SimonBoothroyd](https://github.com/SimonBoothroyd))
 - \[PLOTLY\] Fix No Category and NaN Error Bars [\#50](https://github.com/SimonBoothroyd/nonbonded/pull/50) ([SimonBoothroyd](https://github.com/SimonBoothroyd))
 
-## [0.0.1-alpha.3](https://github.com/SimonBoothroyd/nonbonded/tree/0.0.1-alpha.3) (2020-11-09)
+## [0.0.1-alpha.3](https://github.com/simonboothroyd/nonbonded/tree/0.0.1-alpha.3) (2020-11-09)
 
-[Full Changelog](https://github.com/SimonBoothroyd/nonbonded/compare/0.0.1-alpha.2...0.0.1-alpha.3)
+[Full Changelog](https://github.com/simonboothroyd/nonbonded/compare/0.0.1-alpha.2...0.0.1-alpha.3)
 
 **Implemented enhancements:**
 
@@ -64,17 +85,17 @@
 - Allow RESTful API to Return Without Children [\#46](https://github.com/SimonBoothroyd/nonbonded/pull/46) ([SimonBoothroyd](https://github.com/SimonBoothroyd))
 - Add Basic Plotly Support [\#45](https://github.com/SimonBoothroyd/nonbonded/pull/45) ([SimonBoothroyd](https://github.com/SimonBoothroyd))
 
-## [0.0.1-alpha.2](https://github.com/SimonBoothroyd/nonbonded/tree/0.0.1-alpha.2) (2020-10-29)
+## [0.0.1-alpha.2](https://github.com/simonboothroyd/nonbonded/tree/0.0.1-alpha.2) (2020-10-29)
 
-[Full Changelog](https://github.com/SimonBoothroyd/nonbonded/compare/0.0.1-alpha.1...0.0.1-alpha.2)
+[Full Changelog](https://github.com/simonboothroyd/nonbonded/compare/0.0.1-alpha.1...0.0.1-alpha.2)
 
 **Fixed bugs:**
 
 - Fix Plotting the RMSE of a Target with No Categories [\#44](https://github.com/SimonBoothroyd/nonbonded/pull/44) ([SimonBoothroyd](https://github.com/SimonBoothroyd))
 
-## [0.0.1-alpha.1](https://github.com/SimonBoothroyd/nonbonded/tree/0.0.1-alpha.1) (2020-10-28)
+## [0.0.1-alpha.1](https://github.com/simonboothroyd/nonbonded/tree/0.0.1-alpha.1) (2020-10-28)
 
-[Full Changelog](https://github.com/SimonBoothroyd/nonbonded/compare/e1255e0a982337aa37e044650905394d220a2d31...0.0.1-alpha.1)
+[Full Changelog](https://github.com/simonboothroyd/nonbonded/compare/e1255e0a982337aa37e044650905394d220a2d31...0.0.1-alpha.1)
 
 **Implemented enhancements:**
 
