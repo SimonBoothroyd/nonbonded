@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 
 from nonbonded.backend.database.crud.crud import CRUDInterface
 
-S = TypeVar("S", bound="BaseORM")
-T = TypeVar("T", bound="Base")
+S = TypeVar("S")
+T = TypeVar("T")
 
 
 class BaseCRUDEndpoint(abc.ABC):

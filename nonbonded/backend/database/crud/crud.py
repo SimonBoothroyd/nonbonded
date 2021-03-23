@@ -3,8 +3,8 @@ from typing import Optional, TypeVar
 
 from sqlalchemy.orm import Session
 
-S = TypeVar("S", bound="BaseORM")
-T = TypeVar("T", bound="Base")
+S = TypeVar("S")
+T = TypeVar("T")
 
 
 class CRUDInterface(abc.ABC):

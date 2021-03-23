@@ -24,10 +24,8 @@ from nonbonded.tests.utilities.factory import (
     create_study,
 )
 
-# noinspection PyTypeChecker
-S = TypeVar("S", bound="BaseORM")
-# noinspection PyTypeChecker
-T = TypeVar("T", bound="Base")
+S = TypeVar("S")
+T = TypeVar("T")
 
 
 class PaginationCallable(Protocol):
