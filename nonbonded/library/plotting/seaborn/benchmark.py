@@ -220,7 +220,7 @@ def plot_categorized_rmse(
                         benchmark_plot_data["Lower CI"],
                         benchmark_plot_data["Upper CI"],
                     ],
-                    height=1.0 / (len(benchmarks) - 1),
+                    height=1.0 / max(len(benchmarks) - 1, 1),
                     label=benchmark.name,
                 )
 
