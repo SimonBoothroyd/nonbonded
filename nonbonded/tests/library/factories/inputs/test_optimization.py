@@ -6,7 +6,7 @@ import pytest
 from openff.evaluator.attributes import UNDEFINED
 from openff.evaluator.datasets import PhysicalPropertyDataSet
 from openff.evaluator.properties import Density
-from openforcefield.typing.engines.smirnoff import ForceField as OFFForceField
+from openff.toolkit.typing.engines.smirnoff import ForceField as OFFForceField
 
 from nonbonded.library.factories.inputs.optimization import OptimizationInputFactory
 from nonbonded.library.models.forcefield import Parameter

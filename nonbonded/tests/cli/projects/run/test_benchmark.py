@@ -10,7 +10,7 @@ from openff.evaluator.client import (
 )
 from openff.evaluator.forcefield import ForceFieldSource, TLeapForceFieldSource
 from openff.evaluator.utils.exceptions import EvaluatorException
-from openforcefield.typing.engines.smirnoff import ForceField
+from openff.toolkit.typing.engines.smirnoff import ForceField
 
 from nonbonded.cli.projects.benchmark.run import (
     _load_force_field,

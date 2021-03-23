@@ -1,7 +1,7 @@
 alembic
 fastapi
 email_validator
-sqlalchemy
+sqlalchemy <1.4.0
 sqlalchemy-utils
 typing-extensions
 uvicorn[standard]
@@ -10,5 +10,5 @@ pydantic
 psycopg2
 click
 requests
-git+git://github.com/openforcefield/openff-recharge@0.0.1-alpha.4#egg=openff-recharge
+git+git://github.com/openforcefield/openff-recharge@0.0.1#egg=openff-recharge
 pandas

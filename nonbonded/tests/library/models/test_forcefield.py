@@ -5,7 +5,7 @@ def test_to_from_openff_smirnoff():
     """Tests that a force field model can be created from a
     force field.
     """
-    from openforcefield.typing.engines.smirnoff.forcefield import (
+    from openff.toolkit.typing.engines.smirnoff.forcefield import (
         ForceField as OFFForceField,
     )
 

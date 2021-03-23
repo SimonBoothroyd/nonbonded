@@ -1,7 +1,7 @@
 import pytest
-from openforcefield.typing.engines.smirnoff import ForceField as OFFForceField
-from openforcefield.typing.engines.smirnoff import vdWHandler
-from openforcefield.typing.engines.smirnoff.parameters import (
+from openff.toolkit.typing.engines.smirnoff import ForceField as OFFForceField
+from openff.toolkit.typing.engines.smirnoff import vdWHandler
+from openff.toolkit.typing.engines.smirnoff.parameters import (
     ChargeIncrementModelHandler,
 )
 

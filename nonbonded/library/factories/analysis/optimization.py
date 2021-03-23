@@ -30,7 +30,7 @@ class OptimizationAnalysisFactory(AnalysisFactory):
     def _load_refit_force_field(cls) -> ForceField:
         """Load in the refit force field."""
 
-        from openforcefield.typing.engines.smirnoff.forcefield import (
+        from openff.toolkit.typing.engines.smirnoff.forcefield import (
             ForceField as OFFForceField,
         )
 
