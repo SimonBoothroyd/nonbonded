@@ -1,8 +1,6 @@
 name: test
 channels:
   - conda-forge
-  - omnia
-  - omnia/label/alpha
 dependencies:
     # Base depends
   - python
@@ -29,15 +27,15 @@ dependencies:
 
     # Benchmark / optimization target dependencies
   - forcebalance >=1.7.5
-  - openforcefield >=0.8.0
-  - openff-evaluator >=0.3.2
-  - openff-recharge >=0.0.1a5
+  - openff-toolkit-base
+  - openff-evaluator >=0.3.3
+  - openff-recharge >=0.0.1
 
     # SMILES to SVG
   - rdkit
 
     # Plotting
-  - seaborn >= 0.11
+  - seaborn >=0.11
   - plotly
 
     # Statistics
@@ -46,7 +44,7 @@ dependencies:
     # REST dependencies
   - alembic
   - fastapi
-  - sqlalchemy
+  - sqlalchemy <1.4.0
   - sqlalchemy-utils
   - sqlite
   - psycopg2

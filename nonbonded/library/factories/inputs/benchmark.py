@@ -19,7 +19,7 @@ class BenchmarkInputFactory(InputFactory):
         """
 
         from openff.evaluator.forcefield import ForceFieldSource
-        from openforcefield.typing.engines.smirnoff.forcefield import (
+        from openff.toolkit.typing.engines.smirnoff.forcefield import (
             ForceField as OFFForceField,
         )
 

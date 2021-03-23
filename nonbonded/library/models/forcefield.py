@@ -7,7 +7,7 @@ from nonbonded.library.models.validators.string import NonEmptyStr
 
 if TYPE_CHECKING:
     from openff.evaluator.forcefield import ForceFieldSource
-    from openforcefield.typing.engines.smirnoff.forcefield import (
+    from openff.toolkit.typing.engines.smirnoff.forcefield import (
         ForceField as OpenForceField,
     )
 
@@ -55,7 +55,7 @@ class ForceField(BaseORM):
     ) -> "ForceField":
 
         from openff.evaluator.forcefield import ForceFieldSource
-        from openforcefield.typing.engines.smirnoff.forcefield import (
+        from openff.toolkit.typing.engines.smirnoff.forcefield import (
             ForceField as OpenForceField,
         )
 
@@ -75,7 +75,7 @@ class ForceField(BaseORM):
     def to_openff(self) -> Union["OpenForceField", "ForceFieldSource"]:
 
         from openff.evaluator.forcefield import ForceFieldSource
-        from openforcefield.typing.engines.smirnoff.forcefield import ForceField
+        from openff.toolkit.typing.engines.smirnoff.forcefield import ForceField
 
         try:
             force_field = ForceField(self.inner_content)

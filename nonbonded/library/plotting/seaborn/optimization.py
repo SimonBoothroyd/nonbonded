@@ -19,7 +19,7 @@ from nonbonded.library.utilities.string import camel_to_kebab_case
 
 if TYPE_CHECKING:
     import simtk.unit
-    from openforcefield.typing.engines.smirnoff.forcefield import (
+    from openff.toolkit.typing.engines.smirnoff.forcefield import (
         ForceField as OFFForceField,
     )
 

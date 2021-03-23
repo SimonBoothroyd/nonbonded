@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from openff.evaluator.client import RequestOptions, RequestResult
     from openff.evaluator.datasets import PhysicalPropertyDataSet
     from openff.evaluator.forcefield import ForceFieldSource
-    from openforcefield.typing.engines.smirnoff import ForceField
+    from openff.toolkit.typing.engines.smirnoff import ForceField
 
 
 def _run_options():
@@ -123,7 +123,7 @@ def _load_force_field() -> Union["ForceField", "ForceFieldSource"]:
     """Load in the force field to use in the benchmark."""
 
     from openff.evaluator.forcefield import ForceFieldSource
-    from openforcefield.typing.engines.smirnoff import ForceField
+    from openff.toolkit.typing.engines.smirnoff import ForceField
 
     if os.path.isfile("force-field.offxml") and os.path.isfile("force-field.json"):
 

@@ -20,9 +20,9 @@ dependencies:
 
     # Benchmark / optimization target dependencies
   - forcebalance >=1.7.5
-  - openforcefield >=0.8.0
-  - openff-evaluator >=0.2.0
-  - openff-recharge >=0.0.1a5
+  - openff-toolkit-base
+  - openff-evaluator >=0.3.3
+  - openff-recharge >=0.0.1
 
     # SMILES to SVG
   - rdkit
@@ -34,5 +34,5 @@ dependencies:
   - scipy
 
     # REST dependencies
-  - sqlalchemy
+  - sqlalchemy <1.4.0
   - sqlalchemy-utils

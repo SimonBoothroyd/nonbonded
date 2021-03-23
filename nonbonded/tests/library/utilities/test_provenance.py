@@ -42,7 +42,7 @@ def test_summarise_current_versions(tmpdir):
             "openmmtools",
             "yank",
             "pymbar",
-            "openforcefield",
+            "openff-toolkit",
             "rdkit",
         ]
     )
