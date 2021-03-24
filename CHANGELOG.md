@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.1-beta.1](https://github.com/simonboothroyd/nonbonded/tree/0.0.1-beta.1) (2021-03-23)
+
+[Full Changelog](https://github.com/simonboothroyd/nonbonded/compare/0.0.1-alpha.9...0.0.1-beta.1)
+
+**Implemented enhancements:**
+
+- Migrate to the OpenFF toolkit namespace [\#77](https://github.com/SimonBoothroyd/nonbonded/pull/77) ([SimonBoothroyd](https://github.com/SimonBoothroyd))
+
+**Fixed bugs:**
+
+- Fix benchmark RMSD plot division by zero error [\#78](https://github.com/SimonBoothroyd/nonbonded/pull/78) ([SimonBoothroyd](https://github.com/SimonBoothroyd))
+
 ## [0.0.1-alpha.9](https://github.com/simonboothroyd/nonbonded/tree/0.0.1-alpha.9) (2021-02-03)
 
 [Full Changelog](https://github.com/simonboothroyd/nonbonded/compare/0.0.1-alpha.8...0.0.1-alpha.9)
