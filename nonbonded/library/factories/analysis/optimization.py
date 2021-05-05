@@ -104,7 +104,7 @@ class OptimizationAnalysisFactory(AnalysisFactory):
 
                 target_analyzer_kwargs = {}
 
-                if isinstance(target_analyzer, EvaluatorAnalysisFactory):
+                if issubclass(target_analyzer, EvaluatorAnalysisFactory):
                     target_analyzer_kwargs["reindex"] = reindex
 
                 target_result = target_analyzer.analyze(
