@@ -11,7 +11,7 @@ class Parameter(UniqueMixin, Base):
     id = Column(Integer, primary_key=True, index=True)
 
     handler_type = Column(String, nullable=False)
-    smirks = Column(String, nullable=False)
+    smirks = Column(String, nullable=True)
     attribute_name = Column(String, nullable=False)
 
     @classmethod
