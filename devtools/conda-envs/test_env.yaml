@@ -28,7 +28,7 @@ dependencies:
     # Benchmark / optimization target dependencies
   - forcebalance >=1.7.5
   - openff-toolkit-base
-  - openff-evaluator >=0.3.3
+  - openff-evaluator >=0.3.6
   - openff-recharge >=0.0.1
 
     # SMILES to SVG

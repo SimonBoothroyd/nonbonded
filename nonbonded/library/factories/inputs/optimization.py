@@ -70,7 +70,11 @@ class OptimizationInputFactory(InputFactory):
 
                 parameter_handler = off_force_field.get_parameter_handler(handler_type)
 
-                parameter = parameter_handler.parameters[smirks]
+                parameter = (
+                    parameter_handler
+                    if smirks is None
+                    else parameter_handler.parameters[smirks]
+                )
                 parameter.add_cosmetic_attribute("parameterize", attributes_string)
 
                 if handler_type == "ChargeIncrementModel":

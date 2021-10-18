@@ -59,6 +59,13 @@ class TestOptimizationInputFactory:
                 attribute_name="charge_increment1",
             )
         )
+        optimization.parameters_to_train.append(
+            Parameter(
+                handler_type="vdW",
+                smirks=None,
+                attribute_name="scale14",
+            )
+        )
 
         with temporary_cd():
 
@@ -72,6 +79,8 @@ class TestOptimizationInputFactory:
             )
 
         vdw_handler = off_force_field.get_parameter_handler("vdW")
+        assert vdw_handler._parameterize == "scale14"
+
         assert len(vdw_handler.parameters) == 1
         parameter = vdw_handler.parameters["[#6:1]"]
         assert parameter._parameterize == "epsilon, sigma"

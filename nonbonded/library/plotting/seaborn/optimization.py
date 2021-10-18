@@ -68,7 +68,10 @@ def _extract_parameter_value(
     """
 
     handler = force_field.get_parameter_handler(parameter.handler_type)
-    off_parameter = handler.parameters[parameter.smirks]
+
+    off_parameter = (
+        handler if parameter.smirks is None else handler.parameters[parameter.smirks]
+    )
 
     value = getattr(off_parameter, parameter.attribute_name)
 
