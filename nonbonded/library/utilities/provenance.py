@@ -119,7 +119,7 @@ def summarise_current_versions() -> Dict[str, str]:
         "openff-evaluator": "openff.evaluator",
         "openff-recharge": "openff.recharge",
         "pint": "pint",
-        "openmm": "simtk.openmm.version",
+        "openmm": "openmm.version",
         "openmmtools": "openmmtools",
         "yank": "yank",
         "pymbar": "pymbar",

@@ -99,14 +99,14 @@ def test_analysis(monkeypatch, force_field, dummy_conda_env):
         monkeypatch.setattr(
             EvaluatorAnalysisFactory,
             "analyze",
-            lambda *args: EvaluatorTargetResult(
+            lambda *args, **kwargs: EvaluatorTargetResult(
                 objective_function=1.0, statistic_entries=[]
             ),
         )
         monkeypatch.setattr(
             RechargeAnalysisFactory,
             "analyze",
-            lambda *args: RechargeTargetResult(
+            lambda *args, **kwargs: RechargeTargetResult(
                 objective_function=1.0, statistic_entries=[]
             ),
         )
@@ -205,14 +205,14 @@ def test_analysis_missing_result(monkeypatch, force_field):
         monkeypatch.setattr(
             EvaluatorAnalysisFactory,
             "analyze",
-            lambda *args: EvaluatorTargetResult(
+            lambda *args, **kwargs: EvaluatorTargetResult(
                 objective_function=1.0, statistic_entries=[]
             ),
         )
         monkeypatch.setattr(
             RechargeAnalysisFactory,
             "analyze",
-            lambda *args: None,
+            lambda *args, **kwargs: None,
         )
 
         with pytest.raises(RuntimeError) as error_info:

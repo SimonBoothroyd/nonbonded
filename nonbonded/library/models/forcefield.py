@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
 from pydantic import Field
 
@@ -20,8 +20,11 @@ class Parameter(BaseORM):
         "parameter.",
     )
 
-    smirks: NonEmptyStr = Field(
-        ..., description="The smirks identifier of the parameter."
+    smirks: Optional[NonEmptyStr] = Field(
+        ...,
+        description="The (optional) SMIRKS identifier of the parameter. This should be "
+        "None if a parameter of the handler, such as the 1-4 vdW scale factor, is being "
+        "referenced.",
     )
 
     attribute_name: NonEmptyStr = Field(
