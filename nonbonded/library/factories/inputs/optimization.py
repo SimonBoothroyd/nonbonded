@@ -394,7 +394,7 @@ class OptimizationInputFactory(InputFactory):
 
         # Create targets directory
         for target in model.targets:
-            cls._generate_target(target, evaluator_port)
+            cls._generate_target(target, evaluator_port, reference_data_sets)
 
         # Give a warning that currently the user will need to reconstruct the
         # ESP and EF data used by any recharge targets manually.
