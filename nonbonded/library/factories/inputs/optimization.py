@@ -322,9 +322,11 @@ class OptimizationInputFactory(InputFactory):
         with temporary_cd(target_directory):
 
             if isinstance(target, EvaluatorTarget):
-                cls._generate_evaluator_target(target, evaluator_port)
+                cls._generate_evaluator_target(
+                    target, evaluator_port, reference_data_sets
+                )
             elif isinstance(target, RechargeTarget):
-                cls._generate_recharge_target(target)
+                cls._generate_recharge_target(target, reference_data_sets)
             else:
                 raise NotImplementedError()
 
