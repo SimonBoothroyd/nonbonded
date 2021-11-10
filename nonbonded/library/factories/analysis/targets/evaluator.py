@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Optional
 
@@ -9,6 +10,8 @@ from nonbonded.library.models.results import DataSetResult, EvaluatorTargetResul
 from nonbonded.library.models.targets import EvaluatorTarget
 from nonbonded.library.statistics.statistics import StatisticType
 from nonbonded.library.utilities.migration import reindex_results
+
+_logger = logging.getLogger(__name__)
 
 
 class EvaluatorAnalysisFactory(TargetAnalysisFactory):
@@ -31,10 +34,30 @@ class EvaluatorAnalysisFactory(TargetAnalysisFactory):
             return None
 
         # Load the reference data set
-        reference_data_set = DataSet.from_pandas(
-            PhysicalPropertyDataSet.from_json(
-                os.path.join(target_directory, "training-set.json")
-            ).to_pandas(),
+        reference_data_set: PhysicalPropertyDataSet = PhysicalPropertyDataSet.from_json(
+            os.path.join(target_directory, "training-set.json")
+        )
+
+        # Check to see if any of the ids were set to strings that can't be cast to
+        # integers, and if so, apply slight re-indexing
+        try:
+            {int(entry.id) for entry in reference_data_set.properties}
+        except (TypeError, ValueError):
+
+            _logger.warning(
+                "The reference data set contains properties with ids that cannot be "
+                "cast to integers - attempting to fix. Note this in general is not "
+                "recommended and in future it is suggested to use integer ids in "
+                "physical property data sets."
+            )
+
+            for i, physical_property in enumerate(reference_data_set):
+                physical_property.id = str(i + 1)
+
+            reindex = True
+
+        reference_data_set: DataSet = DataSet.from_pandas(
+            reference_data_set.to_pandas(),
             identifier="empty",
             description="empty",
             authors=[Author(name="empty", email="email@email.com", institute="empty")],
