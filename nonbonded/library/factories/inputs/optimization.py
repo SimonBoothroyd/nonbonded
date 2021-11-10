@@ -1,7 +1,7 @@
 import json
 import os
 from collections import defaultdict
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
 import numpy
 
@@ -26,18 +26,30 @@ class OptimizationInputFactory(InputFactory):
     """
 
     @classmethod
-    def _retrieve_force_field(cls, optimization: Optimization) -> ForceField:
+    def _retrieve_force_field(
+        cls,
+        optimization: Optimization,
+        optimization_result: Optional[OptimizationResult],
+    ) -> ForceField:
 
-        optimization_result: OptimizationResult = OptimizationResult.from_rest(
-            project_id=optimization.project_id,
-            study_id=optimization.study_id,
-            model_id=optimization.optimization_id,
+        optimization_result = (
+            optimization_result
+            if optimization_result is not None
+            else OptimizationResult.from_rest(
+                project_id=optimization.project_id,
+                study_id=optimization.study_id,
+                model_id=optimization.optimization_id,
+            )
         )
 
         return optimization_result.refit_force_field
 
     @classmethod
-    def _prepare_force_field(cls, optimization: Optimization):
+    def _prepare_force_field(
+        cls,
+        optimization: Optimization,
+        optimization_result: Optional[OptimizationResult],
+    ):
         """Adds the required ForceBalance cosmetic attributes and stores the force field
         to refit it in the correct ``forcefield`` directory.
         """
@@ -50,7 +62,7 @@ class OptimizationInputFactory(InputFactory):
         off_force_field = (
             optimization.force_field
             if optimization.force_field is not None
-            else cls._retrieve_force_field(optimization)
+            else cls._retrieve_force_field(optimization, optimization_result)
         ).to_openff()
 
         # Add the required cosmetic attributes to the force field.
@@ -222,16 +234,21 @@ class OptimizationInputFactory(InputFactory):
         return request_options
 
     @classmethod
-    def _generate_evaluator_target(cls, target: EvaluatorTarget, port: int):
+    def _generate_evaluator_target(
+        cls,
+        target: EvaluatorTarget,
+        port: int,
+        reference_data_sets: Optional[List[Union[DataSet, QCDataSet]]],
+    ):
         """Generates the input files for an evaluator target."""
 
         from forcebalance.evaluator_io import Evaluator_SMIRNOFF
         from openff.evaluator import unit
 
         # Store the data set in the targets directory
-        training_sets: List[DataSet] = [
-            DataSet.from_rest(data_set_id=x) for x in target.data_set_ids
-        ]
+        training_sets: List[DataSet] = cls._find_or_retrieve_data_sets(
+            target.data_set_ids, DataSet, reference_data_sets
+        )
         training_set_collection = DataSetCollection(data_sets=training_sets)
 
         evaluator_set = training_set_collection.to_evaluator()
@@ -260,12 +277,16 @@ class OptimizationInputFactory(InputFactory):
             file.write(target_options.to_json())
 
     @classmethod
-    def _generate_recharge_target(cls, target: RechargeTarget):
+    def _generate_recharge_target(
+        cls,
+        target: RechargeTarget,
+        reference_data_sets: Optional[List[Union[DataSet, QCDataSet]]],
+    ):
         """Generates the input files for an evaluator target."""
 
-        training_sets: List[QCDataSet] = [
-            QCDataSet.from_rest(qc_data_set_id=x) for x in target.qc_data_set_ids
-        ]
+        training_sets: List[QCDataSet] = cls._find_or_retrieve_data_sets(
+            target.qc_data_set_ids, QCDataSet, reference_data_sets
+        )
 
         # Save the list of QCA compute record ids. The user will need to
         # reconstruct the full ESP and EF from these ids + the ESP settings
@@ -290,6 +311,7 @@ class OptimizationInputFactory(InputFactory):
         cls,
         target: Union[EvaluatorTarget, RechargeTarget],
         evaluator_port: int,
+        reference_data_sets: Optional[List[Union[DataSet, QCDataSet]]],
     ):
         """Generates a directory for a particular optimization target
         and populates it with the required target inputs."""
@@ -340,6 +362,8 @@ class OptimizationInputFactory(InputFactory):
         evaluator_port,
         n_evaluator_workers,
         include_results,
+        reference_data_sets: Optional[List[Union[DataSet, QCDataSet]]],
+        optimization_result: Optional[OptimizationResult],
     ):
 
         super(OptimizationInputFactory, cls)._generate(
@@ -350,6 +374,8 @@ class OptimizationInputFactory(InputFactory):
             evaluator_port=evaluator_port,
             n_evaluator_workers=n_evaluator_workers,
             include_results=include_results,
+            reference_data_sets=reference_data_sets,
+            optimization_result=optimization_result,
         )
 
         # Save the optimization definition in the directory
@@ -359,7 +385,7 @@ class OptimizationInputFactory(InputFactory):
             file.write(model.json())
 
         # Retrieve the force field.
-        cls._prepare_force_field(model)
+        cls._prepare_force_field(model, optimization_result)
 
         # Create the options.in file.
         cls._generate_force_balance_input(model)

@@ -62,7 +62,7 @@ class TestBenchmarkInputFactory:
         is_smirnoff = "SMIRNOFF" in force_field.inner_content
 
         with temporary_cd():
-            BenchmarkInputFactory._retrieve_force_field(benchmark)
+            BenchmarkInputFactory._retrieve_force_field(benchmark, None)
 
             if is_smirnoff:
                 assert os.path.isfile("force-field.offxml")
@@ -99,7 +99,7 @@ class TestBenchmarkInputFactory:
 
         with temporary_cd():
 
-            BenchmarkInputFactory._retrieve_force_field(benchmark)
+            BenchmarkInputFactory._retrieve_force_field(benchmark, None)
             assert os.path.isfile("force-field.offxml")
 
     def test_retrieve_data_sets(self, benchmark, requests_mock):
@@ -110,7 +110,7 @@ class TestBenchmarkInputFactory:
 
         with temporary_cd():
 
-            BenchmarkInputFactory._retrieve_data_sets(benchmark)
+            BenchmarkInputFactory._retrieve_data_sets(benchmark, None)
 
             assert os.path.isfile("test-set-collection.json")
             from nonbonded.library.models.datasets import DataSetCollection

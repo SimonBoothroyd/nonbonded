@@ -1,6 +1,7 @@
 import os
 
 import pytest
+from requests_mock import NoMockAddress
 
 from nonbonded.library.factories.inputs import InputFactory
 from nonbonded.library.factories.inputs.benchmark import BenchmarkInputFactory
@@ -9,21 +10,93 @@ from nonbonded.library.factories.inputs.evaluator import (
     DaskLocalClusterConfig,
 )
 from nonbonded.library.factories.inputs.optimization import OptimizationInputFactory
+from nonbonded.library.models.datasets import DataSet, QCDataSet
 from nonbonded.library.utilities import temporary_cd
+from nonbonded.tests.utilities.comparison import does_not_raise
 from nonbonded.tests.utilities.factory import (
     create_benchmark,
     create_data_set,
     create_evaluator_target,
     create_force_field,
     create_optimization,
+    create_optimization_result,
     create_project,
+    create_qc_data_set,
     create_study,
 )
 from nonbonded.tests.utilities.mock import (
     mock_get_data_set,
     mock_get_project,
+    mock_get_qc_data_set,
     mock_get_study,
 )
+
+
+@pytest.mark.usefixtures("change_api_url")
+@pytest.mark.parametrize(
+    "data_set_ids, data_set_type, expected_data_set_ids, expected_raises",
+    [
+        (["data-set-2"], DataSet, [2], does_not_raise()),
+        (["data-set-3"], DataSet, [4], does_not_raise()),
+        (["data-set-2", "data-set-3"], DataSet, [2, 4], does_not_raise()),
+        (
+            ["data-set-4"],
+            DataSet,
+            [],
+            pytest.raises(NoMockAddress, match="phys-prop/data-set-4"),
+        ),
+        (["data-set-1"], QCDataSet, [], does_not_raise()),
+        (["data-set-2"], QCDataSet, [], does_not_raise()),
+        (["data-set-1", "data-set-2"], QCDataSet, [], does_not_raise()),
+        (
+            ["data-set-4"],
+            QCDataSet,
+            [],
+            pytest.raises(NoMockAddress, match="qc/data-set-4"),
+        ),
+    ],
+)
+def test_find_or_retrieve_data_sets(
+    requests_mock, data_set_ids, data_set_type, expected_data_set_ids, expected_raises
+):
+
+    local_data_sets = [
+        create_data_set("data-set-1", 1),
+        create_qc_data_set("data-set-1"),
+        create_data_set("data-set-2", 2),
+    ]
+
+    remote_data_sets = [
+        create_qc_data_set("data-set-2"),
+        create_data_set("data-set-2", 3),
+        create_data_set("data-set-3", 4),
+    ]
+
+    for remote_data_set in remote_data_sets:
+
+        if isinstance(remote_data_set, DataSet):
+            mock_get_data_set(requests_mock, remote_data_set)
+        else:
+            mock_get_qc_data_set(requests_mock, remote_data_set)
+
+    with expected_raises:
+
+        found_data_sets = InputFactory._find_or_retrieve_data_sets(
+            data_set_ids, data_set_type, local_data_sets
+        )
+
+        assert sorted(data_set_ids) == sorted(
+            data_set.id for data_set in found_data_sets
+        )
+        assert all(isinstance(data_set, data_set_type) for data_set in found_data_sets)
+
+        found_entry_ids = [
+            entry.id
+            for data_set in found_data_sets
+            if isinstance(data_set, DataSet)
+            for entry in data_set.entries
+        ]
+        assert found_entry_ids == expected_data_set_ids
 
 
 @pytest.mark.parametrize(
@@ -34,6 +107,140 @@ def test_generate_evaluator_config(present, expected_class):
 
     config = InputFactory._generate_evaluator_config(present, "env", 1, 8000)
     assert isinstance(config.backend_config, expected_class)
+
+
+@pytest.mark.parametrize(
+    "model, optimization_result, expected_raises",
+    [
+        (
+            create_optimization(
+                "mock-project-1",
+                "mock-study-1",
+                "mock-optimization-2",
+                targets=[create_evaluator_target("phys-prop-1", ["data-set-1"])],
+                optimization_result_id="mock-optimization-1",
+            ),
+            create_optimization_result(
+                "mock-project-1",
+                "mock-study-1",
+                "mock-optimization-1",
+                ["phys-prop-1"],
+                [],
+            ),
+            does_not_raise(),
+        ),
+        (
+            create_optimization(
+                "mock-project-1",
+                "mock-study-1",
+                "mock-optimization-2",
+                targets=[create_evaluator_target("phys-prop-1", ["data-set-1"])],
+                optimization_result_id=None,
+            ),
+            None,
+            does_not_raise(),
+        ),
+        (
+            create_optimization(
+                "mock-project-1",
+                "mock-study-1",
+                "mock-optimization-2",
+                targets=[create_evaluator_target("phys-prop-1", ["data-set-1"])],
+                optimization_result_id="mock-optimization-1",
+            ),
+            None,
+            does_not_raise(),
+        ),
+        (
+            create_optimization(
+                "mock-project-1",
+                "mock-study-1",
+                "mock-optimization-2",
+                targets=[create_evaluator_target("phys-prop-1", ["data-set-1"])],
+                optimization_result_id="mock-optimization-1",
+            ),
+            create_optimization_result(
+                "mock-project-2",
+                "mock-study-1",
+                "mock-optimization-1",
+                ["phys-prop-1"],
+                [],
+            ),
+            pytest.raises(
+                AssertionError,
+                match="the provided optimization result does not match the one",
+            ),
+        ),
+    ],
+)
+def test_generate_validate_result(model, optimization_result, expected_raises):
+
+    with temporary_cd():
+
+        with expected_raises:
+
+            InputFactory._generate(
+                model,
+                "mock-env",
+                "01:00",
+                "lilac-dask",
+                8000,
+                1,
+                False,
+                None,
+                optimization_result,
+            )
+
+
+@pytest.mark.parametrize(
+    "reference_data_sets, expected_raises",
+    [
+        (
+            [create_data_set("data-set-1"), create_qc_data_set("data-set-1")],
+            does_not_raise(),
+        ),
+        (
+            [
+                create_data_set("data-set-1"),
+                create_data_set("data-set-1"),
+                create_qc_data_set("data-set-1"),
+            ],
+            pytest.raises(AssertionError, match="multiple reference data sets of"),
+        ),
+        (
+            [
+                create_data_set("data-set-1"),
+                create_qc_data_set("data-set-1"),
+                create_qc_data_set("data-set-1"),
+            ],
+            pytest.raises(AssertionError, match="multiple reference data sets of"),
+        ),
+    ],
+)
+def test_generate_validate_data_sets(reference_data_sets, expected_raises):
+
+    model = create_optimization(
+        "mock-project-1",
+        "mock-study-1",
+        "mock-optimization-1",
+        targets=[create_evaluator_target("phys-prop-1", ["data-set-1"])],
+    )
+
+    with temporary_cd():
+
+        with expected_raises:
+
+            InputFactory._generate(
+                model,
+                "mock-env",
+                "01:00",
+                "lilac-dask",
+                8000,
+                1,
+                False,
+                reference_data_sets,
+                None,
+            )
 
 
 def test_project_no_children(requests_mock):
