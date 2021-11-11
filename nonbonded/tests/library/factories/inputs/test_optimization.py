@@ -69,7 +69,7 @@ class TestOptimizationInputFactory:
 
         with temporary_cd():
 
-            OptimizationInputFactory._prepare_force_field(optimization)
+            OptimizationInputFactory._prepare_force_field(optimization, None)
 
             assert os.path.isfile(os.path.join("forcefield", "force-field.offxml"))
 
@@ -164,7 +164,7 @@ class TestOptimizationInputFactory:
 
         with temporary_cd():
 
-            OptimizationInputFactory._generate_evaluator_target(target, 8000)
+            OptimizationInputFactory._generate_evaluator_target(target, 8000, None)
 
             assert os.path.isfile("training-set.json")
             off_data_set = PhysicalPropertyDataSet.from_json("training-set.json")
@@ -181,7 +181,7 @@ class TestOptimizationInputFactory:
 
         with temporary_cd():
 
-            OptimizationInputFactory._generate_recharge_target(target)
+            OptimizationInputFactory._generate_recharge_target(target, None)
 
             with open("training-set.json") as file:
                 training_entries = json.load(file)
@@ -214,7 +214,7 @@ class TestOptimizationInputFactory:
         with caplog.at_level(logging.INFO):
 
             with temporary_cd():
-                OptimizationInputFactory._generate_target(target, 8000)
+                OptimizationInputFactory._generate_target(target, 8000, None)
                 assert os.path.isdir(os.path.join("targets", target.id))
 
         assert target.__class__.__name__ in caplog.text

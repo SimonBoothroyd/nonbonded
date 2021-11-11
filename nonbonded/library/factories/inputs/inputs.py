@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Iterable, List, Optional, Tuple, TypeVar
+from typing import Iterable, List, Optional, Tuple, Type, TypeVar, Union
 
 from nonbonded.library.factories.inputs.evaluator import (
     ComputeResources,
@@ -9,7 +9,9 @@ from nonbonded.library.factories.inputs.evaluator import (
     EvaluatorServerConfig,
     QueueWorkerResources,
 )
+from nonbonded.library.models.datasets import DataSet, QCDataSet
 from nonbonded.library.models.projects import Benchmark, Optimization, Project, Study
+from nonbonded.library.models.results import OptimizationResult
 from nonbonded.library.templates.submission import Submission, SubmissionTemplate
 from nonbonded.library.utilities import temporary_cd
 
@@ -66,6 +68,60 @@ class InputFactory:
 
         for child in children:
             yield child, cls.model_type_to_factory(type(child))
+
+    @classmethod
+    def _find_or_retrieve_data_sets(
+        cls,
+        data_set_ids: List[str],
+        data_set_type: Union[Type[DataSet], Type[QCDataSet]],
+        local_data_sets: Optional[List[Union[DataSet, QCDataSet]]],
+    ) -> List[Union[DataSet, QCDataSet]]:
+        """Attempts to retrieve a list of data sets by their ids from a list of local
+        data sets and, if not found, from the remote RESTful API.
+
+        Parameters
+        ----------
+        data_set_ids: The ids of the data sets to find.
+        data_set_type: The type of data set to find.
+        local_data_sets: The locally available data sets.
+
+        Returns
+        -------
+            The found data sets.
+        """
+
+        found_ids = (
+            set()
+            if local_data_sets is None
+            else {
+                data_set.id
+                for data_set in local_data_sets
+                if isinstance(data_set, data_set_type)
+            }
+        )
+        expected_ids = {*data_set_ids}
+
+        data_sets = (
+            []
+            if local_data_sets is None
+            else [
+                data_set
+                for data_set in local_data_sets
+                if data_set.id in expected_ids and isinstance(data_set, data_set_type)
+            ]
+        )
+        data_sets.extend(
+            data_set_type.from_rest(
+                **{
+                    (
+                        "data_set_id" if data_set_type == DataSet else "qc_data_set_id"
+                    ): data_set_id
+                }
+            )
+            for data_set_id in (expected_ids - found_ids)
+        )
+
+        return data_sets
 
     @classmethod
     def _generate_evaluator_config(
@@ -145,6 +201,8 @@ class InputFactory:
         evaluator_port: int,
         n_evaluator_workers: int,
         include_results: bool,
+        reference_data_sets: Optional[List[Union[DataSet, QCDataSet]]],
+        optimization_result: Optional[OptimizationResult],
     ):
         """The internal implementation of ``generate``.
 
@@ -165,10 +223,42 @@ class InputFactory:
         include_results
             Whether to also download any previously generated results
             and store them alongside the inputs.
+        reference_data_sets
+            The reference data sets referenced by the model
+        optimization_result
+            The result of the optimization (if any) referenced by the model.
         """
 
         with open("README.md", "w") as file:
             file.write(model.description)
+
+        if isinstance(model, (Optimization, Benchmark)):
+
+            assert (
+                model.optimization_id is None
+                or (model.optimization_id is not None and optimization_result is None)
+                or (
+                    model.optimization_id is not None
+                    and optimization_result is not None
+                    and model.optimization_id == optimization_result.id
+                    and model.study_id == optimization_result.study_id
+                    and model.project_id == optimization_result.project_id
+                )
+            ), (
+                f"the provided optimization result does not match the one expected: "
+                f"project_id={model.project_id} study_id={model.study_id} "
+                f"id={model.optimization_id}"
+            )
+
+        if reference_data_sets is not None:
+
+            unique_ids = {
+                (data_set.__class__, data_set.id) for data_set in reference_data_sets
+            }
+            assert len(unique_ids) == len(reference_data_sets), (
+                "multiple reference data sets of the same "
+                "type and with the same id were provided"
+            )
 
     @classmethod
     def generate(
@@ -179,7 +269,9 @@ class InputFactory:
         evaluator_preset: str,
         evaluator_port: int,
         n_evaluator_workers: int,
-        include_results: bool,
+        include_results: bool = False,
+        reference_data_sets: Optional[List[Union[DataSet, QCDataSet]]] = None,
+        optimization_result: Optional[OptimizationResult] = None,
     ):
         """Generates the required directory structure and inputs for the model.
 
@@ -200,7 +292,21 @@ class InputFactory:
         include_results
             Whether to also download any previously generated results
             and store them alongside the inputs.
+        reference_data_sets
+            The reference data sets referenced by the model
+        optimization_result
+            The result of the optimization (if any) referenced by the model.
         """
+
+        if not isinstance(model, (Benchmark, Optimization)) and (
+            reference_data_sets is not None or optimization_result is not None
+        ):
+
+            raise NotImplementedError(
+                "The `reference_data_sets` and `optimization_result` can currently "
+                "only be provided when generating inputs for a benchmark or "
+                "optimization directly."
+            )
 
         os.makedirs(model.id, exist_ok=True)
 
@@ -214,6 +320,8 @@ class InputFactory:
                 evaluator_port,
                 n_evaluator_workers,
                 include_results,
+                reference_data_sets,
+                optimization_result,
             )
 
             for child, factory in cls._yield_child_factory(model):
@@ -240,4 +348,6 @@ class InputFactory:
                         evaluator_port=evaluator_port,
                         n_evaluator_workers=n_evaluator_workers,
                         include_results=include_results,
+                        reference_data_sets=reference_data_sets,
+                        optimization_result=optimization_result,
                     )

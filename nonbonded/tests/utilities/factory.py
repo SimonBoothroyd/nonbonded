@@ -180,6 +180,7 @@ def create_optimization(
     study_id: str,
     optimization_id: str,
     targets: List[Union[EvaluatorTarget, RechargeTarget]],
+    optimization_result_id: Optional[str] = None,
 ) -> Optimization:
 
     """Creates an optimization with a specified id which target the specified
@@ -195,6 +196,8 @@ def create_optimization(
         The id to assign to the optimization.
     targets
         The optimization targets.
+    optimization_result_id
+        The id of the result to pull the intial force field from.
     """
 
     return Optimization(
@@ -204,7 +207,10 @@ def create_optimization(
         name="op",
         description=" ",
         targets=targets,
-        force_field=create_force_field(),
+        force_field=create_force_field() if optimization_result_id is None else None,
+        optimization_id=optimization_result_id
+        if optimization_result_id is not None
+        else None,
         parameters_to_train=[
             Parameter(handler_type="vdW", smirks="[#6:1]", attribute_name="epsilon"),
             Parameter(handler_type="vdW", smirks="[#6:1]", attribute_name="sigma"),
