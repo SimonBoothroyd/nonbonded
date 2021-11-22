@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.0.1-beta.4](https://github.com/SimonBoothroyd/nonbonded/tree/0.0.1-beta.4) (2021-11-11)
+
+[Full Changelog](https://github.com/SimonBoothroyd/nonbonded/compare/0.0.1-beta.3...0.0.1-beta.4)
+
+**Implemented enhancements:**
+
+- Expand input factories for local use [\#96](https://github.com/SimonBoothroyd/nonbonded/pull/96) ([SimonBoothroyd](https://github.com/SimonBoothroyd))
+
+**Fixed bugs:**
+
+- Fix \#94 [\#95](https://github.com/SimonBoothroyd/nonbonded/pull/95) ([SimonBoothroyd](https://github.com/SimonBoothroyd))
+
+**Closed issues:**
+
+- `nonbonded optimization analyze` cannot find PhysicalProperty.id [\#94](https://github.com/SimonBoothroyd/nonbonded/issues/94)
+
 ## [0.0.1-beta.3](https://github.com/SimonBoothroyd/nonbonded/tree/0.0.1-beta.3) (2021-10-18)
 
 [Full Changelog](https://github.com/SimonBoothroyd/nonbonded/compare/0.0.1-beta.2...0.0.1-beta.3)
