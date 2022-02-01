@@ -21,7 +21,7 @@ jobs:
 
       - name: Install isort / flake8 / black
         run: |
-          pip install isort flake8 black
+          pip install isort flake8 "black==21.12b0"
 
       - name: Run isort
         run: |
