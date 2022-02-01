@@ -93,7 +93,7 @@ class DaskHPCClusterConfig(BaseModel):
     pbs_resource_line: Optional[str] = Field(
         None,
         description="The (optional) string to pass to the `#PBS -l` line in the worker "
-        "job script if using a PBS cluster."
+        "job script if using a PBS cluster.",
     )
 
     def to_evaluator(self) -> "dask.DaskLSFBackend":
@@ -120,7 +120,7 @@ class DaskHPCClusterConfig(BaseModel):
                 queue_name=self.queue_name,
                 setup_script_commands=self.setup_script_commands,
                 adaptive_interval="1000ms",
-                resource_line=self.pbs_resource_line
+                resource_line=self.pbs_resource_line,
             )
 
         elif self.cluster_type.lower() == "slurm":
