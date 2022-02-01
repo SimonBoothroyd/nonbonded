@@ -64,7 +64,7 @@ class DaskHPCClusterConfig(BaseModel):
 
     type: Literal["dask-hpc"] = Field("dask-hpc")
 
-    cluster_type: Literal["lsf"] = Field(
+    cluster_type: Literal["lsf", "pbs", "slurm"] = Field(
         "lsf", description="The type queueing system available on the cluster."
     )
 
@@ -90,18 +90,52 @@ class DaskHPCClusterConfig(BaseModel):
         "activating a python environment, or loading an environment module",
     )
 
+    pbs_resource_line: Optional[str] = Field(
+        None,
+        description="The (optional) string to pass to the `#PBS -l` line in the worker "
+        "job script if using a PBS cluster."
+    )
+
     def to_evaluator(self) -> "dask.DaskLSFBackend":
 
         from openff.evaluator.backends import dask
 
-        evaluator_backend = dask.DaskLSFBackend(
-            minimum_number_of_workers=self.minimum_workers,
-            maximum_number_of_workers=self.maximum_workers,
-            resources_per_worker=self.resources_per_worker.to_evaluator(),
-            queue_name=self.queue_name,
-            setup_script_commands=self.setup_script_commands,
-            adaptive_interval="1000ms",
-        )
+        if self.cluster_type.lower() == "lsf":
+
+            evaluator_backend = dask.DaskLSFBackend(
+                minimum_number_of_workers=self.minimum_workers,
+                maximum_number_of_workers=self.maximum_workers,
+                resources_per_worker=self.resources_per_worker.to_evaluator(),
+                queue_name=self.queue_name,
+                setup_script_commands=self.setup_script_commands,
+                adaptive_interval="1000ms",
+            )
+
+        elif self.cluster_type.lower() == "pbs":
+
+            evaluator_backend = dask.DaskPBSBackend(
+                minimum_number_of_workers=self.minimum_workers,
+                maximum_number_of_workers=self.maximum_workers,
+                resources_per_worker=self.resources_per_worker.to_evaluator(),
+                queue_name=self.queue_name,
+                setup_script_commands=self.setup_script_commands,
+                adaptive_interval="1000ms",
+                resource_line=self.pbs_resource_line
+            )
+
+        elif self.cluster_type.lower() == "slurm":
+
+            evaluator_backend = dask.DaskSLURMBackend(
+                minimum_number_of_workers=self.minimum_workers,
+                maximum_number_of_workers=self.maximum_workers,
+                resources_per_worker=self.resources_per_worker.to_evaluator(),
+                queue_name=self.queue_name,
+                setup_script_commands=self.setup_script_commands,
+                adaptive_interval="1000ms",
+            )
+
+        else:
+            raise NotImplementedError()
 
         return evaluator_backend
 
